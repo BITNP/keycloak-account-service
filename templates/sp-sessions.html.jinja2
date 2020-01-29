@@ -13,7 +13,7 @@
             <div class="col mb-4"><div class="card h-100">
                 <div class="card-body position-relative border-bottom">
                     <div class="row mb-2">
-                        <h5 class="card-title col">{{ session.browser }}</h5>
+                        <h5 class="card-title col">{{ (session.device + ' (' + session.os + ' ' + session.osVersion + ')') if session.device else (session.os + ' ' + session.osVersion) }}</h5>
                         <div class="col-auto mt-n1">{% if session.current %}<span class="badge badge-primary">当前设备</span>
 {% else %}<button class="btn btn-outline-primary btn-sm ml-2">下线</button>{% endif %}</div>
                     </div>
@@ -21,6 +21,10 @@
                         <dl class="row mb-0">
                             <dt class="col-4">IP 地址</dt>
                             <dd class="col"><a href="https://www.ipip.net/ip/{{ session.ipAddress }}.html" target="_blank">{{ session.ipAddress }}</a></dd>
+                        </dl>
+                        <dl class="row mb-0">
+                            <dt class="col-4">浏览器</dt>
+                            <dd class="col">{{ session.browser }}</dd>
                         </dl>
                         <dl class="row mb-0">
                             <dt class="col-4">初次登录</dt>
@@ -41,5 +45,6 @@
             <div class="alert alert-warning" role="alert">抱歉，暂时无法获取在线情况，请稍后刷新再试。</div>
             {% endfor %}
         </div>
+        <p><em>同设备不同浏览器的登录会被分别列出。点击下线后，相应设备需重新输入密码方可登录。如下线后终端再次上线，请立即修改密码。</em></p>
     </div>
 {% endblock %}

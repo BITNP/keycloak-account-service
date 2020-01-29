@@ -115,7 +115,7 @@ async def sp_landing(request: Request,
 
     # Remote
     try:
-        tdata["sessions"] = (await sp_sessions_json(session_data=session_data)).__root__
+        tdata["sessions"] = (await sp_sessions_json(session_data=session_data))
         tdata['sessions_count'] = len(tdata['sessions'])
     except Exception as e:
         tdata["sessions"] = None
@@ -123,9 +123,12 @@ async def sp_landing(request: Request,
 
     if tdata['sessions_count'] > 1:
         latest_session: datatypes.KeycloakSessionItem = tdata['sessions'][1]
+        device: str = latest_session.os + ' ' + latest_session.browser
+        if latest_session.device:
+            device = latest_session.device + ' ' + latest_session.browser
         tdata['sessions_desc'] = '你在其它位置的最后一次登录是 {time} ({browser})。'.format(
             time=local_timestring(latest_session.lastAccess),
-            browser=latest_session.browser)
+            browser=device)
     elif tdata['sessions_count'] > 0:
         tdata['sessions_desc'] = '你目前没有在其它位置登录。'
     else:
@@ -188,19 +191,31 @@ async def sp_sessions_json(
         session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen()),
         order_by: str = 'default',
     ) -> datatypes.KeycloakSessionInfo:
-    resp = await app_session.oauth_client.get(config.keycloak_accountapi_url+'sessions/',
+    resp = await app_session.oauth_client.get(config.keycloak_accountapi_url+'sessions/devices',
         token=session_data.to_tokens(), headers={'Accept': 'application/json'})
-    info: list = resp.json()
-    ret = []
+    devices: list = resp.json()
+    sessions: list = []
+
+    # extract devices to sessions
+    for device in devices:
+        for session in device['sessions']:
+            for k in ['os', 'osVersion', 'device']:
+                session[k] = device.get(k)
+            if session['device'] == 'Other':
+                session['device'] = None
+            sessions.append(session)
 
     # sort
-    current_index = next(i for i, e in enumerate(info) if e.get('current', False))
-    ret.append(info.pop(current_index))
-    ret.extend(
-        sorted(info, key=lambda session: session['lastAccess'], reverse=True)
-    )
+    ret: list = []
+    if order_by == 'default':
+        current_index = next(i for i, e in enumerate(sessions) if e.get('current', False))
+        ret.append(sessions.pop(current_index))
+        ret.extend(
+            sorted(sessions, key=lambda session: session['lastAccess'], reverse=True)
+        )
+    sessions = ret
 
-    return [datatypes.KeycloakSessionItem.parse_obj(r) for r in ret]
+    return [datatypes.KeycloakSessionItem.parse_obj(r) for r in sessions]
 
 @router.get("/sp/credentials/password", include_in_schema=True)
 async def sp_password(

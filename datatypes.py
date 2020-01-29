@@ -132,6 +132,9 @@ class KeycloakSessionItem(BaseModel):
     expires: datetime
     browser: str
     current: bool = False
+    os: str = None
+    osVersion: str = None
+    device: str = None
     clients: List[KeycloakSessionClient] = list()
 
 #class KeycloakSessionInfo(BaseModel):

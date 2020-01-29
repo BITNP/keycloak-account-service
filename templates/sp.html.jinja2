@@ -59,7 +59,7 @@
             <div class="col mb-4"><div class="card h-100">
                 <div class="card-body position-relative border-bottom">
                     <div class="row mb-2">
-                        <h5 class="card-title col">在线情况 <span class="badge badge-secondary badge-pill">{{ sessions_count }}</span></h5>
+                        <h5 class="card-title col">在线情况 {% if sessions_count %}<span class="badge badge-secondary badge-pill">{{ sessions_count }}</span>{% endif %}</h5>
                         <div class="col-auto mt-n1"><a href="{{ url_for("sp_sessions") }}" class="btn btn-outline-primary btn-sm ml-2">查看</a></div>
                     </div>
                     <!--<p class="card-text"></p>-->
