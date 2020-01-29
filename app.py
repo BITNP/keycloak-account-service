@@ -47,8 +47,12 @@ app_session = BITNPSessionFastAPIApp(
 )
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+def local_timestring(dt, format='%Y-%m-%d %H:%M'):
+    return dt.astimezone(config.local_timezone).strftime(format)
+
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["app_title"] = app.title
+templates.env.filters["local_timestring"] = local_timestring
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -120,7 +124,7 @@ async def sp_landing(request: Request,
     if tdata['sessions_count'] > 1:
         latest_session: datatypes.KeycloakSessionItem = tdata['sessions'][1]
         tdata['sessions_desc'] = '你在其它位置的最后一次登录是 {time} ({browser})。'.format(
-            time=latest_session.lastAccess.astimezone(config.local_timezone).strftime('%Y-%m-%d %H:%M'),
+            time=local_timestring(latest_session.lastAccess),
             browser=latest_session.browser)
     elif tdata['sessions_count'] > 0:
         tdata['sessions_desc'] = '你目前没有在其它位置登录。'
@@ -173,7 +177,12 @@ async def sp_sessions(
     if 'application/json' in request.headers['accept']:
         return sessions
     else:
-        return templates.TemplateResponse("sp-sessions.html.jinja2", {"request": request})
+        return templates.TemplateResponse("sp-sessions.html.jinja2", {
+            "request": request,
+            "sessions": sessions,
+            "name": session_data.username,
+            "signed_in": True,
+        })
 
 async def sp_sessions_json(
         session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen()),
@@ -191,7 +200,7 @@ async def sp_sessions_json(
         sorted(info, key=lambda session: session['lastAccess'], reverse=True)
     )
 
-    return datatypes.KeycloakSessionInfo.parse_obj(ret)
+    return [datatypes.KeycloakSessionItem.parse_obj(r) for r in ret]
 
 @router.get("/sp/credentials/password", include_in_schema=True)
 async def sp_password(

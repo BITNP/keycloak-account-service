@@ -134,12 +134,13 @@ class KeycloakSessionItem(BaseModel):
     current: bool = False
     clients: List[KeycloakSessionClient] = list()
 
-class KeycloakSessionInfo(BaseModel):
-    __root__: List[KeycloakSessionItem]
+#class KeycloakSessionInfo(BaseModel):
+#    __root__: List[KeycloakSessionItem]
+
+KeycloakSessionInfo = List[KeycloakSessionItem]
 
 #class KeycloakSessionInfo(BaseModel):
 #    sessions: List[KeycloakSessionItem] = []
-
 
 class SessionData(BaseModel):
     access_token_issued_at: datetime

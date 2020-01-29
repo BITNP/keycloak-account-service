@@ -1,20 +1,45 @@
 {% extends "base.html.jinja2" %}
 {% block content %}
-    <style>
-    .badge{font-size:85%;}
-    </style>
     <div class="content">
-        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('sp_landing') }}">自服务首页</a></li>
+                <li class="breadcrumb-item active" aria-current="page">在线情况 <span class="badge badge-secondary">{{ sessions|length }}</span></li>
+                <li class="flex-grow-1 text-right"><button class="btn btn-outline-danger btn-sm mt-n1">全部下线</button></li>
+            </ol>
+        </nav>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3">
+            {% for session in sessions %}
             <div class="col mb-4"><div class="card h-100">
                 <div class="card-body position-relative border-bottom">
                     <div class="row mb-2">
-                        <h5 class="card-title col">在线情况 <span class="badge badge-secondary badge-pill">{{ sessions_count }}</span></h5>
-                        <div class="col-auto mt-n1"><a href="{{ url_for("sp_sessions") }}" class="btn btn-outline-primary btn-sm ml-2">查看</a></div>
+                        <h5 class="card-title col">{{ session.browser }}</h5>
+                        <div class="col-auto mt-n1">{% if session.current %}<span class="badge badge-primary">当前设备</span>
+{% else %}<button class="btn btn-outline-primary btn-sm ml-2">下线</button>{% endif %}</div>
                     </div>
-                    <!--<p class="card-text"></p>-->
-                    <p class="card-text">{{ sessions_desc }}</p>
+                    <div class="card-text">
+                        <dl class="row mb-0">
+                            <dt class="col-4">IP 地址</dt>
+                            <dd class="col"><a href="https://www.ipip.net/ip/{{ session.ipAddress }}.html" target="_blank">{{ session.ipAddress }}</a></dd>
+                        </dl>
+                        <dl class="row mb-0">
+                            <dt class="col-4">初次登录</dt>
+                            <dd class="col">{{ session.started | local_timestring }}</dd>
+                        </dl>
+                        <dl class="row mb-0">
+                            <dt class="col-4">最近访问</dt>
+                            <dd class="col">{{ session.lastAccess | local_timestring }}</dd>
+                        </dl>
+                        <dl class="row mb-0">
+                            <dt class="col-4">使用应用</dt>
+                            <dd class="col">{{ session.clients|join(', ', attribute='clientName') }}</dd>
+                        </dl>
+                    </div>
                 </div>
             </div></div>
+            {% else %}
+            <div class="alert alert-warning" role="alert">抱歉，暂时无法获取在线情况，请稍后刷新再试。</div>
+            {% endfor %}
         </div>
     </div>
 {% endblock %}
