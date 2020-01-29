@@ -1,0 +1,11 @@
+fastapi
+pydantic[dotenv]
+uvicorn
+jinja2
+aiofiles
+Authlib
+httpx<0.8.0 # lepture/authlib#178
+itsdangerous #session
+pyasn1 #crypto
+cryptography #crypto
+aiocache

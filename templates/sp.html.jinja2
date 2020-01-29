@@ -1,0 +1,104 @@
+{% extends "base.html.jinja2" %}
+{% block content %}
+    <style>
+    .badge{font-size:85%;}
+    </style>
+    <div class="content">
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3">
+            <div class="col mb-4"><div class="card h-100">
+                <div class="card-body position-relative border-bottom">
+                    <div class="row mb-2">
+                        <h5 class="card-title col">个人资料</h5>
+                        <div class="col-auto mt-n1"><a href="{{ url_for("sp_profile") }}" class="btn btn-outline-primary btn-sm ml-2">修改</a></div>
+                    </div>
+                    <div class="card-text">
+                        <dl class="row mb-0">
+                            <dt class="col-4">姓名</dt>
+                            <dd class="col">{{ profile.name | default('', true) }}</dd>
+                        </dl>
+                        <dl class="row mb-0">
+                            <dt class="col-4">电邮</dt>
+                            <dd class="col">{{ profile.email | default('', true) }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div></div>
+            <div class="col mb-4"><div class="card h-100">
+                <div class="card-body position-relative border-bottom">
+                    <div class="row mb-2">
+                        <h5 class="card-title col">权限信息</h5>
+                        <!--<div class="col-auto mt-n1"><a href="{{ url_for("sp_permission") }}" class="btn btn-outline-primary btn-sm ml-2">查看</a></div>-->
+                    </div>
+                    <div class="card-text">
+                        <dl class="row mb-0">
+                            <dt class="col-3">身份</dt>
+                            <dd class="col">
+                                {% if permission.has_active_role %}
+                                <span class="badge badge-success">网协现任</span>
+                                {% else %}
+                                <span class="badge badge-warning">非网协现任</span>
+                                {% endif %}
+                                {% for item in permission.active_groups %}
+                                <span class="badge badge-secondary">{{ item.name }}</span>
+                                {% endfor %}
+                            </dd>
+                        </dl>
+                        <dl class="row mb-0">
+                            <dt class="col-3">权限</dt>
+                            <dd class="col">
+                                {% for item in permission.memberof %}
+                                <span class="badge badge-primary">{{ item.name }}</span>
+                                {% else %}
+                                <em>暂无其它权限</em>
+                                {% endfor %}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div></div>
+            <div class="col mb-4"><div class="card h-100">
+                <div class="card-body position-relative border-bottom">
+                    <div class="row mb-2">
+                        <h5 class="card-title col">在线情况 <span class="badge badge-secondary badge-pill">{{ sessions_count }}</span></h5>
+                        <div class="col-auto mt-n1"><a href="{{ url_for("sp_sessions") }}" class="btn btn-outline-primary btn-sm ml-2">查看</a></div>
+                    </div>
+                    <!--<p class="card-text"></p>-->
+                    <p class="card-text">{{ sessions_desc }}</p>
+                </div>
+            </div></div>
+            <div class="col mb-4"><div class="card h-100">
+                <div class="card-body position-relative border-bottom">
+                    <h5 class="card-title">登录方式</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{{ url_for('sp_password') }}" class="list-group-item list-group-item-action">修改密码</a>
+                    <button class="list-group-item list-group-item-action" disabled>两步认证（敬请期待）</button>
+                </div>
+            </div></div>
+            <div class="col mb-4"><div class="card h-100">
+                <div class="card-body position-relative border-bottom">
+                    <div class="row mb-2">
+                        <h5 class="card-title col">应用集成</h5>
+                        <div class="col-auto mt-n1"><a href="{{ url_for("sp_session_data") }}" class="btn btn-outline-primary btn-sm ml-2">查看</a></div>
+                    </div>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="" class="list-group-item list-group-item-action">JIRA</a>
+                    <a href="" class="list-group-item list-group-item-action">GitLab</a>
+                </div>
+            </div></div>
+            {% if is_admin %}
+            <div class="col mb-4"><div class="card h-100">
+                <div class="card-body position-relative border-bottom">
+                    <h5 class="card-title">IAM 管理</h5>
+                    <p class="card-text">除了在 Keycloak 进行配置外，也可通过本系统进行辅助管理。</p>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{{ url_for('admin_landing') }}" class="list-group-item list-group-item-action list-group-item-primary">管理工具</a>
+                    <a href="{{ keycloak_admin_url }}" class="list-group-item list-group-item-action">Keycloak</a>
+                </div>
+            </div></div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

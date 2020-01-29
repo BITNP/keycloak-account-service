@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="{{ url_for('static', path='css/bootstrap.min.css') }}" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+    <title>{% block title %}{{ app_title }}{% endblock %}</title>
+  </head>
+  <body>
+    <div class="container d-flex flex-column flex-md-row align-items-center p-3 px-md-4 mb-3 border-bottom">
+      <h5 class="my-0 mr-md-auto font-weight-normal"><a href="{{ url_for("index") }}" class="text-body">网协通行证</a></h5>
+      <nav class="my-2 my-md-0 align-items-center row text-muted">
+        {% if signed_in %}
+        <span class="mr-2">{{ name }}</span> <a href="{{ url_for("logout") }}">登出网协通行证</a>
+        {% else %}
+        <a href="{{ url_for("index") }}">尚未登录</a>
+        {% endif %}
+      </nav>
+    </div>
+
+    <main class="container">
+      {% block alert %}
+      {% include 'global-alert.html.jinja2' %}
+      {% endblock %}
+      {% block content %}
+      <div class="content"></div>
+      {% endblock %}
+
+      {% block footer %}
+      <footer>
+        <p>&copy; phy@bitnp.net <a href="{{ url_for("tos") }}">使用条款</a></p>
+      </footer>
+      {% endblock %}
+    </main>
+
+    <!--
+    <script src="{{ url_for('static', path='js/jquery-3.4.1.slim.min.js') }}" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', path='js/bootstrap.bundle.min.js') }}" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+    -->
+  </body>
+</html>

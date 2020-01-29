@@ -1,0 +1,47 @@
+{% extends "base.html.jinja2" %}
+{% block content %}
+    <div class="content">
+        <!--<p>访问网协各信息服务时，会提示使用网协通行证登录，你将只需要记住一个密码。请认准 login.bitnp.net 的登录地址。</p>-->
+        <div class="row mb-3">
+            <div class="col-12 col-md-6">
+                <div class="card mb-3">
+                    <h4 class="card-header">北理工公众用户</h4>
+                    <div class="card-body">
+                        <h5 class="card-title">登录</h5>
+                        <p class="card-text">网协通行证暂不对北理工公众用户提供服务。目前您可通过校微信企业号 网络服务 &gt; “电脑义诊”菜单 访问电脑诊所对外预约服务。</p>
+                        <a href="https://weixin.info.bit.edu.cn/" class="btn btn-outline-primary">关注企业号</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card">
+                    <h4 class="card-header">网协成员</h4>
+                    {% if not signed_in %}
+                    <div class="card-body bg-warning position-relative border-bottom">
+                        <!--<h5 class="card-title">账户激活</h2>-->
+                        <p class="card-text">有旧版网协通行证、但第一次在 Keycloak 登录提示密码错误？收到了邮件通知？你可能需要进行账户激活。</p>
+                        <a href="/activate-phpcas/" class="btn btn-info stretched-link">账户激活</a>
+                    </div>
+                    {% endif %}
+                    <div class="card-body position-relative border-bottom">
+                        <h5 class="card-title">通行证管理
+                        <a href="/sp/" class="btn btn-outline-primary stretched-link btn-sm ml-2">账户自服务</a></h5>
+                        <p class="card-text">登录后修改密码、管理你在网协各服务的使用情况、权限信息。</p>
+                    </div>
+                    {% if not signed_in %}
+                    <div class="card-body position-relative border-bottom">
+                        <h5 class="card-title">登录困难？
+                        <a href="/assiatance/" class="btn btn-outline-primary stretched-link btn-sm">登录帮助</a></h5>
+                        <p class="card-text">自助重设密码、检查账户状态，或者联系技术保障中心人工处理。</p>
+                    </div>
+                    <div class="card-body position-relative border-bottom">
+                        <h5 class="card-title">没有账户？
+                        <a href="/register/" class="btn btn-outline-primary stretched-link btn-sm">注册</a></h5>
+                        <p class="card-text">通过本链接注册的账户不会被自动激活，将无法访问一些网协服务。你可能需要在注册完成后联系管理层进行激活。</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
