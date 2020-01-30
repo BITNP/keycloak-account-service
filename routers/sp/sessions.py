@@ -20,11 +20,11 @@ async def sp_sessions(
         order_by: str = 'default',
     ):
     """
-    TODO: https://github.com/tiangolo/fastapi/issues/911
-
     The order of KeycloakSessionItem will be:
     - Current session
     - Order from the latest to the oldest of `lastAccess`
+
+    There should always be at least one session, since current user should own one session to access this data.
     """
     sessions = await sp_sessions_json(request=request, session_data=session_data, order_by=order_by)
     if 'application/json' in request.headers['accept']:

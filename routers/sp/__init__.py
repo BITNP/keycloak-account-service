@@ -1,3 +1,1 @@
-from . import landing
-from . import sessions
-from . import profile
+from . import landing, sessions, profile

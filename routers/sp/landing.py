@@ -4,7 +4,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import datatypes
 
 from modauthlib import BITNPSessionFastAPIApp
-from .profile import sp_profile
+from .profile import sp_profile_json
 from .sessions import sp_sessions_json
 
 router = APIRouter()
@@ -20,7 +20,7 @@ async def sp_landing(request: Request,
         "signed_in": True,
         "keycloak_admin_url": request.app.state.config.keycloak_admin_url,
         "permission": await sp_permission(request=request, session_data=session_data),
-        "profile": await sp_profile(session_data=session_data),
+        "profile": await sp_profile_json(session_data=session_data),
     }
 
     # Remote
