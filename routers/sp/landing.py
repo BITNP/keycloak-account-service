@@ -20,7 +20,7 @@ async def sp_landing(request: Request,
         "signed_in": True,
         "keycloak_admin_url": request.app.state.config.keycloak_admin_url,
         "permission": await sp_permission(request=request, session_data=session_data),
-        "profile": await sp_profile_json(session_data=session_data),
+        "profile": await sp_profile_json(request=request, session_data=session_data, load_session_only=True),
     }
 
     # Remote

@@ -4,53 +4,53 @@
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ url_for('sp_landing') }}">自服务首页</a></li>
-                <li class="breadcrumb-item active" aria-current="page">在线情况 {% if sessions|length %}<span class="badge badge-secondary">{{ sessions|length }}</span>{% endif %}</li>
-                <li class="flex-grow-1 text-right"><form method="POST" action="{{ url_for('sp_sessions_logout') }}" enctype="application/x-www-form-urlencoded"><button class="btn btn-outline-danger btn-sm mt-n1" type="submit">登出其它设备</button><input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}"></form></li>
+                <li class="breadcrumb-item active" aria-current="page">个人资料</li>
             </ol>
         </nav>
-        {% if sessions|length %}
-        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3">
-            {% for session in sessions %}
-            <div class="col mb-4"><div class="card h-100">
-                <div class="card-body position-relative border-bottom">
-                    <div class="row mb-2">
-                        <h5 class="card-title col">{{ (session.device + ' (' + session.os + ' ' + session.osVersion + ')') if session.device else (session.os + ' ' + session.osVersion) }}</h5>
-                        <div class="col-auto mt-n1">{% if session.current %}<span class="badge badge-primary">当前设备</span>
-{% else %}<form method="POST" action="{{ url_for('sp_sessions_logout') }}" enctype="application/x-www-form-urlencoded"><button class="btn btn-outline-primary btn-sm ml-2" type="submit">下线</button><input type="hidden" name="id" value="{{session.id}}"><input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}"></form>{% endif %}</div>
+        {% if updated %}<div class="alert alert-success" role="alert">资料已保存。</div>{% endif %}
+        <div class="row">
+            <div class="col-12 col-lg-8 offset-lg-2 mb-3">
+                <form action="{{ url_for('sp_profile') }}" method="POST" enctype="application/x-www-form-urlencoded">
+                    <div class="form-group">
+                        <label for="username">用户名 <span class="required">*</span></label>
+                        <input type="text" readonly class="form-control-plaintext" id="username" aria-describedby="username-change" value="{{ profile.username }}" >
+                        <small id="username-change" class="form-text text-muted">
+                            如需修改用户名，请提交工单人工处理
+                        </small>
                     </div>
-                    <div class="card-text">
-                        <dl class="row mb-0">
-                            <dt class="col-4">IP 地址</dt>
-                            <dd class="col"><a href="https://www.ipip.net/ip/{{ session.ipAddress }}.html" target="_blank">{{ session.ipAddress }}</a></dd>
-                        </dl>
-                        <dl class="row mb-0">
-                            <dt class="col-4">浏览器</dt>
-                            <dd class="col">{{ session.browser }}</dd>
-                        </dl>
-                        <dl class="row mb-0">
-                            <dt class="col-4">初次登录</dt>
-                            <dd class="col">{{ session.started | local_timestring }}</dd>
-                        </dl>
-                        <dl class="row mb-0">
-                            <dt class="col-4">最近访问</dt>
-                            <dd class="col">{{ session.lastAccess | local_timestring }}</dd>
-                        </dl>
-                        <dl class="row mb-0">
-                            <dt class="col-4">登录过期</dt>
-                            <dd class="col">{{ session.expires | local_timestring }}</dd>
-                        </dl>
-                        <dl class="row mb-0">
-                            <dt class="col-4">使用应用</dt>
-                            <dd class="col">{{ session.clients|join(', ', attribute='clientName') }}</dd>
-                        </dl>
+                    <div class="form-group">
+                        <label for="email">电邮 <span class="required">*</span></label>
+                        <input type="email" class="form-control" id="email" aria-describedby="emailVerified" value="{{ profile.email }}" required>
+                        <small id="emailVerified" class="form-text text-muted">
+                            {% if profile.emailVerified is sameas true %}&#x2714;&#xFE0F; 邮箱已确认，如修改邮箱则需再次确认{% endif %}
+                            {% if profile.emailVerified is sameas false %}&#x2753; 邮箱未确认<!--，<button type="button" class="btn btn-link btn-sm" form="">确认邮箱</button>-->{% endif %}
+                        </small>
                     </div>
-                </div>
-            </div></div>
-            {% endfor %}
+                    {% if not profile.lastName or prefer_onename %}{# 不需要提供姓名两框 #}
+                    <div class="form-group">
+                        <label for="name">真实姓名 <span class="required">*</span></label>
+                        <input type="text" class="form-control" id="name" value="{{ profile.lastName }}{{ profile.firstName }}" required>
+                        {% if prefer_onename %}<small id="prefer-onename-confirm" class="form-text text-muted">请确认你合并后的姓名，保存即可完成合并</small>{% endif %}
+                    </div>
+                    {% else %}
+                    <div class="form-group">
+                        <label for="lastName">姓</label>
+                        <input type="text" class="form-control" id="lastName" value="{{ profile.lastName }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="firstName">名</label>
+                        <input type="text" class="form-control" id="firstName" value="{{ profile.firstName }}" required>
+                    </div>
+                    <div class="form-group">
+                        <small id="prefer-onename" class="form-text">
+                            &#x1F609; <a href="{{ url_for('sp_profile') }}?prefer_onename=1">建议合并姓名为一项，点这里并保存即可合并</a>
+                        </small>
+                    </div>
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <a href="{{ url_for('sp_password') }}" class="btn btn-link">修改密码</a>
+                </form>
+            </div>
         </div>
-        <p><em>同设备不同浏览器的登录会被分别列出。点击下线后，相应设备需重新输入密码方可登录。如下线后终端再次上线，请立即修改密码。</em></p>
-        {% else %}
-        <div class="alert alert-warning" role="alert">抱歉，暂时无法获取在线情况，请稍后刷新再试。</div>
-        {% endif %}
     </div>
 {% endblock %}

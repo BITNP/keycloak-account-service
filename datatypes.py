@@ -112,10 +112,14 @@ class PermissionInfo(BaseModel):
     active_groups: List[GroupItem] = list()
 
 class ProfileInfo(BaseModel):
-    subject: str
+    subject: str = None
     username: str = ''
     name: str = None
     email: str = ''
+    emailVerified: bool = None
+    firstName: str = None
+    lastName: str = None
+    attributes: dict = None
 
 
 class KeycloakSessionClient(BaseModel):
