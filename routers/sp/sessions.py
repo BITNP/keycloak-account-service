@@ -86,7 +86,7 @@ async def sp_sessions_logout(
         current: bool = False,
         csrf_valid: bool = Depends(BITNPSessionFastAPIApp.deps_requires_csrf_posttoken)
     ) -> Response:
-    result = await sp_sessions_logout_json(session_data=session_data, id=id, current=current)
+    result = await sp_sessions_logout_json(request=request, session_data=session_data, id=id, current=current)
     if result is not True:
         raise StarletteHTTPException(status_code=500, detail=str(result))
     # success
