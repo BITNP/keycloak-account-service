@@ -1,5 +1,6 @@
-from fastapi import Depends, APIRouter
+from fastapi import Depends, APIRouter, Form
 from starlette.requests import Request
+from starlette.responses import RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import datatypes
 
@@ -7,7 +8,7 @@ from modauthlib import BITNPSessionFastAPIApp
 
 router = APIRouter()
 
-@router.get("/", include_in_schema=True, #response_model=datatypes.ProfileInfo,
+@router.get("/", include_in_schema=True, response_model=datatypes.ProfileInfo,
     responses={
         200: {"content": {"text/html": {}}}
     })
@@ -50,3 +51,23 @@ async def sp_profile_json(
     else:
         profile = session_data
     return datatypes.ProfileInfo.parse_obj(profile)
+
+@router.post("/", include_in_schema=True, status_code=200, responses={
+        303: {"description": "Successful response (for end users)", "content": {"text/html": {}}},
+        200: {"content": {"application/json": {}}}
+    })
+async def sp_profile_update(
+        request: Request,
+        profile: datatypes.ProfileInfo = None,
+        name: str = Form(None),
+        firstName: str = Form(None),
+        lastName: str = Form(None),
+        email: str = Form(None),
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session),
+        csrf_valid: bool = Depends(BITNPSessionFastAPIApp.deps_requires_csrf_posttoken),
+    ):
+    return profile
+    if 'application/json' in request.headers['accept']:
+        return {'status':'ok'}
+    else:
+        return RedirectResponse(request.url_for('sp_profile')+"?updated=1", status_code=303)
