@@ -97,3 +97,7 @@ async def sp_profile_update_json(
         return True
     else:
         raise HTTPException(status_code=resp.status_code, detail=str(resp.text))
+
+# TODO
+async def sp_profile_emailverify():
+    pass

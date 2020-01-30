@@ -1,1 +1,1 @@
-from . import landing, sessions, profile
+from . import landing, sessions, profile, credentials
