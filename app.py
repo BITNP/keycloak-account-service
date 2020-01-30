@@ -103,19 +103,6 @@ async def assistance_landing(request: Request):
     return request.app.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
 
 
-@router.get("/sp/credentials/password", include_in_schema=True)
-async def sp_password(
-        request: Request,
-        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session)
-    ):
-    resp = await request.app.state.app_session.oauth_client.get(
-        request.app.state.config.keycloak_accountapi_url+'credentials/password',
-        token=session_data.to_tokens(),
-        headers={'Accept': 'application/json'}
-    )
-    return resp.json()
-
-
 @router.get("/admin/", include_in_schema=False)
 async def admin_landing(
         request: Request,
@@ -189,9 +176,10 @@ async def tos(request: Request, templates: TemplateService = Depends()):
         return templates.TemplateResponse("tos.html.jinja2")
 
 app.include_router(router, dependencies=[Depends(BITNPSessionFastAPIApp.deps_session_data)])
-app.include_router(sp.sessions.router, prefix='/sp/sessions', dependencies=[Depends(BITNPSessionFastAPIApp.deps_session_data)])
 app.include_router(sp.landing.router, prefix='/sp', dependencies=[Depends(BITNPSessionFastAPIApp.deps_session_data)])
 app.include_router(sp.profile.router, prefix='/sp/profile', dependencies=[Depends(BITNPSessionFastAPIApp.deps_session_data)])
+app.include_router(sp.credentials.router, prefix='/sp/credentials', dependencies=[Depends(BITNPSessionFastAPIApp.deps_session_data)])
+app.include_router(sp.sessions.router, prefix='/sp/sessions', dependencies=[Depends(BITNPSessionFastAPIApp.deps_session_data)])
 
 if __name__ == "__main__":
     import uvicorn
