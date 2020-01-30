@@ -1,6 +1,6 @@
 from pydantic import BaseModel, BaseSettings, IPvAnyAddress, validator, conlist, Field
 from datetime import datetime, tzinfo, timezone, timedelta
-from typing import Union, List, Dict, Any, Optional
+from typing import Union, List, Dict, Any, Optional, ForwardRef
 from collections import UserDict
 
 
@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     group_status_prefix: str = '/bitnp/active'
     group_config_path: str = '/bitnp' # Pending removal?
     role_active_name: str = 'bitnp-active'
+
+    group_config: 'GroupConfig' = None
 
 class GroupItem(BaseModel):
     id: str = None
@@ -188,3 +190,6 @@ class SessionRefreshData(BaseModel):
     expires_at: datetime
 
 SessionItem = Union[SessionData, SessionExpiringData, SessionRefreshData]
+
+
+Settings.update_forward_refs()

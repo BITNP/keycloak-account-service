@@ -7,6 +7,7 @@ from starlette.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.exception_handlers import http_exception_handler
 import datatypes
+from utils import TemplateService
 
 from authlib.integrations.starlette_client import OAuth
 from authlib.integrations.httpx_client import OAuthError, AsyncOAuth2Client
@@ -25,10 +26,9 @@ app = FastAPI(
 router = APIRouter()
 
 app.state.config = datatypes.Settings() # from .env
-
 with open('group_config.json', 'r') as f:
     data = json.load(f)
-    app.state.group_config = datatypes.GroupConfig.from_dict(data, settings=app.state.config)
+    app.state.config.group_config = datatypes.GroupConfig.from_dict(data, settings=app.state.config)
 
 app.state.oauth = OAuth()
 app.state.oauth.remote_app_class = BITNPOAuthRemoteApp
@@ -44,7 +44,7 @@ app.state.oauth.register(
 
 app.add_middleware(SessionMiddleware, secret_key=app.state.config.session_secret)
 app_session = BITNPSessionFastAPIApp(
-    app=app, oauth_client=app.state.oauth.bitnp, group_config=app.state.group_config,
+    app=app, oauth_client=app.state.oauth.bitnp, group_config=app.state.config.group_config,
     csrf_token=app.state.config.session_secret,
     cache_type=Cache.MEMORY
 )
@@ -90,17 +90,17 @@ async def index(request: Request,
         tdata['name'] = session_data.username
         tdata['is_admin'] = "admin" in session_data.client_roles
         tdata['signed_in'] = True
-    return request.state.templates.TemplateResponse("index.html.jinja2", tdata)
+    return request.app.state.templates.TemplateResponse("index.html.jinja2", tdata)
 
 
 @router.get("/activate-phpcas/", include_in_schema=False)
 async def activate_phpcas_landing(request: Request):
-    return request.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
+    return request.app.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
 
 
 @router.get("/assistance/", include_in_schema=False)
 async def assistance_landing(request: Request):
-    return request.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
+    return request.app.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
 
 
 @router.get("/sp/", include_in_schema=False)
@@ -113,7 +113,7 @@ async def sp_landing(request: Request,
         "is_admin": "admin" in session_data.client_roles,
         "signed_in": True,
         "keycloak_admin_url": request.app.state.config.keycloak_admin_url,
-        "permission": await sp_permission(session_data=session_data),
+        "permission": await sp_permission(request=request, session_data=session_data),
         "profile": await sp_profile(session_data=session_data),
     }
 
@@ -137,7 +137,7 @@ async def sp_landing(request: Request,
         tdata['sessions_desc'] = '你目前没有在其它位置登录。'
     else:
         tdata['sessions_desc'] = '查看你在其它设备的登录情况并远程下线。'
-    return request.state.templates.TemplateResponse("sp.html.jinja2", tdata)
+    return request.app.state.templates.TemplateResponse("sp.html.jinja2", tdata)
 
 @router.get("/sp/permission", include_in_schema=True, response_model=datatypes.PermissionInfo)
 async def sp_permission(
@@ -149,8 +149,8 @@ async def sp_permission(
         item.internal_note = None
     permission_dict = session_data.dict()
     permission_dict['active_groups'], permission_dict['memberof'] \
-        = request.app.state.group_config.filter_active_groups(pub_memberof)
-    permission_dict['has_active_role'] = request.app.config.role_active_name in session_data.realm_roles
+        = request.app.state.config.group_config.filter_active_groups(pub_memberof)
+    permission_dict['has_active_role'] = request.app.state.config.role_active_name in session_data.realm_roles
     return datatypes.PermissionInfo(**permission_dict)
 
 @router.get("/sp/profile", include_in_schema=True, response_model=datatypes.ProfileInfo)
@@ -180,7 +180,7 @@ async def sp_sessions(
     if 'application/json' in request.headers['accept']:
         return sessions
     else:
-        return request.state.templates.TemplateResponse("sp-sessions.html.jinja2", {
+        return request.app.state.templates.TemplateResponse("sp-sessions.html.jinja2", {
             "request": request,
             "sessions": sessions,
             "name": session_data.username,
@@ -277,7 +277,7 @@ async def admin_landing(
         request: Request,
         session_data: datatypes.SessionData = Depends(app_session.deps_requires_admin_session_gen())
     ):
-    return request.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
+    return request.app.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
 
 
 @router.get("/admin/groups", include_in_schema=True)
@@ -314,7 +314,7 @@ async def admin_groups(
 
 @router.get("/register/", include_in_schema=False)
 async def register_landing(request: Request):
-    return request.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
+    return request.app.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
 
 
 @router.get("/logout", include_in_schema=True)
@@ -333,13 +333,13 @@ async def logout(request: Request):
 @router.get("/tos/", response_model=datatypes.TOSData, responses={
         200: {"content": {"text/html": {}}}
     })
-async def tos(request: Request):
+async def tos(request: Request, templates: TemplateService = Depends()):
     if 'application/json' in request.headers['accept']:
         return datatypes.TOSData(html=
-            request.state.templates.TemplateResponse("tos-content.html.jinja2", {"request": request}).body
+            templates.TemplateResponse("tos-content.html.jinja2").body
         )
     else:
-        return request.state.templates.TemplateResponse("tos.html.jinja2", {"request": request})
+        return templates.TemplateResponse("tos.html.jinja2")
 
 app.include_router(router, dependencies=[Depends(app_session.deps_session_data)])
 
