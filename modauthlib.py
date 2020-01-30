@@ -392,7 +392,7 @@ class BITNPSessionFastAPIApp(BITNPFastAPICSRFAddon):
     def deps_requires_admin_session_gen(self):
         deps_session_data = self.deps_requires_session_gen()
         def requires_session_data(session_data: SessionData = Depends(deps_session_data)):
-            if 'admin' not in session_data.roles:
+            if 'admin' not in session_data.realm_roles:
                 raise RequiresAdminException
             return session_data
 
