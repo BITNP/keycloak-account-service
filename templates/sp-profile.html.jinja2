@@ -20,7 +20,7 @@
                     </div>
                     <div class="form-group">
                         <label for="email">电邮 <span class="required">*</span></label>
-                        <input type="email" class="form-control" id="email" aria-describedby="emailVerified" value="{{ profile.email }}" required>
+                        <input type="email" class="form-control" id="email" name="email" aria-describedby="emailVerified" value="{{ profile.email }}" required>
                         <small id="emailVerified" class="form-text text-muted">
                             {% if profile.emailVerified is sameas true %}&#x2714;&#xFE0F; 邮箱已确认，如修改邮箱则需再次确认{% endif %}
                             {% if profile.emailVerified is sameas false %}&#x2753; 邮箱未确认<!--，<button type="button" class="btn btn-link btn-sm" form="">确认邮箱</button>-->{% endif %}
@@ -29,17 +29,17 @@
                     {% if not profile.lastName or prefer_onename %}{# 不需要提供姓名两框 #}
                     <div class="form-group">
                         <label for="name">真实姓名 <span class="required">*</span></label>
-                        <input type="text" class="form-control" id="name" value="{{ profile.lastName }}{{ profile.firstName }}" required>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ profile.lastName|default("", true) }}{{ profile.firstName }}" required>
                         {% if prefer_onename %}<small id="prefer-onename-confirm" class="form-text text-muted">请确认你合并后的姓名，保存即可完成合并</small>{% endif %}
                     </div>
                     {% else %}
                     <div class="form-group">
                         <label for="lastName">姓</label>
-                        <input type="text" class="form-control" id="lastName" value="{{ profile.lastName }}">
+                        <input type="text" class="form-control" id="lastName" name="lastName" value="{{ profile.lastName }}">
                     </div>
                     <div class="form-group">
                         <label for="firstName">名</label>
-                        <input type="text" class="form-control" id="firstName" value="{{ profile.firstName }}" required>
+                        <input type="text" class="form-control" id="firstName" name="firstName" value="{{ profile.firstName }}" required>
                     </div>
                     <div class="form-group">
                         <small id="prefer-onename" class="form-text">

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, BaseSettings, IPvAnyAddress, validator, conlist, Field
+from pydantic import BaseModel, BaseSettings, IPvAnyAddress, validator, conlist, Field, MissingError
 from datetime import datetime, tzinfo, timezone, timedelta
 from typing import Union, List, Dict, Any, Optional, ForwardRef
 from collections import UserDict
@@ -120,6 +120,20 @@ class ProfileInfo(BaseModel):
     firstName: str = None
     lastName: str = None
     attributes: dict = None
+
+class ProfileUpdateInfo(BaseModel):
+    name: str = None
+    lastName: str = None
+    firstName: str
+    email: str
+
+    @validator('firstName', always=True, pre=True)
+    def firstName_default(cls, v, values):
+        if not v:
+            if values.get('name') and not values.get('lastName'):
+                return values.get('name')
+            raise MissingError
+        return v
 
 
 class KeycloakSessionClient(BaseModel):
