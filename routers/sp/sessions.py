@@ -26,6 +26,8 @@ async def sp_sessions(
 
     There should always be at least one session, since current user should own one session to access this data.
     """
+    updated = request.query_params.get('updated', False)
+
     sessions = await sp_sessions_json(request=request, session_data=session_data, order_by=order_by)
     if 'application/json' in request.headers['accept']:
         return sessions
@@ -36,6 +38,7 @@ async def sp_sessions(
             "name": session_data.username,
             "signed_in": True,
             "csrf_field": csrf_field,
+            "updated": updated,
         })
 
 async def sp_sessions_json(
@@ -90,7 +93,7 @@ async def sp_sessions_logout(
     if 'application/json' in request.headers['accept']:
         return Response(status_code=204)
     else:
-        return RedirectResponse(request.url_for('sp_sessions'), status_code=303)
+        return RedirectResponse(request.url_for('sp_sessions')+"?updated=1", status_code=303)
         # 303 to force POST to convert to GET
 
 async def sp_sessions_logout_json(
