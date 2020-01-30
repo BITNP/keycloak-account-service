@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, APIRouter
+from fastapi import FastAPI, Depends, APIRouter, Query, Path
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
 from starlette.responses import Response, PlainTextResponse, JSONResponse, RedirectResponse
@@ -227,7 +227,7 @@ async def sp_sessions_json(
 async def sp_sessions_logout(
         request: Request,
         session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen()),
-        id: str = None,
+        id: str = Query(None, regex="^[A-Za-z0-9-_]+$"),
         current: bool = False,
         csrf_valid: bool = Depends(app_session.deps_requires_csrf_posttoken_gen())
     ) -> Response:
@@ -243,7 +243,7 @@ async def sp_sessions_logout(
 
 async def sp_sessions_logout_json(
         session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen()),
-        id: str = None,
+        id: str = Query(None, regex="^[A-Za-z0-9-_]+$"),
         current: bool = False
     ):
     resp = await app_session.oauth_client.delete(config.keycloak_accountapi_url+'sessions/'+(id if id else ''),
@@ -291,7 +291,7 @@ async def admin_groups(
 
 @router.get("/admin/roles/{role_name}/groups", include_in_schema=True)
 async def admin_groups(
-        role_name: str,
+        role_name: str = Path(..., regex="^[A-Za-z0-9-_]+$"),
         session_data: datatypes.SessionData = Depends(app_session.deps_requires_admin_session_gen())
     ):
     resp = await app_session.oauth_client.get(config.keycloak_adminapi_url+'roles/'+role_name+'/groups',
