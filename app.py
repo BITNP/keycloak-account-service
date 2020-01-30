@@ -24,36 +24,39 @@ app = FastAPI(
 
 router = APIRouter()
 
-config = datatypes.Settings() # from .env
+app.state.config = datatypes.Settings() # from .env
+
 with open('group_config.json', 'r') as f:
     data = json.load(f)
-    group_config = datatypes.GroupConfig.from_dict(data, settings=config)
-app.oauth = OAuth()
-app.oauth.remote_app_class = BITNPOAuthRemoteApp
-app.oauth.register(
+    app.state.group_config = datatypes.GroupConfig.from_dict(data, settings=app.state.config)
+
+app.state.oauth = OAuth()
+app.state.oauth.remote_app_class = BITNPOAuthRemoteApp
+app.state.oauth.register(
     name='bitnp',
-    client_id=config.client_id,
-    client_secret=config.client_secret,
-    server_metadata_url=config.server_metadata_url,
+    client_id=app.state.config.client_id,
+    client_secret=app.state.config.client_secret,
+    server_metadata_url=app.state.config.server_metadata_url,
     client_kwargs = {
         'scope': 'openid'
     },
 )
 
-app.add_middleware(SessionMiddleware, secret_key=config.session_secret)
+app.add_middleware(SessionMiddleware, secret_key=app.state.config.session_secret)
 app_session = BITNPSessionFastAPIApp(
-    app=app, oauth_client=app.oauth.bitnp, group_config=group_config,
-    csrf_token=config.session_secret,
+    app=app, oauth_client=app.state.oauth.bitnp, group_config=app.state.group_config,
+    csrf_token=app.state.config.session_secret,
     cache_type=Cache.MEMORY
 )
+app.state.app_session = app_session
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 def local_timestring(dt, format='%Y-%m-%d %H:%M'):
-    return dt.astimezone(config.local_timezone).strftime(format)
+    return dt.astimezone(app.state.config.local_timezone).strftime(format)
 
-templates = Jinja2Templates(directory="templates")
-templates.env.globals["app_title"] = app.title
-templates.env.filters["local_timestring"] = local_timestring
+app.state.templates = Jinja2Templates(directory="templates")
+app.state.templates.env.globals["app_title"] = app.title
+app.state.templates.env.filters["local_timestring"] = local_timestring
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -87,17 +90,17 @@ async def index(request: Request,
         tdata['name'] = session_data.username
         tdata['is_admin'] = "admin" in session_data.client_roles
         tdata['signed_in'] = True
-    return templates.TemplateResponse("index.html.jinja2", tdata)
+    return request.state.templates.TemplateResponse("index.html.jinja2", tdata)
 
 
 @router.get("/activate-phpcas/", include_in_schema=False)
 async def activate_phpcas_landing(request: Request):
-    return templates.TemplateResponse("index.html.jinja2", {"request": request})
+    return request.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
 
 
 @router.get("/assistance/", include_in_schema=False)
 async def assistance_landing(request: Request):
-    return templates.TemplateResponse("index.html.jinja2", {"request": request})
+    return request.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
 
 
 @router.get("/sp/", include_in_schema=False)
@@ -109,7 +112,7 @@ async def sp_landing(request: Request,
         "name": session_data.username,
         "is_admin": "admin" in session_data.client_roles,
         "signed_in": True,
-        "keycloak_admin_url": config.keycloak_admin_url,
+        "keycloak_admin_url": request.app.state.config.keycloak_admin_url,
         "permission": await sp_permission(session_data=session_data),
         "profile": await sp_profile(session_data=session_data),
     }
@@ -134,16 +137,11 @@ async def sp_landing(request: Request,
         tdata['sessions_desc'] = '你目前没有在其它位置登录。'
     else:
         tdata['sessions_desc'] = '查看你在其它设备的登录情况并远程下线。'
-    return templates.TemplateResponse("sp.html.jinja2", tdata)
-
-@router.get("/sp/session_data", include_in_schema=True)
-async def sp_session_data(request: Request,
-        session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen())
-    ):
-    return session_data
+    return request.state.templates.TemplateResponse("sp.html.jinja2", tdata)
 
 @router.get("/sp/permission", include_in_schema=True, response_model=datatypes.PermissionInfo)
 async def sp_permission(
+    request: Request,
     session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen())
     ) -> datatypes.PermissionInfo:
     pub_memberof = session_data.memberof.copy()
@@ -151,8 +149,8 @@ async def sp_permission(
         item.internal_note = None
     permission_dict = session_data.dict()
     permission_dict['active_groups'], permission_dict['memberof'] \
-        = group_config.filter_active_groups(pub_memberof)
-    permission_dict['has_active_role'] = config.role_active_name in session_data.realm_roles
+        = request.app.state.group_config.filter_active_groups(pub_memberof)
+    permission_dict['has_active_role'] = request.app.config.role_active_name in session_data.realm_roles
     return datatypes.PermissionInfo(**permission_dict)
 
 @router.get("/sp/profile", include_in_schema=True, response_model=datatypes.ProfileInfo)
@@ -182,7 +180,7 @@ async def sp_sessions(
     if 'application/json' in request.headers['accept']:
         return sessions
     else:
-        return templates.TemplateResponse("sp-sessions.html.jinja2", {
+        return request.state.templates.TemplateResponse("sp-sessions.html.jinja2", {
             "request": request,
             "sessions": sessions,
             "name": session_data.username,
@@ -191,10 +189,11 @@ async def sp_sessions(
         })
 
 async def sp_sessions_json(
+        request: Request,
         session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen()),
         order_by: str = 'default',
     ) -> datatypes.KeycloakSessionInfo:
-    resp = await app_session.oauth_client.get(config.keycloak_accountapi_url+'sessions/devices',
+    resp = await app_session.oauth_client.get(request.app.state.config.keycloak_accountapi_url+'sessions/devices',
         token=session_data.to_tokens(), headers={'Accept': 'application/json'})
     devices: list = resp.json()
     sessions: list = []
@@ -242,11 +241,12 @@ async def sp_sessions_logout(
         # 303 to force POST to convert to GET
 
 async def sp_sessions_logout_json(
+        request: Request,
         session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen()),
         id: str = Query(None, regex="^[A-Za-z0-9-_]+$"),
         current: bool = False
     ):
-    resp = await app_session.oauth_client.delete(config.keycloak_accountapi_url+'sessions/'+(id if id else ''),
+    resp = await app_session.oauth_client.delete(request.app.state.config.keycloak_accountapi_url+'sessions/'+(id if id else ''),
         token=session_data.to_tokens(), headers={'Accept': 'application/json'}, params={'current': current})
     result = resp.text
     if resp.status_code == 204:
@@ -258,9 +258,10 @@ async def sp_sessions_logout_json(
 
 @router.get("/sp/credentials/password", include_in_schema=True)
 async def sp_password(
+        request: Request,
         session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen())
     ):
-    resp = await app_session.oauth_client.get(config.keycloak_accountapi_url+'credentials/password',
+    resp = await app_session.oauth_client.get(request.app.state.config.keycloak_accountapi_url+'credentials/password',
         token=session_data.to_tokens(), headers={'Accept': 'application/json'})
     return resp.json()
 
@@ -276,41 +277,44 @@ async def admin_landing(
         request: Request,
         session_data: datatypes.SessionData = Depends(app_session.deps_requires_admin_session_gen())
     ):
-    return templates.TemplateResponse("index.html.jinja2", {"request": request})
+    return request.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
 
 
 @router.get("/admin/groups", include_in_schema=True)
 async def admin_groups(
+        request: Request,
         session_data: datatypes.SessionData = Depends(app_session.deps_requires_admin_session_gen())
     ):
     client: AsyncOAuth2Client
     async with app_session.get_service_account_oauth_client() as client:
-        resp = await client.get(config.keycloak_adminapi_url+'groups',
+        resp = await client.get(request.app.state.config.keycloak_adminapi_url+'groups',
             headers={'Accept': 'application/json'})
         return resp.json()
 
 @router.get("/admin/roles/{role_name}/groups", include_in_schema=True)
 async def admin_groups(
+        request: Request,
         role_name: str = Path(..., regex="^[A-Za-z0-9-_]+$"),
         session_data: datatypes.SessionData = Depends(app_session.deps_requires_admin_session_gen())
     ):
-    resp = await app_session.oauth_client.get(config.keycloak_adminapi_url+'roles/'+role_name+'/groups',
+    resp = await app_session.oauth_client.get(request.app.state.config.keycloak_adminapi_url+'roles/'+role_name+'/groups',
         token=session_data.to_tokens(), headers={'Accept': 'application/json'})
     return resp.json()
 
 @router.get("/admin/users", include_in_schema=True)
 async def admin_groups(
+        request: Request,
         session_data: datatypes.SessionData = Depends(app_session.deps_requires_admin_session_gen())
     ):
     client: AsyncOAuth2Client
-    async with app_session.get_service_account_oauth_client() as client:
-        resp = await client.get(config.keycloak_adminapi_url+'users?briefRepresentation=true',
+    async with request.app.state.app_session.get_service_account_oauth_client() as client:
+        resp = await client.get(request.app.state.config.keycloak_adminapi_url+'users?briefRepresentation=true',
             headers={'Accept': 'application/json'})
         return resp.json()
 
 @router.get("/register/", include_in_schema=False)
 async def register_landing(request: Request):
-    return templates.TemplateResponse("index.html.jinja2", {"request": request})
+    return request.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
 
 
 @router.get("/logout", include_in_schema=True)
@@ -332,10 +336,10 @@ async def logout(request: Request):
 async def tos(request: Request):
     if 'application/json' in request.headers['accept']:
         return datatypes.TOSData(html=
-            templates.TemplateResponse("tos-content.html.jinja2", {"request": request}).body
+            request.state.templates.TemplateResponse("tos-content.html.jinja2", {"request": request}).body
         )
     else:
-        return templates.TemplateResponse("tos.html.jinja2", {"request": request})
+        return request.state.templates.TemplateResponse("tos.html.jinja2", {"request": request})
 
 app.include_router(router, dependencies=[Depends(app_session.deps_session_data)])
 
