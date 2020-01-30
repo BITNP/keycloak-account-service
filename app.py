@@ -43,12 +43,11 @@ app.state.oauth.register(
 )
 
 app.add_middleware(SessionMiddleware, secret_key=app.state.config.session_secret)
-app_session = BITNPSessionFastAPIApp(
+app.state.app_session = BITNPSessionFastAPIApp(
     app=app, oauth_client=app.state.oauth.bitnp, group_config=app.state.config.group_config,
     csrf_token=app.state.config.session_secret,
     cache_type=Cache.MEMORY
 )
-app.state.app_session = app_session
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 def local_timestring(dt, format='%Y-%m-%d %H:%M'):
@@ -78,7 +77,7 @@ async def oauth_exception_handler(request, exc):
 
 @router.get("/", include_in_schema=False)
 async def index(request: Request,
-    session_data: datatypes.SessionData = Depends(app_session.deps_session_data)):
+    session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_session_data)):
     tdata = {
         "request": request,
         "name": None,
@@ -105,7 +104,7 @@ async def assistance_landing(request: Request):
 
 @router.get("/sp/", include_in_schema=False)
 async def sp_landing(request: Request,
-        session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen())
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session)
     ):
     tdata = {
         "request": request,
@@ -119,7 +118,7 @@ async def sp_landing(request: Request,
 
     # Remote
     try:
-        tdata["sessions"] = (await sp_sessions_json(session_data=session_data))
+        tdata["sessions"] = (await sp_sessions_json(request=request, session_data=session_data))
         tdata['sessions_count'] = len(tdata['sessions'])
     except Exception as e:
         tdata["sessions"] = None
@@ -142,7 +141,7 @@ async def sp_landing(request: Request,
 @router.get("/sp/permission", include_in_schema=True, response_model=datatypes.PermissionInfo)
 async def sp_permission(
     request: Request,
-    session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen())
+    session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session)
     ) -> datatypes.PermissionInfo:
     pub_memberof = session_data.memberof.copy()
     for item in pub_memberof:
@@ -155,7 +154,7 @@ async def sp_permission(
 
 @router.get("/sp/profile", include_in_schema=True, response_model=datatypes.ProfileInfo)
 async def sp_profile(
-        session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen())
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session)
     ) -> datatypes.ProfileInfo:
     return datatypes.ProfileInfo.parse_obj(session_data)
 
@@ -165,8 +164,8 @@ async def sp_profile(
     })
 async def sp_sessions(
         request: Request,
-        csrf_field: tuple = Depends(app_session.deps_get_csrf_field_gen()),
-        session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen()),
+        csrf_field: tuple = Depends(BITNPSessionFastAPIApp.deps_get_csrf_field),
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session),
         order_by: str = 'default',
     ):
     """
@@ -176,7 +175,7 @@ async def sp_sessions(
     - Current session
     - Order from the latest to the oldest of `lastAccess`
     """
-    sessions = await sp_sessions_json(session_data, order_by)
+    sessions = await sp_sessions_json(request=request, session_data=session_data, order_by=order_by)
     if 'application/json' in request.headers['accept']:
         return sessions
     else:
@@ -190,10 +189,10 @@ async def sp_sessions(
 
 async def sp_sessions_json(
         request: Request,
-        session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen()),
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session),
         order_by: str = 'default',
     ) -> datatypes.KeycloakSessionInfo:
-    resp = await app_session.oauth_client.get(request.app.state.config.keycloak_accountapi_url+'sessions/devices',
+    resp = await request.app.state.app_session.oauth_client.get(request.app.state.config.keycloak_accountapi_url+'sessions/devices',
         token=session_data.to_tokens(), headers={'Accept': 'application/json'})
     devices: list = resp.json()
     sessions: list = []
@@ -225,10 +224,10 @@ async def sp_sessions_json(
     })
 async def sp_sessions_logout(
         request: Request,
-        session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen()),
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session),
         id: str = Query(None, regex="^[A-Za-z0-9-_]+$"),
         current: bool = False,
-        csrf_valid: bool = Depends(app_session.deps_requires_csrf_posttoken_gen())
+        csrf_valid: bool = Depends(BITNPSessionFastAPIApp.deps_requires_csrf_posttoken)
     ) -> Response:
     result = await sp_sessions_logout_json(session_data=session_data, id=id, current=current)
     if result is not True:
@@ -242,11 +241,11 @@ async def sp_sessions_logout(
 
 async def sp_sessions_logout_json(
         request: Request,
-        session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen()),
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session),
         id: str = Query(None, regex="^[A-Za-z0-9-_]+$"),
         current: bool = False
     ):
-    resp = await app_session.oauth_client.delete(request.app.state.config.keycloak_accountapi_url+'sessions/'+(id if id else ''),
+    resp = await request.app.state.app_session.oauth_client.delete(request.app.state.config.keycloak_accountapi_url+'sessions/'+(id if id else ''),
         token=session_data.to_tokens(), headers={'Accept': 'application/json'}, params={'current': current})
     result = resp.text
     if resp.status_code == 204:
@@ -259,15 +258,15 @@ async def sp_sessions_logout_json(
 @router.get("/sp/credentials/password", include_in_schema=True)
 async def sp_password(
         request: Request,
-        session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen())
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session)
     ):
-    resp = await app_session.oauth_client.get(request.app.state.config.keycloak_accountapi_url+'credentials/password',
+    resp = await request.app.state.app_session.oauth_client.get(request.app.state.config.keycloak_accountapi_url+'credentials/password',
         token=session_data.to_tokens(), headers={'Accept': 'application/json'})
     return resp.json()
 
 @router.get("/sp/applications", include_in_schema=True)
 async def sp_applications(
-        session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen())
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session)
     ):
     return {}
 
@@ -275,7 +274,7 @@ async def sp_applications(
 @router.get("/admin/", include_in_schema=False)
 async def admin_landing(
         request: Request,
-        session_data: datatypes.SessionData = Depends(app_session.deps_requires_admin_session_gen())
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session)
     ):
     return request.app.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
 
@@ -283,10 +282,10 @@ async def admin_landing(
 @router.get("/admin/groups", include_in_schema=True)
 async def admin_groups(
         request: Request,
-        session_data: datatypes.SessionData = Depends(app_session.deps_requires_admin_session_gen())
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session)
     ):
     client: AsyncOAuth2Client
-    async with app_session.get_service_account_oauth_client() as client:
+    async with request.app.state.app_session.get_service_account_oauth_client() as client:
         resp = await client.get(request.app.state.config.keycloak_adminapi_url+'groups',
             headers={'Accept': 'application/json'})
         return resp.json()
@@ -295,16 +294,16 @@ async def admin_groups(
 async def admin_groups(
         request: Request,
         role_name: str = Path(..., regex="^[A-Za-z0-9-_]+$"),
-        session_data: datatypes.SessionData = Depends(app_session.deps_requires_admin_session_gen())
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session)
     ):
-    resp = await app_session.oauth_client.get(request.app.state.config.keycloak_adminapi_url+'roles/'+role_name+'/groups',
+    resp = await request.app.state.app_session.oauth_client.get(request.app.state.config.keycloak_adminapi_url+'roles/'+role_name+'/groups',
         token=session_data.to_tokens(), headers={'Accept': 'application/json'})
     return resp.json()
 
 @router.get("/admin/users", include_in_schema=True)
 async def admin_groups(
         request: Request,
-        session_data: datatypes.SessionData = Depends(app_session.deps_requires_admin_session_gen())
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session)
     ):
     client: AsyncOAuth2Client
     async with request.app.state.app_session.get_service_account_oauth_client() as client:
@@ -319,11 +318,11 @@ async def register_landing(request: Request):
 
 @router.get("/logout", include_in_schema=True)
 async def logout(request: Request):
-    access_token = await app_session.end_session(request)
+    access_token = await request.app.state.app_session.end_session(request)
     if not access_token:
         access_token = ''
 
-    url = await app_session.oauth_client.get_metadata_value('end_session_endpoint')
+    url = await request.app.state.app_session.oauth_client.get_metadata_value('end_session_endpoint')
     if not url:
         return RedirectResponse(request.url_for('index'))
     else:
@@ -341,7 +340,7 @@ async def tos(request: Request, templates: TemplateService = Depends()):
     else:
         return templates.TemplateResponse("tos.html.jinja2")
 
-app.include_router(router, dependencies=[Depends(app_session.deps_session_data)])
+app.include_router(router, dependencies=[Depends(BITNPSessionFastAPIApp.deps_session_data)])
 
 if __name__ == "__main__":
     import uvicorn

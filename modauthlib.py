@@ -130,11 +130,11 @@ class BITNPFastAPICSRFAddon:
         session_id = self.get_csrf_session_id(request)
         string = session_id + '&' + self.csrf_token
         token = sha1(string.encode()).hexdigest()[:20]
-        print(token)
+        # print(token)
         return token
 
     def check_csrf_token(self, token, request: Request):
-        print(token)
+        # print(token)
 
         # ignore CSRF token check if Accept header is correctly set
         if 'application/json' in request.headers['accept']:
@@ -143,22 +143,18 @@ class BITNPFastAPICSRFAddon:
             return False
         return True
 
-    # Usage: Depends(app_session.deps_requires_csrf_posttoken_gen())
-    def deps_requires_csrf_posttoken_gen(self):
-        app_session = self
-        def check_csrf_token_post(request: Request, token: str = Form(None, alias=self.csrf_field_name, description="CSRF token (not required if Accept header include json)")) -> bool:
-            if not app_session.check_csrf_token(token, request):
-                raise CSRFTokenInvalidException
-            return True
-        return check_csrf_token_post
+    @staticmethod
+    def deps_get_csrf_field(request: Request) -> (str, str):
+        return BITNPFastAPICSRFAddon.csrf_field_name, request.app.state.app_session.get_csrf_token(request)
 
-    # Usage: Depends(app_session.deps_get_csrf_token_gen())
-    def deps_get_csrf_field_gen(self):
-        app_session = self
-        def get_csrf_field(request: Request) -> (str, str):
-            return app_session.csrf_field_name, app_session.get_csrf_token(request)
-        return get_csrf_field
-
+def deps_requires_csrf_posttoken(
+        request: Request,
+        token: str = Form(None, alias=BITNPFastAPICSRFAddon.csrf_field_name, description="CSRF token (not required if Accept header include json)")
+    ) -> bool:
+    if not request.app.state.app_session.check_csrf_token(token, request):
+        raise CSRFTokenInvalidException
+    return True
+BITNPFastAPICSRFAddon.deps_requires_csrf_posttoken = deps_requires_csrf_posttoken
 
 class BITNPSessionFastAPIApp(BITNPFastAPICSRFAddon):
     group_config: GroupConfig
@@ -325,18 +321,20 @@ class BITNPSessionFastAPIApp(BITNPFastAPICSRFAddon):
         return session_data.access_token if jti else None
 
     # Usage: Depends(app_session.deps_session_data)
-    async def deps_session_data(self, request: Request) -> SessionData:
+    @staticmethod
+    async def deps_session_data(request: Request) -> SessionData:
+        _self = request.app.state.app_session
         # check code, state in query to complete auth
         if request.query_params.get('code') and request.query_params.get('state'):
-            token = await self.oauth_client.authorize_access_token(request)
-            await self.new_session(token, request=request)
+            token = await _self.oauth_client.authorize_access_token(request)
+            await _self.new_session(token, request=request)
             # if GET, redirect to remove code and state
             if request.method == 'GET':
                 raise RemovesAuthParamsException
 
         # login check
         jti = request.session.get('bearer_jti')
-        session_data = await self.get_session(jti)
+        session_data = await _self.get_session(jti)
 
         # expiry maintainance
         if session_data and datetime.utcnow() >= session_data.access_token_expires_at:
@@ -344,16 +342,16 @@ class BITNPSessionFastAPIApp(BITNPFastAPICSRFAddon):
             try:
                 if not session_data.refresh_token:
                     raise OAuthError(error='invalid_grant', description='No refresh_token exists')
-                new_token = await self.oauth_client.refresh_token(session_data)
+                new_token = await _self.oauth_client.refresh_token(session_data)
                 # update should be done in refresh_token_callback()
                 # We need to manaully update session now
 
                 # Get new jti - update session and session_data as well
-                jti = await self.get_bearer_of_refresh_token(session_data.refresh_token)
+                jti = await _self.get_bearer_of_refresh_token(session_data.refresh_token)
                 assert jti != request.session['bearer_jti'], "Refreshed token should have different jti"
 
                 request.session['bearer_jti'] = jti
-                session_data = await self.get_session(jti)
+                session_data = await _self.get_session(jti)
             except OAuthError as e:
                 if e.error == 'invalid_grant':
                     # Unable to refresh token (probably expired token)
@@ -378,26 +376,6 @@ class BITNPSessionFastAPIApp(BITNPFastAPICSRFAddon):
             )
             return RedirectResponse(clean_url)
 
-    # Usage: Depends(app_session.requires_session_data_gen())
-    def deps_requires_session_gen(self):
-        deps_session_data = self.deps_session_data
-        def requires_session_data(session_data: SessionData = Depends(deps_session_data)):
-            if session_data is None:
-                raise RequiresTokenException
-            return session_data
-
-        return requires_session_data
-
-    # Usage: Depends(app_session.deps_requires_admin_session_gen())
-    def deps_requires_admin_session_gen(self):
-        deps_session_data = self.deps_requires_session_gen()
-        def requires_session_data(session_data: SessionData = Depends(deps_session_data)):
-            if 'admin' not in session_data.realm_roles:
-                raise RequiresAdminException
-            return session_data
-
-        return requires_session_data
-
     async def sa_refresh_token_callback(self, token: dict, refresh_token: str=None,
         access_token: str=None) -> None:
         self.sa_tokens = token
@@ -413,3 +391,17 @@ class BITNPSessionFastAPIApp(BITNPFastAPICSRFAddon):
             if not client.token:
                 await client.update_token(await client.fetch_token())
             yield client
+
+def deps_requires_session(session_data: SessionData = Depends(BITNPSessionFastAPIApp.deps_session_data)):
+    if session_data is None:
+        raise RequiresTokenException
+    return session_data
+
+BITNPSessionFastAPIApp.deps_requires_session = deps_requires_session
+
+def deps_requires_admin_session(session_data: SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session)):
+    if 'admin' not in session_data.realm_roles:
+        raise RequiresAdminException
+    return session_data
+
+BITNPSessionFastAPIApp.deps_requires_admin_session = deps_requires_admin_session
