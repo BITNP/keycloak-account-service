@@ -1,6 +1,5 @@
 from fastapi import Depends, APIRouter
 from starlette.requests import Request
-from starlette.exceptions import HTTPException as StarletteHTTPException
 import datatypes
 
 from modauthlib import BITNPSessionFastAPIApp

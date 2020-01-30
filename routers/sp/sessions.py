@@ -1,7 +1,6 @@
-from fastapi import Depends, APIRouter, Query
+from fastapi import Depends, APIRouter, Query, HTTPException
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
-from starlette.exceptions import HTTPException as StarletteHTTPException
 import datatypes
 
 from modauthlib import BITNPSessionFastAPIApp
@@ -88,7 +87,7 @@ async def sp_sessions_logout(
     ) -> Response:
     result = await sp_sessions_logout_json(request=request, session_data=session_data, id=id, current=current)
     if result is not True:
-        raise StarletteHTTPException(status_code=500, detail=str(result))
+        raise HTTPException(status_code=500, detail=str(result))
     # success
     if 'application/json' in request.headers['accept']:
         return Response(status_code=204)

@@ -1,8 +1,7 @@
 from starlette.responses import RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from fastapi import FastAPI, Depends, Form
+from fastapi import FastAPI, Depends, Form, HTTPException
 
 from authlib.integrations.starlette_client import RemoteApp
 from authlib.integrations.httpx_client import OAuthError, AsyncOAuth2Client
@@ -23,16 +22,16 @@ from authlib.common.security import generate_token
 class RequiresTokenException(Exception):
     pass
 
-class RequiresAdminException(StarletteHTTPException):
+class RequiresAdminException(HTTPException):
     def __init__(self):
-        super().__init__(403, detail="You don't have the privilege to access this endpoint")
+        super().__init__(status_code=403, detail="You don't have the privilege to access this endpoint")
 
 class RemovesAuthParamsException(Exception):
     pass
 
-class CSRFTokenInvalidException(StarletteHTTPException):
+class CSRFTokenInvalidException(HTTPException):
     def __init__(self):
-        super().__init__(403, detail="post token invalid; this request may be unauthorized")
+        super().__init__(status_code=403, detail="post token invalid; this request may be unauthorized")
 
 
 class BITNPOAuthRemoteApp(RemoteApp):
