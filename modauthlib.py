@@ -2,7 +2,7 @@ from starlette.responses import RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Form
 
 from authlib.integrations.starlette_client import RemoteApp
 from authlib.integrations.httpx_client import OAuthError, AsyncOAuth2Client
@@ -16,6 +16,8 @@ from datetime import datetime, timedelta
 from pydantic.utils import deep_update
 from contextlib import asynccontextmanager
 from typing import ContextManager
+from hashlib import sha1
+from authlib.common.security import generate_token
 
 
 class RequiresTokenException(Exception):
@@ -27,6 +29,10 @@ class RequiresAdminException(StarletteHTTPException):
 
 class RemovesAuthParamsException(Exception):
     pass
+
+class CSRFTokenInvalidException(StarletteHTTPException):
+    def __init__(self):
+        super().__init__(403, detail="post token invalid; this request may be unauthorized")
 
 
 class BITNPOAuthRemoteApp(RemoteApp):
@@ -109,7 +115,52 @@ class BITNPOAuthRemoteApp(RemoteApp):
         }
 
 
-class BITNPSessionFastAPIApp:
+class BITNPFastAPICSRFAddon:
+    csrf_token: str
+    csrf_field_name: str = 'post_token'
+
+    def get_csrf_session_id(self, request: Request):
+        jti = request.session.get('bearer_jti')
+        if jti:
+            return jti
+        else:
+            return request.session.setdefault(self.csrf_field_name, generate_token(20))
+
+    def get_csrf_token(self, request: Request):
+        session_id = self.get_csrf_session_id(request)
+        string = session_id + '&' + self.csrf_token
+        token = sha1(string.encode()).hexdigest()[:20]
+        print(token)
+        return token
+
+    def check_csrf_token(self, token, request: Request):
+        print(token)
+
+        # ignore CSRF token check if Accept header is correctly set
+        if 'application/json' in request.headers['accept']:
+            return True
+        if not token or not token == self.get_csrf_token(request):
+            return False
+        return True
+
+    # Usage: Depends(app_session.deps_requires_csrf_posttoken_gen())
+    def deps_requires_csrf_posttoken_gen(self):
+        app_session = self
+        def check_csrf_token_post(request: Request, token: str = Form(None, alias=self.csrf_field_name, description="CSRF token (not required if Accept header include json)")) -> bool:
+            if not app_session.check_csrf_token(token, request):
+                raise CSRFTokenInvalidException
+            return True
+        return check_csrf_token_post
+
+    # Usage: Depends(app_session.deps_get_csrf_token_gen())
+    def deps_get_csrf_field_gen(self):
+        app_session = self
+        def get_csrf_field(request: Request) -> (str, str):
+            return app_session.csrf_field_name, app_session.get_csrf_token(request)
+        return get_csrf_field
+
+
+class BITNPSessionFastAPIApp(BITNPFastAPICSRFAddon):
     group_config: GroupConfig
     oauth_client: RemoteApp
     session_cache: BaseCache
@@ -118,6 +169,7 @@ class BITNPSessionFastAPIApp:
     sa_tokens: dict = None
 
     def __init__(self, app: FastAPI, oauth_client: RemoteApp, group_config: GroupConfig,
+        csrf_token: str,
         bearer_grace_period: timedelta = timedelta(seconds=10),
         cache_type: BaseCache = Cache.MEMORY, cache_kwargs: dict = dict()):
         """
@@ -131,6 +183,7 @@ class BITNPSessionFastAPIApp:
         self.session_cache = Cache(cache_type, **cache_kwargs)
         self.bearer_grace_period = bearer_grace_period
         self.group_config = group_config
+        self.csrf_token = csrf_token
 
     def init_app(self, app: FastAPI) -> None:
         app.exception_handler(RequiresTokenException)(self.exception_handler)
@@ -314,7 +367,10 @@ class BITNPSessionFastAPIApp:
 
     async def exception_handler(self, request: Request, exc: Exception):
         if isinstance(exc, RequiresTokenException):
-            return await self.oauth_client.authorize_redirect(request, str(request.url))
+            response = await self.oauth_client.authorize_redirect(request, str(request.url))
+            # monkey patch to make sure GET only
+            response.status_code = 303
+            return response
         if isinstance(exc, RemovesAuthParamsException):
             clean_url = str(
                 request.url.remove_query_params('code').remove_query_params('state')

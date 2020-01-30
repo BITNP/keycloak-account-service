@@ -9,3 +9,4 @@ itsdangerous #session
 pyasn1 #crypto
 cryptography #crypto
 aiocache
+python-multipart #fastapi.Form

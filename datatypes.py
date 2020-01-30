@@ -1,4 +1,4 @@
-from pydantic import BaseModel, BaseSettings, IPvAnyAddress, validator, conlist
+from pydantic import BaseModel, BaseSettings, IPvAnyAddress, validator, conlist, Field
 from datetime import datetime, tzinfo, timezone, timedelta
 from typing import Union, List, Dict, Any, Optional
 from collections import UserDict
@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     client_id: str
     client_secret: str
-    session_secret: str
+    session_secret: str = Field(..., description="Used for session and CSRF")
     server_metadata_url: str = 'https://login.bitnp.net/auth/realms/master/.well-known/openid-configuration'
     group_status_prefix: str = '/bitnp/active'
     group_config_path: str = '/bitnp' # Pending removal?

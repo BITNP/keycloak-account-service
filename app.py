@@ -43,6 +43,7 @@ app.oauth.register(
 app.add_middleware(SessionMiddleware, secret_key=config.session_secret)
 app_session = BITNPSessionFastAPIApp(
     app=app, oauth_client=app.oauth.bitnp, group_config=group_config,
+    csrf_token=config.session_secret,
     cache_type=Cache.MEMORY
 )
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -69,7 +70,7 @@ async def oauth_exception_handler(request, exc):
             {"detail": exc.description}, status_code=500
         )
     else:
-        return PlainTextResponse(f"{exc.error} {exc.description}", status_code=500)
+        return PlainTextResponse(f"{exc.error}: {exc.description}", status_code=500)
 
 
 @router.get("/", include_in_schema=False)
@@ -160,12 +161,13 @@ async def sp_profile(
     ) -> datatypes.ProfileInfo:
     return datatypes.ProfileInfo.parse_obj(session_data)
 
-@router.get("/sp/sessions", include_in_schema=True, response_model=datatypes.KeycloakSessionInfo,
+@router.get("/sp/sessions/", include_in_schema=True, response_model=datatypes.KeycloakSessionInfo,
     responses={
         200: {"content": {"text/html": {}}}
     })
 async def sp_sessions(
         request: Request,
+        csrf_field: tuple = Depends(app_session.deps_get_csrf_field_gen()),
         session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen()),
         order_by: str = 'default',
     ):
@@ -185,6 +187,7 @@ async def sp_sessions(
             "sessions": sessions,
             "name": session_data.username,
             "signed_in": True,
+            "csrf_field": csrf_field,
         })
 
 async def sp_sessions_json(
@@ -216,6 +219,42 @@ async def sp_sessions_json(
     sessions = ret
 
     return [datatypes.KeycloakSessionItem.parse_obj(r) for r in sessions]
+
+@router.post("/sp/sessions/logout", include_in_schema=True, status_code=204, responses={
+        303: {"description": "Successful response (for end users)", "content": {"text/html": {}}},
+        204: {"content": {"application/json": {}}}
+    })
+async def sp_sessions_logout(
+        request: Request,
+        session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen()),
+        id: str = None,
+        current: bool = False,
+        csrf_valid: bool = Depends(app_session.deps_requires_csrf_posttoken_gen())
+    ) -> Response:
+    result = await sp_sessions_logout_json(session_data=session_data, id=id, current=current)
+    if result is not True:
+        raise StarletteHTTPException(status_code=500, detail=str(result))
+    # success
+    if 'application/json' in request.headers['accept']:
+        return Response(status_code=204)
+    else:
+        return RedirectResponse(request.url_for('sp_sessions'), status_code=303)
+        # 303 to force POST to convert to GET
+
+async def sp_sessions_logout_json(
+        session_data: datatypes.SessionData = Depends(app_session.deps_requires_session_gen()),
+        id: str = None,
+        current: bool = False
+    ):
+    resp = await app_session.oauth_client.delete(config.keycloak_accountapi_url+'sessions/'+(id if id else ''),
+        token=session_data.to_tokens(), headers={'Accept': 'application/json'}, params={'current': current})
+    result = resp.text
+    if resp.status_code == 204:
+        # success
+        return True
+    else:
+        return result
+
 
 @router.get("/sp/credentials/password", include_in_schema=True)
 async def sp_password(
