@@ -193,6 +193,7 @@ class SessionData(BaseModel):
     username: str = ''
     name: str = None
     email: str = ''
+    scope: List[str] = list()
     id_token: dict = {} # temp
 
     def to_tokens(self):
@@ -202,6 +203,9 @@ class SessionData(BaseModel):
             'refresh_token': self.refresh_token,
             'expires_at': int(self.access_token_expires_at.timestamp()),
         }
+
+    def is_admin(self):
+        return 'iam-admin' in self.scope
 
     @validator('realm_roles', 'client_roles', pre=True, always=True)
     def roles_default_list(cls, v):

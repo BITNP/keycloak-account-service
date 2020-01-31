@@ -214,20 +214,21 @@ class BITNPSessionFastAPIApp(BITNPFastAPICSRFAddon):
         }
 
         if tokens.get('id_token'):
-            id_token = None
+            id_body = None
             if request:
-                id_token = await self.oauth_client.parse_id_token(request, tokens)
+                id_body = await self.oauth_client.parse_id_token(request, tokens)
             elif old_session_data:
-                id_token = await self.oauth_client.parse_token_body(tokens['id_token'])
+                id_body = await self.oauth_client.parse_token_body(tokens['id_token'])
 
-            if id_token:
-                session_dict['memberof'] = self.group_config.list_path_to_items(id_token.get('memberof', list()))
-                session_dict['realm_roles'] = id_token.get('realm_access', {}).get('roles')
-                session_dict['client_roles'] = id_token.get('roles')
-                session_dict['subject'] = id_token.get('sub')
-                session_dict['username'] = id_token.get('preferred_username')
-                session_dict['name'] = id_token.get('name')
-                session_dict['email'] = id_token.get('email')
+            if id_body:
+                session_dict['memberof'] = self.group_config.list_path_to_items(id_body.get('memberof', list()))
+                session_dict['realm_roles'] = id_body.get('realm_access', {}).get('roles')
+                session_dict['client_roles'] = id_body.get('roles')
+                session_dict['subject'] = id_body.get('sub')
+                session_dict['username'] = id_body.get('preferred_username')
+                session_dict['name'] = id_body.get('name')
+                session_dict['email'] = id_body.get('email')
+                session_dict['scope'] = access_body.get('scope', '').split(' ')
 
         if tokens.get('refresh_token'):
             session_dict['refresh_token'] = tokens['refresh_token']
@@ -396,7 +397,7 @@ def deps_requires_session(session_data: SessionData = Depends(BITNPSessionFastAP
 BITNPSessionFastAPIApp.deps_requires_session = deps_requires_session
 
 def deps_requires_admin_session(session_data: SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session)):
-    if 'admin' not in session_data.realm_roles:
+    if not session_data.is_admin():
         raise RequiresAdminException
     return session_data
 

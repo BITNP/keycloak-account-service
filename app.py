@@ -44,7 +44,7 @@ app.state.oauth.register(
     client_secret=app.state.config.client_secret,
     server_metadata_url=app.state.config.server_metadata_url,
     client_kwargs = {
-        'scope': 'openid'
+        'scope': 'openid iam-admin'
     },
 )
 
@@ -91,7 +91,7 @@ async def index(request: Request,
     if session_data:
         return RedirectResponse(request.url_for("sp_landing"))
         tdata['name'] = session_data.username
-        tdata['is_admin'] = "admin" in session_data.client_roles
+        tdata['is_admin'] = session_data.is_admin()
         tdata['signed_in'] = True
     return request.app.state.templates.TemplateResponse("index.html.jinja2", tdata)
 

@@ -16,7 +16,7 @@ async def sp_landing(request: Request,
     tdata = {
         "request": request,
         "name": session_data.username,
-        "is_admin": "admin" in session_data.client_roles,
+        "is_admin": session_data.is_admin(),
         "signed_in": True,
         "keycloak_admin_url": request.app.state.config.keycloak_admin_url,
         "permission": await sp_permission(request=request, session_data=session_data),
