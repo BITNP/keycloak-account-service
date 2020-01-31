@@ -53,6 +53,7 @@ async def sp_password_update(
         confirmation: str = Form(...),
         session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session),
         csrf_valid: bool = Depends(BITNPSessionFastAPIApp.deps_requires_csrf_posttoken),
+        csrf_field: tuple = Depends(BITNPSessionFastAPIApp.deps_get_csrf_field),
     ):
     if not pwupdate:
         try:
@@ -68,8 +69,19 @@ async def sp_password_update(
     try:
         result = await sp_password_update_json(request=request, pwupdate=pwupdate, session_data=session_data)
     except HTTPException as e:
-        if e.detail.get('errorMessage') == 'invalidPasswordExistingMessage' and ('application/json' not in request.headers['accept']):
-            return RedirectResponse(request.url_for('sp_password')+"?incorrect=1", status_code=303)
+        if ('application/json' not in request.headers['accept']):
+            if e.detail.get('errorMessage') == 'invalidPasswordExistingMessage':
+                incorrect = "旧密码错误，请重试，如忘记旧密码请点击下方重设密码。"
+            else:
+                incorrect = "请重新选择新密码，错误信息："+str(e.detail)
+            return request.app.state.templates.TemplateResponse("sp-password.html.jinja2", {
+                "request": request,
+                "name": session_data.username,
+                "signed_in": True,
+                "csrf_field": csrf_field,
+                "updated": False,
+                "incorrect": incorrect,
+            }, status_code=400)
         raise
 
     if 'application/json' in request.headers['accept']:
