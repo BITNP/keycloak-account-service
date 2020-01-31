@@ -330,6 +330,7 @@ class BITNPSessionFastAPIApp(BITNPFastAPICSRFAddon):
                 raise RemovesAuthParamsException
 
         # login check
+        # TODO: direct Bearer token support
         jti = request.session.get('bearer_jti')
         session_data = await _self.get_session(jti)
 
