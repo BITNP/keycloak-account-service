@@ -120,6 +120,19 @@ async def admin_groups(
     )
     return resp.json()
 
+@router.get("/admin/client-roles/{role_name}/groups", include_in_schema=True)
+async def admin_groups(
+        request: Request,
+        role_name: str = Path(..., regex="^[A-Za-z0-9-_]+$"),
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session)
+    ):
+    resp = await request.app.state.app_session.oauth_client.get(
+        request.app.state.config.keycloak_adminapi_url+'clients/3513512c-c67b-4fc4-a540-939d1d29c12c/roles/'+role_name+'/groups',
+        token=session_data.to_tokens(),
+        headers={'Accept': 'application/json'}
+    )
+    return resp.json()
+
 @router.get("/admin/users", include_in_schema=True)
 async def admin_groups(
         request: Request,

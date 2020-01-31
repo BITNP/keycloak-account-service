@@ -22,7 +22,7 @@ from authlib.common.security import generate_token
 class RequiresTokenException(Exception):
     pass
 
-class RequiresAdminException(HTTPException):
+class UnauthorizedException(HTTPException):
     def __init__(self):
         super().__init__(status_code=403, detail="You don't have the privilege to access this endpoint")
 
@@ -399,7 +399,14 @@ BITNPSessionFastAPIApp.deps_requires_session = deps_requires_session
 
 def deps_requires_admin_session(session_data: SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session)):
     if not session_data.is_admin():
-        raise RequiresAdminException
+        raise UnauthorizedException
+    return session_data
+
+BITNPSessionFastAPIApp.deps_requires_admin_session = deps_requires_admin_session
+
+def deps_requires_master_session(session_data: SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session)):
+    if not session_data.is_master():
+        raise UnauthorizedException
     return session_data
 
 BITNPSessionFastAPIApp.deps_requires_admin_session = deps_requires_admin_session

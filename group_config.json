@@ -3,7 +3,7 @@
     "@active/management": {"name": "管理层", "internal_note": "现任管理层（包括副部长）"},
     "@active/master": {"name": "主席团", "internal_note": "现任主席团"},
     "@active/member": {"name": "部员", "internal_note": "现任网协部员（不属于管理层）"},
-    "/bitnp/iam-admin": {"name": "IAM 管理员", "internal_note": "技术保障中心网协通行证系统管理员"},
+    "/bitnp/iam-master": {"name": "IAM 超管", "internal_note": "技术保障中心网协通行证系统管理员"},
     "/bitnp/clinic-service": {"name": "诊所用户", "internal_note": "电脑诊所内部用户（包括部员）"},
     "/bitnp-affiliate/active": {"name": "网协访客", "internal_note": "非网协成员，但需要以网协成员身份使用网协服务"}
 }

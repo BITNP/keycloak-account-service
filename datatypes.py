@@ -211,6 +211,9 @@ class SessionData(BaseModel):
     def is_admin(self):
         return 'iam-admin' in self.scope
 
+    def is_master(self):
+        return 'admin' in self.realm_roles
+
     @validator('realm_roles', 'client_roles', pre=True, always=True)
     def roles_default_list(cls, v):
         return v or list()
