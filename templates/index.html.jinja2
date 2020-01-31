@@ -16,19 +16,16 @@
             <div class="col-12 col-md-6">
                 <div class="card">
                     <h4 class="card-header">网协成员</h4>
-                    {% if not signed_in %}
-                    <div class="card-body bg-warning position-relative border-bottom">
+                    <div class="card-body position-relative border-bottom">
                         <!--<h5 class="card-title">账户迁移</h2>-->
                         <p class="card-text">&#x1F504; 有旧版 CAS 网协通行证、但第一次在 Keycloak 登录提示密码错误？收到了邮件通知？你可能需要进行账户迁移。</p>
-                        <a href="{{ url_for('phpcas_migrate_landing') }}" class="btn btn-info stretched-link">账户迁移</a>
+                        <a href="{{ url_for('phpcas_migrate_landing') }}" class="btn btn-outline-info stretched-link">账户迁移</a>
                     </div>
-                    {% endif %}
                     <div class="card-body position-relative border-bottom">
                         <h5 class="card-title">&#x2699;&#xFE0F; 通行证管理
-                        <a href="/sp/" class="btn btn-outline-primary stretched-link btn-sm ml-2">账户自服务</a></h5>
+                        <a href="/sp/" class="btn btn-primary stretched-link btn-sm ml-2">账户自服务</a></h5>
                         <p class="card-text">登录后修改密码、管理你在网协各服务的使用情况、权限信息。</p>
                     </div>
-                    {% if not signed_in %}
                     <div class="card-body position-relative border-bottom">
                         <h5 class="card-title">&#x1F615; 登录困难？
                         <a href="/assiatance/" class="btn btn-outline-primary stretched-link btn-sm">登录帮助</a></h5>
@@ -39,7 +36,6 @@
                         <a href="/register/" class="btn btn-outline-primary stretched-link btn-sm">注册</a></h5>
                         <p class="card-text">请优先使用管理层发送的邀请链接进行注册，以正确激活你的账户。</p>
                     </div>
-                    {% endif %}
                 </div>
             </div>
         </div>

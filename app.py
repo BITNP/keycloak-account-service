@@ -94,7 +94,6 @@ async def index(request: Request,
         "signed_in": False
     }
     if session_data:
-        return RedirectResponse(request.url_for("sp_landing"))
         tdata['name'] = session_data.username
         tdata['is_admin'] = session_data.is_admin()
         tdata['signed_in'] = True
