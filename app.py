@@ -19,6 +19,11 @@ from urllib.parse import urlencode
 from datetime import tzinfo, datetime
 import json
 
+import sys
+MIN_PYTHON = (3, 5)
+if sys.version_info < MIN_PYTHON:
+    sys.exit("At least Python {}.{} or later is required.\n".format(*MIN_PYTHON))
+
 app = FastAPI(
     title="网协通行证账户服务",
     version="0.1"
