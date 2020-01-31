@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     keycloak_admin_url: str = 'https://login.bitnp.net/'
     keycloak_adminapi_url: str = 'https://login.bitnp.net/auth/admin/realms/master/'
     keycloak_accountapi_url: str = 'https://login.bitnp.net/auth/realms/master/account/'
+    keycloak_forgotpw_url: str = 'https://login.bitnp.net/auth/realms/master/login-actions/reset-credentials'
+    assistance_url: str = ''
 
     local_timezone: tzinfo = timezone(timedelta(hours=8))
 

@@ -1,0 +1,20 @@
+{% extends "base.html.jinja2" %}
+{% block content %}
+    <div class="content">
+        <div class="row"><div class="col-12 col-lg-6 offset-lg-3 mb-3">
+            <div class="card">
+                <div class="card-body position-relative border-bottom">
+                    <h5 class="card-title">自助重置密码</h5>
+                    <p class="card-text">忘记密码可通过电邮验证邮件，自助重置密码。</p>
+                    <a href="{{ keycloak_forgotpw_url }}" class="btn btn-outline-primary stretched-link">重置密码</a>
+                </div>
+                <div class="card-body position-relative">
+                    <h5 class="card-title">寻求人工服务</h5>
+                    <p class="card-text">如果无法自助重置密码或有其它需求，请提交以下表单，技术保障中心可能需要先通过其它方式验证你的身份。</p>
+                    <a href="{{ assistance_url }}" class="btn btn-outline-primary stretched-link">提交工单</a>
+                    <!--<p class="card-text">请联系技术保障中心（推荐使用你的注册邮箱发信），我们可能需要先通过其它方式验证你的身份。</p>-->
+                </div>
+            </div>
+        </div></div>
+    </div>
+{% endblock %}

@@ -33,6 +33,7 @@ async def sp_profile(
             "csrf_field": csrf_field,
             "prefer_onename": prefer_onename,
             "updated": updated,
+            "assistance_url": request.app.state.config.assistance_url,
         })
 
 async def sp_profile_json(
