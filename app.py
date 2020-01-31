@@ -16,7 +16,7 @@ from modauthlib import BITNPOAuthRemoteApp, BITNPSessionFastAPIApp
 from aiocache import Cache
 
 from urllib.parse import urlencode
-from datetime import tzinfo, datetime
+from utils import local_timestring
 import json
 
 import sys
@@ -56,13 +56,11 @@ app.state.app_session = BITNPSessionFastAPIApp(
 )
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-def local_timestring(dt, format='%Y-%m-%d %H:%M'):
-    return dt.astimezone(app.state.config.local_timezone).strftime(format)
-
 app.state.templates = Jinja2Templates(directory="templates")
 app.state.templates.env.globals["app_title"] = app.title
-app.state.templates.env.filters["local_timestring"] = local_timestring
-
+app.state.templates.env.filters["local_timestring"] = (
+    lambda dt, format='%Y-%m-%d %H:%M': local_timestring(app.state.config.local_timezone, dt, format)
+)
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_accept_handler(request, exc):

@@ -25,3 +25,6 @@ class TemplateService:
             media_type=media_type,
             background=background
         )
+
+def local_timestring(timezone, dt, format='%Y-%m-%d %H:%M'):
+    return dt.astimezone(timezone).strftime(format)

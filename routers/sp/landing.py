@@ -5,6 +5,7 @@ import datatypes
 from modauthlib import BITNPSessionFastAPIApp
 from .profile import sp_profile_json
 from .sessions import sp_sessions_json
+from utils import local_timestring
 
 router = APIRouter()
 
@@ -36,7 +37,7 @@ async def sp_landing(request: Request,
         if latest_session.device:
             device = latest_session.device + ' ' + latest_session.browser
         tdata['sessions_desc'] = '你在其它位置的最后一次登录是 {time} ({browser})。'.format(
-            time=local_timestring(latest_session.lastAccess),
+            time=local_timestring(request.app.state.config.local_timezone, latest_session.lastAccess),
             browser=device)
     elif tdata['sessions_count'] > 0:
         tdata['sessions_desc'] = '你目前没有在其它位置登录。'
