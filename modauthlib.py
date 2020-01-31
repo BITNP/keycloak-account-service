@@ -119,11 +119,8 @@ class BITNPFastAPICSRFAddon:
     csrf_field_name: str = 'post_token'
 
     def get_csrf_session_id(self, request: Request):
-        jti = request.session.get('bearer_jti')
-        if jti:
-            return jti
-        else:
-            return request.session.setdefault(self.csrf_field_name, generate_token(20))
+        # Do not use jti! It will change with refresh_token
+        return request.session.setdefault(self.csrf_field_name, generate_token(20))
 
     def get_csrf_token(self, request: Request):
         session_id = self.get_csrf_session_id(request)
