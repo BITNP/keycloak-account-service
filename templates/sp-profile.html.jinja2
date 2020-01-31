@@ -23,7 +23,7 @@
                         <input type="email" class="form-control" id="email" name="email" aria-describedby="emailVerified" value="{{ profile.email }}" required>
                         <small id="emailVerified" class="form-text text-muted">
                             {% if profile.emailVerified is sameas true %}&#x2714;&#xFE0F; 邮箱已确认，如修改邮箱则需再次确认{% endif %}
-                            {% if profile.emailVerified is sameas false %}&#x2753; 邮箱未确认<!--，<button type="button" class="btn btn-link btn-sm" form="">确认邮箱</button>-->{% endif %}
+                            {% if false %}&#x2753; 邮箱未确认<!--，<button type="button" class="btn btn-link btn-sm" form="">确认邮箱</button>-->{% endif %}
                         </small>
                     </div>
                     {% if not profile.lastName or prefer_onename %}{# 不需要提供姓名两框 #}

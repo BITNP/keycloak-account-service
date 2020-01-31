@@ -1,7 +1,7 @@
 from fastapi import Depends, APIRouter, Form, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
+from starlette.responses import Response, RedirectResponse
 import datatypes
 from pydantic import ValidationError
 
@@ -98,7 +98,7 @@ async def sp_profile_update_json(
     else:
         raise HTTPException(status_code=resp.status_code, detail=str(resp.text))
 
-@router.post("/emailverify", include_in_schema=True, status_code=204, responses={
+@router.post("/emailverify", include_in_schema=False, status_code=204, responses={
         303: {"description": "Successful response (for end users)", "content": {"text/html": {}}},
         204: {"content": {"application/json": {}}},
         429: {"description": "Failed response (try again later to request a new verification)"},
@@ -107,4 +107,7 @@ async def sp_profile_emailverify(
         request: Request,
         session_data: datatypes.SessionData,
     ):
-    pass
+    # Won't implement
+    return Response(status_code=404)
+    # /{realm}/users/{id}/send-verify-email?client_id=
+    #return Response(status_code=204)
