@@ -98,6 +98,13 @@ async def sp_profile_update_json(
     else:
         raise HTTPException(status_code=resp.status_code, detail=str(resp.text))
 
-# TODO
-async def sp_profile_emailverify():
+@router.post("/emailverify", include_in_schema=True, status_code=204, responses={
+        303: {"description": "Successful response (for end users)", "content": {"text/html": {}}},
+        204: {"content": {"application/json": {}}},
+        429: {"description": "Failed response (try again later to request a new verification)"},
+    })
+async def sp_profile_emailverify(
+        request: Request,
+        session_data: datatypes.SessionData,
+    ):
     pass

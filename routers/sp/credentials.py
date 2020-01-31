@@ -40,9 +40,9 @@ async def sp_password(
         })
     return
 
-@router.post("/password", include_in_schema=True, status_code=204, responses={
+@router.post("/password", include_in_schema=True, status_code=200, responses={
         303: {"description": "Successful response (for end users)", "content": {"text/html": {}}},
-        204: {"content": {"application/json": {}}},
+        200: {"content": {"application/json": {}}},
         400: {"description": "Failed response"},
     })
 async def sp_password_update(
@@ -73,7 +73,7 @@ async def sp_password_update(
         raise
 
     if 'application/json' in request.headers['accept']:
-        return Response(status_code=204)
+        return Response(status_code=200)
     else:
         return RedirectResponse(request.url_for('sp_password')+"?updated=1", status_code=303)
 

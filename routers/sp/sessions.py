@@ -74,9 +74,9 @@ async def sp_sessions_json(
 
     return [datatypes.KeycloakSessionItem.parse_obj(r) for r in sessions]
 
-@router.post("/logout", include_in_schema=True, status_code=204, responses={
+@router.post("/logout", include_in_schema=True, status_code=200, responses={
         303: {"description": "Successful response (for end users)", "content": {"text/html": {}}},
-        204: {"content": {"application/json": {}}}
+        200: {"content": {"application/json": {}}}
     })
 async def sp_sessions_logout(
         request: Request,
@@ -90,7 +90,7 @@ async def sp_sessions_logout(
         raise HTTPException(status_code=500, detail=str(result))
     # success
     if 'application/json' in request.headers['accept']:
-        return Response(status_code=204)
+        return Response(status_code=200)
     else:
         return RedirectResponse(request.url_for('sp_sessions')+"?updated=1", status_code=303)
         # 303 to force POST to convert to GET
