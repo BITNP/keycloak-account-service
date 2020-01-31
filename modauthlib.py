@@ -133,7 +133,7 @@ class BITNPFastAPICSRFAddon:
         # print(token)
 
         # ignore CSRF token check if Accept header is correctly set
-        if 'application/json' in request.headers['accept']:
+        if request.state.response_type.is_json():
             return True
         if not token or not token == self.get_csrf_token(request):
             return False

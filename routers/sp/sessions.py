@@ -28,7 +28,7 @@ async def sp_sessions(
     updated = request.query_params.get('updated', False)
 
     sessions = await sp_sessions_json(request=request, session_data=session_data, order_by=order_by)
-    if 'application/json' in request.headers['accept']:
+    if request.state.response_type.is_json():
         return sessions
     else:
         return request.app.state.templates.TemplateResponse("sp-sessions.html.jinja2", {
@@ -89,7 +89,7 @@ async def sp_sessions_logout(
     if result is not True:
         raise HTTPException(status_code=500, detail=str(result))
     # success
-    if 'application/json' in request.headers['accept']:
+    if request.state.response_type.is_json():
         return Response(status_code=200)
     else:
         return RedirectResponse(request.url_for('sp_sessions')+"?updated=1", status_code=303)

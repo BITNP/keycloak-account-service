@@ -2,6 +2,8 @@ from pydantic import BaseModel, BaseSettings, IPvAnyAddress, validator, root_val
 from datetime import datetime, tzinfo, timezone, timedelta
 from typing import Union, List, Dict, Any, Optional, ForwardRef
 from collections import UserDict
+from enum import Enum
+from starlette.requests import Request
 
 
 class Settings(BaseSettings):
@@ -227,6 +229,21 @@ class SessionRefreshData(BaseModel):
     expires_at: datetime
 
 SessionItem = Union[SessionData, SessionExpiringData, SessionRefreshData]
+
+
+class BITNPResponseType(Enum):
+    json = 'json'
+    html = 'html'
+
+    def is_json(self) -> bool:
+        return self == self.json
+
+    @staticmethod
+    def from_request(request: Request) -> 'BITNPResponseType':
+        if 'application/json' in request.headers['accept']:
+            return BITNPResponseType.json
+        else:
+            return BITNPResponseType.html
 
 
 Settings.update_forward_refs()

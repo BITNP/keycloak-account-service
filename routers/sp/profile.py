@@ -22,7 +22,7 @@ async def sp_profile(
     prefer_onename = request.query_params.get('prefer_onename', False)
     updated = request.query_params.get('updated', False)
     profile = await sp_profile_json(request=request, session_data=session_data)
-    if 'application/json' in request.headers['accept']:
+    if request.state.response_type.is_json():
         return profile
     else:
         return request.app.state.templates.TemplateResponse("sp-profile.html.jinja2", {
@@ -75,7 +75,7 @@ async def sp_profile_update(
             raise RequestValidationError(errors=e.raw_errors)
 
     result = await sp_profile_update_json(request=request, profile=profile, session_data=session_data)
-    if 'application/json' in request.headers['accept']:
+    if request.state.response_type.is_json():
         return profile
     else:
         return RedirectResponse(request.url_for('sp_profile')+"?updated=1", status_code=303)

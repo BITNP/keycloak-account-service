@@ -64,19 +64,24 @@ app.state.templates.env.filters["local_timestring"] = (
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_accept_handler(request, exc):
-    if 'application/json' in request.headers['accept']:
+    if request.state.response_type.is_json():
         return await http_exception_handler(request, exc)
     else:
         return PlainTextResponse(f"{exc.status_code} {exc.detail}", status_code=exc.status_code)
 
 @app.exception_handler(OAuthError)
 async def oauth_exception_handler(request, exc):
-    if 'application/json' in request.headers['accept']:
+    if request.state.response_type.is_json():
         return JSONResponse(
             {"detail": exc.description}, status_code=500
         )
     else:
         return PlainTextResponse(f"{exc.error}: {exc.description}", status_code=500)
+
+@app.middleware("http")
+async def add_response_type_hint(request: Request, call_next):
+    request.state.response_type = datatypes.BITNPResponseType.from_request(request)
+    return await call_next(request)
 
 
 @router.get("/", include_in_schema=False)
@@ -103,6 +108,7 @@ async def activate_phpcas_landing(request: Request):
 
 @router.get("/assistance/", include_in_schema=False)
 async def assistance_landing(request: Request):
+    # https://login-test.bitnp.net/auth/realms/master/login-actions/reset-credentials?client_id=account
     return request.app.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
 
 
@@ -167,11 +173,11 @@ async def logout(request: Request):
         return RedirectResponse(url+"?"+urlencode({"post_logout_redirect_uri": request.url_for('index')}))
 
 
-@router.get("/tos/", response_model=datatypes.TOSData, responses={
+@router.get("/tos", response_model=datatypes.TOSData, responses={
         200: {"content": {"text/html": {}}}
     })
 async def tos(request: Request, templates: TemplateService = Depends()):
-    if 'application/json' in request.headers['accept']:
+    if request.state.response_type.is_json():
         return datatypes.TOSData(html=
             templates.TemplateResponse("tos-content.html.jinja2").body
         )

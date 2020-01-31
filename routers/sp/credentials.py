@@ -21,7 +21,7 @@ async def sp_password(
         headers={'Accept': 'application/json'}
     )
     data = datatypes.PasswordInfo.parse_obj(resp.json())
-    if 'application/json' in request.headers['accept']:
+    if request.state.response_type.is_json():
         return data
     else:
         updated = request.query_params.get('updated')
@@ -69,7 +69,7 @@ async def sp_password_update(
     try:
         result = await sp_password_update_json(request=request, pwupdate=pwupdate, session_data=session_data)
     except HTTPException as e:
-        if ('application/json' not in request.headers['accept']):
+        if not request.state.response_type.is_json():
             if e.detail.get('errorMessage') == 'invalidPasswordExistingMessage':
                 incorrect = "旧密码错误，请重试，如忘记旧密码请点击下方重设密码。"
             else:
@@ -84,7 +84,7 @@ async def sp_password_update(
             }, status_code=400)
         raise
 
-    if 'application/json' in request.headers['accept']:
+    if request.state.response_type.is_json():
         return Response(status_code=200)
     else:
         return RedirectResponse(request.url_for('sp_password')+"?updated=1", status_code=303)
