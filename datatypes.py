@@ -240,7 +240,7 @@ class BITNPResponseType(Enum):
 
     @staticmethod
     def from_request(request: Request) -> 'BITNPResponseType':
-        if 'application/json' in request.headers['accept']:
+        if 'application/json' in request.headers.get('accept', ''):
             return BITNPResponseType.json
         else:
             return BITNPResponseType.html
