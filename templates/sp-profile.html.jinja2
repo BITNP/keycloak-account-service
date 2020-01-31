@@ -48,6 +48,7 @@
                     </div>
                     {% endif %}
                     <button type="submit" class="btn btn-primary">保存</button>
+                    <button type="reset" class="btn btn-light">重填</button>
                     <a href="{{ url_for('sp_password') }}" class="btn btn-link">修改密码</a>
                     <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">
                 </form>

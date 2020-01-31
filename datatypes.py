@@ -1,4 +1,4 @@
-from pydantic import BaseModel, BaseSettings, IPvAnyAddress, validator, conlist, Field, MissingError
+from pydantic import BaseModel, BaseSettings, IPvAnyAddress, validator, root_validator, conlist, Field, MissingError
 from datetime import datetime, tzinfo, timezone, timedelta
 from typing import Union, List, Dict, Any, Optional, ForwardRef
 from collections import UserDict
@@ -135,6 +135,21 @@ class ProfileUpdateInfo(BaseModel):
             raise MissingError
         return v
 
+class PasswordInfo(BaseModel):
+    registered: bool = None
+    lastUpdate: datetime = None # created date, not updated date
+
+class PasswordUpdateRequest(BaseModel):
+    currentPassword: str
+    newPassword: str
+    confirmation: str
+
+    @root_validator
+    def check_passwords_match(cls, values):
+        pw1, pw2 = values.get('newPassword'), values.get('confirmation')
+        if pw1 is not None and pw2 is not None and pw1 != pw2:
+            raise ValueError('Psswords do not match')
+        return values
 
 class KeycloakSessionClient(BaseModel):
     clientId: str

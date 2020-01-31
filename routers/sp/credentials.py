@@ -1,7 +1,7 @@
 from fastapi import Depends, APIRouter, Form, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
+from starlette.responses import Response, RedirectResponse
 import datatypes
 from pydantic import ValidationError
 
@@ -9,21 +9,88 @@ from modauthlib import BITNPSessionFastAPIApp
 
 router = APIRouter()
 
-@router.get("/password", include_in_schema=True)
+@router.get("/password", include_in_schema=True, response_model=datatypes.PasswordInfo)
 async def sp_password(
         request: Request,
-        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session)
+        csrf_field: tuple = Depends(BITNPSessionFastAPIApp.deps_get_csrf_field),
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session),
     ):
     resp = await request.app.state.app_session.oauth_client.get(
         request.app.state.config.keycloak_accountapi_url+'credentials/password',
         token=session_data.to_tokens(),
         headers={'Accept': 'application/json'}
     )
-    return resp.json()
+    data = datatypes.PasswordInfo.parse_obj(resp.json())
+    if 'application/json' in request.headers['accept']:
+        return data
+    else:
+        updated = request.query_params.get('updated')
+        incorrect = request.query_params.get('incorrect')
+        if data.registered is False:
+            # Redirect to assistance page since they don't have a current password
+            # which accountapi requires
+            return RedirectResponse(request.url_for('assistance_landing'))
+        return request.app.state.templates.TemplateResponse("sp-password.html.jinja2", {
+            "request": request,
+            "name": session_data.username,
+            "signed_in": True,
+            "csrf_field": csrf_field,
+            "updated": updated,
+            "incorrect": incorrect,
+        })
+    return
 
-async def sp_password_update():
-    pass
+@router.post("/password", include_in_schema=True, status_code=204, responses={
+        303: {"description": "Successful response (for end users)", "content": {"text/html": {}}},
+        204: {"content": {"application/json": {}}},
+        400: {"description": "Failed response"},
+    })
+async def sp_password_update(
+        request: Request,
+        pwupdate: datatypes.PasswordUpdateRequest = None,
+        currentPassword: str = Form(...),
+        newPassword: str = Form(...),
+        confirmation: str = Form(...),
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session),
+        csrf_valid: bool = Depends(BITNPSessionFastAPIApp.deps_requires_csrf_posttoken),
+    ):
+    if not pwupdate:
+        try:
+            pwupdate = datatypes.PasswordUpdateRequest(
+                currentPassword=currentPassword,
+                newPassword=newPassword,
+                confirmation=confirmation,
+            )
+        except ValidationError as e:
+            raise RequestValidationError(errors=e.raw_errors)
 
-async def sp_password_update_json():
-    # {currentPassword, newPassword, confirmation}
-    pass
+
+    try:
+        result = await sp_password_update_json(request=request, pwupdate=pwupdate, session_data=session_data)
+    except HTTPException as e:
+        if e.detail.get('errorMessage') == 'invalidPasswordExistingMessage' and ('application/json' not in request.headers['accept']):
+            return RedirectResponse(request.url_for('sp_password')+"?incorrect=1", status_code=303)
+        raise
+
+    if 'application/json' in request.headers['accept']:
+        return Response(status_code=204)
+    else:
+        return RedirectResponse(request.url_for('sp_password')+"?updated=1", status_code=303)
+
+async def sp_password_update_json(
+        request: Request,
+        pwupdate: datatypes.PasswordUpdateRequest,
+        session_data: datatypes.SessionData
+    ):
+    resp = await request.app.state.app_session.oauth_client.post(
+        request.app.state.config.keycloak_accountapi_url+'credentials/password',
+        token=session_data.to_tokens(),
+        data=pwupdate.json(),
+        headers={'Accept': 'application/json', 'Content-Type': 'application/json'}
+    )
+    if resp.status_code == 200:
+        # success
+        return True
+    else:
+        detail = resp.json()
+        raise HTTPException(status_code=resp.status_code, detail=detail)
