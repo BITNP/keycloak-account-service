@@ -9,7 +9,7 @@
         </nav>
         {% if updated %}<div class="alert alert-success" role="alert">资料已保存。</div>{% endif %}
         <div class="row">
-            <div class="col-12 col-lg-8 offset-lg-2 mb-3">
+            <div class="col-12 col-lg-6 offset-lg-3 mb-3">
                 <form action="{{ url_for('sp_profile') }}" method="POST" enctype="application/x-www-form-urlencoded">
                     <div class="form-group">
                         <label for="username">用户名 <span class="required">*</span></label>
