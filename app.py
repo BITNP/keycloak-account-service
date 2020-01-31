@@ -8,7 +8,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.exception_handlers import http_exception_handler
 import datatypes
 from utils import TemplateService
-from routers import sp, publicsvc, assistance
+from routers import sp, admin
+from routers import publicsvc, assistance, register, migrate_phpcas
 
 from authlib.integrations.starlette_client import OAuth
 from authlib.integrations.httpx_client import OAuthError, AsyncOAuth2Client
@@ -84,78 +85,18 @@ async def add_response_type_hint(request: Request, call_next):
     return await call_next(request)
 
 
-@router.get("/activate-phpcas/", include_in_schema=False)
-async def phpcas_migrate_landing(request: Request):
-    return request.app.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
-
-@router.get("/admin/", include_in_schema=False)
-async def admin_landing(
-        request: Request,
-        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session)
-    ):
-    return request.app.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
-
-
-@router.get("/admin/groups", include_in_schema=True)
-async def admin_groups(
-        request: Request,
-        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session)
-    ):
-    client: AsyncOAuth2Client
-    async with request.app.state.app_session.get_service_account_oauth_client() as client:
-        resp = await client.get(request.app.state.config.keycloak_adminapi_url+'groups',
-            headers={'Accept': 'application/json'})
-        return resp.json()
-
-@router.get("/admin/roles/{role_name}/groups", include_in_schema=True)
-async def admin_groups(
-        request: Request,
-        role_name: str = Path(..., regex="^[A-Za-z0-9-_]+$"),
-        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session)
-    ):
-    resp = await request.app.state.app_session.oauth_client.get(
-        request.app.state.config.keycloak_adminapi_url+'roles/'+role_name+'/groups',
-        token=session_data.to_tokens(),
-        headers={'Accept': 'application/json'}
-    )
-    return resp.json()
-
-@router.get("/admin/client-roles/{role_name}/groups", include_in_schema=True)
-async def admin_groups(
-        request: Request,
-        role_name: str = Path(..., regex="^[A-Za-z0-9-_]+$"),
-        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session)
-    ):
-    resp = await request.app.state.app_session.oauth_client.get(
-        request.app.state.config.keycloak_adminapi_url+'clients/3513512c-c67b-4fc4-a540-939d1d29c12c/roles/'+role_name+'/groups',
-        token=session_data.to_tokens(),
-        headers={'Accept': 'application/json'}
-    )
-    return resp.json()
-
-@router.get("/admin/users", include_in_schema=True)
-async def admin_groups(
-        request: Request,
-        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session)
-    ):
-    client: AsyncOAuth2Client
-    async with request.app.state.app_session.get_service_account_oauth_client() as client:
-        resp = await client.get(request.app.state.config.keycloak_adminapi_url+'users?briefRepresentation=true',
-            headers={'Accept': 'application/json'})
-        return resp.json()
-
-@router.get("/register/", include_in_schema=False)
-async def register_landing(request: Request):
-    return request.app.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
-
-
 app.include_router(router)
 app.include_router(publicsvc.router)
 app.include_router(assistance.router)
+app.include_router(register.router)
+app.include_router(migrate_phpcas.router)
 app.include_router(sp.landing.router, prefix='/sp', dependencies=[Depends(BITNPSessionFastAPIApp.deps_session_data)])
 app.include_router(sp.profile.router, prefix='/sp/profile', dependencies=[Depends(BITNPSessionFastAPIApp.deps_session_data)])
 app.include_router(sp.credentials.router, prefix='/sp/credentials', dependencies=[Depends(BITNPSessionFastAPIApp.deps_session_data)])
 app.include_router(sp.sessions.router, prefix='/sp/sessions', dependencies=[Depends(BITNPSessionFastAPIApp.deps_session_data)])
+app.include_router(admin.groups.router, prefix='/admin', dependencies=[Depends(BITNPSessionFastAPIApp.deps_requires_admin_session)])
+app.include_router(admin.users.router, prefix='/admin', dependencies=[Depends(BITNPSessionFastAPIApp.deps_requires_admin_session)])
+
 
 if __name__ == "__main__":
     import uvicorn
