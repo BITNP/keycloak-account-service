@@ -102,7 +102,7 @@ async def index(request: Request,
 
 
 @router.get("/activate-phpcas/", include_in_schema=False)
-async def activate_phpcas_landing(request: Request):
+async def phpcas_migrate_landing(request: Request):
     return request.app.state.templates.TemplateResponse("index.html.jinja2", {"request": request})
 
 

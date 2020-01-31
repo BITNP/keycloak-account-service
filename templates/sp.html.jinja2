@@ -8,10 +8,14 @@
             <div class="col mb-4"><div class="card h-100">
                 <div class="card-body position-relative border-bottom">
                     <div class="row mb-2">
-                        <h5 class="card-title col">个人资料</h5>
+                        <h5 class="card-title col">&#x1F9D1; 个人资料</h5>
                         <div class="col-auto mt-n1"><a href="{{ url_for("sp_profile") }}" class="btn btn-outline-primary btn-sm ml-2">修改</a></div>
                     </div>
                     <div class="card-text">
+                        <dl class="row mb-0">
+                            <dt class="col-4">用户名</dt>
+                            <dd class="col">{{ profile.username | default('', true) }}</dd>
+                        </dl>
                         <dl class="row mb-0">
                             <dt class="col-4">姓名</dt>
                             <dd class="col">{{ profile.name | default('', true) }}</dd>
@@ -26,7 +30,7 @@
             <div class="col mb-4"><div class="card h-100">
                 <div class="card-body position-relative border-bottom">
                     <div class="row mb-2">
-                        <h5 class="card-title col">权限信息</h5>
+                        <h5 class="card-title col">&#x1F513; 权限信息</h5>
                         <!--<div class="col-auto mt-n1"><a href="{{ url_for("sp_permission") }}" class="btn btn-outline-primary btn-sm ml-2">查看</a></div>-->
                     </div>
                     <div class="card-text">
@@ -53,13 +57,14 @@
                                 {% endfor %}
                             </dd>
                         </dl>
+                        <small class="text-muted">错误更正请联系管理层 / 技术保障中心。</small>
                     </div>
                 </div>
             </div></div>
             <div class="col mb-4"><div class="card h-100">
                 <div class="card-body position-relative border-bottom">
                     <div class="row mb-2">
-                        <h5 class="card-title col">在线情况 {% if sessions_count %}<span class="badge badge-secondary badge-pill">{{ sessions_count }}</span>{% endif %}</h5>
+                        <h5 class="card-title col">&#x1F4BB; 在线情况 {% if sessions_count %}<span class="badge badge-secondary badge-pill">{{ sessions_count }}</span>{% endif %}</h5>
                         <div class="col-auto mt-n1"><a href="{{ url_for("sp_sessions") }}" class="btn btn-outline-primary btn-sm ml-2">查看</a></div>
                     </div>
                     <!--<p class="card-text"></p>-->
@@ -68,7 +73,7 @@
             </div></div>
             <div class="col mb-4"><div class="card h-100">
                 <div class="card-body position-relative border-bottom">
-                    <h5 class="card-title">登录方式</h5>
+                    <h5 class="card-title">&#x1F511; 登录方式</h5>
                 </div>
                 <div class="list-group list-group-flush">
                     <a href="{{ url_for('sp_password') }}" class="list-group-item list-group-item-action">修改密码</a>
@@ -78,7 +83,7 @@
             <div class="col mb-4"><div class="card h-100">
                 <div class="card-body position-relative border-bottom">
                     <div class="row mb-2">
-                        <h5 class="card-title col">应用集成</h5>
+                        <h5 class="card-title col">&#x1F517; 应用集成</h5>
                         <div class="col-auto mt-n1"></div>
                     </div>
                 </div>
@@ -90,7 +95,7 @@
             {% if is_admin %}
             <div class="col mb-4"><div class="card h-100">
                 <div class="card-body position-relative border-bottom">
-                    <h5 class="card-title">IAM 管理</h5>
+                    <h5 class="card-title">&#x1F468;&zwj;&#x1F4BB; IAM 管理</h5>
                     <p class="card-text">除了在 Keycloak 进行配置外，也可通过本系统进行辅助管理。</p>
                 </div>
                 <div class="list-group list-group-flush">
