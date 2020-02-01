@@ -44,11 +44,13 @@ async def sp_sessions_json(
         request: Request,
         session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session),
         order_by: str = 'default',
+        timeout: int = 5,
     ) -> datatypes.KeycloakSessionInfo:
     resp = await request.app.state.app_session.oauth_client.get(
         request.app.state.config.keycloak_accountapi_url+'sessions/devices',
         token=session_data.to_tokens(),
-        headers={'Accept': 'application/json'}
+        headers={'Accept': 'application/json'},
+        timeout=timeout,
     )
     devices: list = resp.json()
     sessions: list = []

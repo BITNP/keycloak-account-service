@@ -27,6 +27,43 @@
                     </div>
                 </div>
             </div></div>
+
+            <div class="col mb-4"><div class="card h-100">
+                <div class="card-body position-relative border-bottom">
+                    <h5 class="card-title">&#x1F3E2; 对内应用</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="https://jira.bitnp.net/" class="list-group-item list-group-item-action">JIRA</a>
+                    <a href="https://git.bitnp.net/" class="list-group-item list-group-item-action">GitLab</a>
+                </div>
+            </div></div>
+            <div class="col mb-4"><div class="card h-100">
+                <div class="card-body position-relative border-bottom">
+                    <h5 class="card-title">&#x1F310; 对外业务</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="https://clinic.bitnp.net/manage/" class="list-group-item list-group-item-action">电脑诊所（部员）</a>
+                </div>
+            </div></div>
+            <div class="col mb-4"><div class="card h-100">
+                <div class="card-body position-relative border-bottom">
+                    <h5 class="card-title">&#x1F511; 登录方式</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{{ url_for('sp_password') }}" class="list-group-item list-group-item-action">修改密码</a>
+                    <button class="list-group-item list-group-item-action" disabled>两步认证（敬请期待）</button>
+                </div>
+            </div></div>
+            <div class="col mb-4"><div class="card h-100">
+                <div class="card-body position-relative border-bottom">
+                    <div class="row mb-2">
+                        <h5 class="card-title col">&#x1F4BB; 在线情况 {% if sessions_count %}<span class="badge badge-secondary badge-pill">{{ sessions_count }}</span>{% endif %}</h5>
+                        <div class="col-auto mt-n1"><a href="{{ url_for("sp_sessions") }}" class="btn btn-outline-primary btn-sm ml-2">查看</a></div>
+                    </div>
+                    <!--<p class="card-text"></p>-->
+                    <p class="card-text">{{ sessions_desc }}</p>
+                </div>
+            </div></div>
             <div class="col mb-4"><div class="card h-100">
                 <div class="card-body position-relative border-bottom">
                     <div class="row mb-2">
@@ -61,49 +98,42 @@
                     </div>
                 </div>
             </div></div>
+        </div>
+        {% if is_master %}
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3">
             <div class="col mb-4"><div class="card h-100">
-                <div class="card-body position-relative border-bottom">
-                    <div class="row mb-2">
-                        <h5 class="card-title col">&#x1F4BB; 在线情况 {% if sessions_count %}<span class="badge badge-secondary badge-pill">{{ sessions_count }}</span>{% endif %}</h5>
-                        <div class="col-auto mt-n1"><a href="{{ url_for("sp_sessions") }}" class="btn btn-outline-primary btn-sm ml-2">查看</a></div>
-                    </div>
-                    <!--<p class="card-text"></p>-->
-                    <p class="card-text">{{ sessions_desc }}</p>
-                </div>
-            </div></div>
-            <div class="col mb-4"><div class="card h-100">
-                <div class="card-body position-relative border-bottom">
-                    <h5 class="card-title">&#x1F511; 登录方式</h5>
-                </div>
-                <div class="list-group list-group-flush">
-                    <a href="{{ url_for('sp_password') }}" class="list-group-item list-group-item-action">修改密码</a>
-                    <button class="list-group-item list-group-item-action" disabled>两步认证（敬请期待）</button>
-                </div>
-            </div></div>
-            <div class="col mb-4"><div class="card h-100">
-                <div class="card-body position-relative border-bottom">
-                    <div class="row mb-2">
-                        <h5 class="card-title col">&#x1F517; 应用集成</h5>
-                        <div class="col-auto mt-n1"></div>
-                    </div>
-                </div>
-                <div class="list-group list-group-flush">
-                    <a href="https://jira.bitnp.net/" class="list-group-item list-group-item-action">JIRA</a>
-                    <a href="https://git.bitnp.net/" class="list-group-item list-group-item-action">GitLab</a>
+                <div class="card-body">
+                    <h5 class="card-title">&#x1F465; 群组成员</h5>
+                    <p class="card-text">管理组成员、获取邀请注册链接。</p>
+                    <a href="#" class="card-link">Card link</a>
                 </div>
             </div></div>
             {% if is_admin %}
             <div class="col mb-4"><div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">&#x1F91D; 群组映射</h5>
+                    <p class="card-text">换届时可通过本模块辅助维护成员身份所属的群组。</p>
+                    <a href="#" class="btn btn-outline-primary stretched-link">群组映射</a>
+                </div>
+            </div></div>
+            <div class="col mb-4"><div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">&#x1F517; 用户集成</h5>
+                    <p class="card-text">查询并维护用户信息与 LDAP 等系统的同步状态。</p>
+                    <a href="#" class="btn btn-outline-primary stretched-link">查询用户集成</a>
+                </div>
+            </div></div>
+            <div class="col mb-4"><div class="card h-100">
                 <div class="card-body position-relative border-bottom">
                     <h5 class="card-title">&#x1F468;&zwj;&#x1F4BB; IAM 管理</h5>
-                    <p class="card-text">除了在 Keycloak 进行配置外，也可通过本系统进行辅助管理。</p>
+                    <p class="card-text">一些高级操作需要在 Keycloak 进行配置。</p>
                 </div>
                 <div class="list-group list-group-flush">
-                    <a href="{{ url_for('admin_landing') }}" class="list-group-item list-group-item-action list-group-item-primary">管理工具</a>
-                    <a href="{{ keycloak_admin_url }}" class="list-group-item list-group-item-action">Keycloak</a>
+                    <a href="{{ keycloak_admin_url }}" class="list-group-item list-group-item-action">Keycloak 管理</a>
                 </div>
             </div></div>
             {% endif %}
         </div>
+        {% endif %}
     </div>
 {% endblock %}

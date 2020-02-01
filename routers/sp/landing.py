@@ -17,6 +17,7 @@ async def sp_landing(request: Request,
         "request": request,
         "name": session_data.username,
         "is_admin": session_data.is_admin(),
+        "is_master": session_data.is_master(),
         "signed_in": True,
         "keycloak_admin_url": request.app.state.config.keycloak_admin_url,
         "permission": await sp_permission(request=request, session_data=session_data),
@@ -25,7 +26,7 @@ async def sp_landing(request: Request,
 
     # Remote
     try:
-        tdata["sessions"] = (await sp_sessions_json(request=request, session_data=session_data))
+        tdata["sessions"] = (await sp_sessions_json(request=request, session_data=session_data, timeout=1))
         tdata['sessions_count'] = len(tdata['sessions'])
     except Exception as e:
         tdata["sessions"] = None
@@ -58,9 +59,3 @@ async def sp_permission(
         = request.app.state.config.group_config.filter_active_groups(pub_memberof)
     permission_dict['has_active_role'] = request.app.state.config.role_active_name in session_data.realm_roles
     return datatypes.PermissionInfo(**permission_dict)
-
-@router.get("/applications", include_in_schema=True)
-async def sp_applications(
-        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session)
-    ):
-    return {}
