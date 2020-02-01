@@ -5,6 +5,7 @@ import datatypes
 from modauthlib import BITNPSessionFastAPIApp
 from .profile import sp_profile_json
 from .sessions import sp_sessions_json
+from ..admin.groups import admin_delegated_groups_list_json
 from utils import local_timestring
 
 router = APIRouter()
@@ -44,6 +45,12 @@ async def sp_landing(request: Request,
         tdata['sessions_desc'] = '你目前没有在其它位置登录。'
     else:
         tdata['sessions_desc'] = '查看你在其它设备的登录情况并远程下线。'
+
+    # Admin
+    if tdata['is_admin']:
+        admin_groups = admin_delegated_groups_list_json(request=request, session_data=session_data)
+        tdata['admin_groups'] = admin_groups
+
     return request.app.state.templates.TemplateResponse("sp.html.jinja2", tdata)
 
 @router.get("/permission", include_in_schema=True, response_model=datatypes.PermissionInfo)
@@ -51,9 +58,9 @@ async def sp_permission(
     request: Request,
     session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session)
     ) -> datatypes.PermissionInfo:
-    pub_memberof = session_data.memberof.copy()
-    for item in pub_memberof:
-        item.internal_note = None
+    pub_memberof = list()
+    for item in session_data.memberof:
+        pub_memberof.append(item.copy(exclude=('internal_note',)))
     permission_dict = session_data.dict()
     permission_dict['active_groups'], permission_dict['memberof'] \
         = request.app.state.config.group_config.filter_active_groups(pub_memberof)
