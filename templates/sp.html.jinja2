@@ -103,8 +103,10 @@
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3">
             <div class="col mb-4"><div class="card h-100">
                 <div class="card-body">
-                    <h5 class="card-title">&#x1F465; 群组成员</h5>
-                    <p class="card-text">管理组成员、获取邀请注册链接。</p>
+                    <div class="position-relative mb-3">
+                        <h5 class="card-title"><a href="{{ url_for('admin_delegated_groups_get') }}" class="text-reset text-decoration-none stretched-link">&#x1F465; 群组成员</a></h5>
+                        <p class="card-text">管理组成员、获取邀请注册链接。</p>
+                    </div>
 
                     {% for group in admin_groups %}
                     <a href="{{ url_for('admin_delegated_groups_get')+'?path=' }}{{ group.path | urlencode }}" class="mr-2 d-inline-block" title="{{ group.internal_note | default('', true) }}">{{ group.name }}</a>

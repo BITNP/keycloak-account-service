@@ -10,15 +10,33 @@ from operator import attrgetter
 router = APIRouter()
 
 
-@router.get("/delegated-groups", include_in_schema=True)
+@router.get("/delegated-groups", include_in_schema=True, response_model=List[datatypes.GroupItem])
 async def admin_delegated_groups_get(
         request: Request,
         path: str = None,
         session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session),
     ):
-    return ''
+    grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
+    if path is None:
+        if request.state.response_type.is_json():
+            return grouplist
+        else:
+            return request.app.state.templates.TemplateResponse("admin-delegatedgroup-list.html.jinja2", {
+                "request": request,
+                "groups": grouplist,
+            })
+    else:
+        # check if path is inside grouplist
+        return None
 
 def guess_active_ns(session_data: datatypes.SessionData, group_config: datatypes.GroupConfig) -> Tuple[str, str]:
+    """
+    Guess active_ns by checking the last available year in status groups.
+    Since session_data is usually admin, we assume that they have latest affiliation.
+
+    e.g. I have `/bitnp/active-2018/master, /bitnp/active-2019/alumni`,
+    then 2019 is the guessed active_ns.
+    """
     pub_memberof = session_data.memberof
     active_groups, _ = group_config.filter_active_groups(pub_memberof)
     active_groups.sort(key=attrgetter('path'), reverse=True)
@@ -30,6 +48,13 @@ def guess_active_ns(session_data: datatypes.SessionData, group_config: datatypes
         + year + '/', year)
 
 def guess_group_item(name: str, group_config: datatypes.GroupConfig) -> datatypes.GroupItem:
+    """
+    Guess group item from name, by comparing the suffix.
+
+    e.g. group_config=[`/bitnp/iam-admin`], name=`iam-admin`, then match.
+
+    If there are multiple results, see if we could match one but only one @active/, or return None.
+    """
     ret = list()
     item: datatypes.GroupItem
     for item in group_config.values():
@@ -84,7 +109,7 @@ async def admin_groups(
         return resp.json()
 
 @router.get("/roles/{role_name}/groups", include_in_schema=True)
-async def admin_groups(
+async def admin_role_groups(
         request: Request,
         role_name: str = Path(..., regex="^[A-Za-z0-9-_]+$"),
         session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session)
@@ -97,7 +122,7 @@ async def admin_groups(
     return resp.json()
 
 @router.get("/client-roles/{role_name}/groups", include_in_schema=True)
-async def admin_groups(
+async def admin_client_role_groups(
         request: Request,
         role_name: str = Path(..., regex="^[A-Za-z0-9-_]+$"),
         session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session)
