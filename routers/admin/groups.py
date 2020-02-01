@@ -95,13 +95,22 @@ async def admin_delegated_groups_detail_json(
     # May be None if no nonce is set up
     current_group.invitation_link = invitation.get_invitation_link(group=current_group, request=request)
 
-    # get group direct users
-    async with request.app.state.app_session.get_service_account_oauth_client() as client:
-        resp = await client.get(request.app.state.config.keycloak_adminapi_url+'groups/'+current_group.id+'/members',
-            headers={'Accept': 'application/json'}, params={'briefRepresentation':1})
-        current_group.members = resp.json()
+    # get group direct users - first 100
+    current_group.members = await _admin_groups_members_json(request=request, id=current_group.id)
 
     return current_group
+
+async def _admin_groups_members_json(
+        request: Request,
+        id: str,
+        first: int = 0,
+        briefRepresentation: bool = True
+    ) -> list:
+    # This method DOES NOT authenticate at all; use with caution
+    async with request.app.state.app_session.get_service_account_oauth_client() as client:
+        resp = await client.get(request.app.state.config.keycloak_adminapi_url+'groups/'+id+'/members',
+            headers={'Accept': 'application/json'}, params={'briefRepresentation':True, 'first': first})
+        return resp.json()
 
 
 async def admin_delegated_groups_user_add():
