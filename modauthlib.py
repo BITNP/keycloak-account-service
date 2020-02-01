@@ -312,10 +312,11 @@ class BITNPSessionFastAPIApp(BITNPFastAPICSRFAddon):
         jti = request.session.pop('bearer_jti', None)
         if jti:
             session_data = await self.get_session(jti)
-            session_data.access_token_expires_at = datetime.utcnow()
-            session_data.refresh_token = '' # force sign-in through OIDC flow
-            await self.session_cache.set(jti, session_data)
-        return session_data.access_token if jti else None
+            if session_data:
+                session_data.access_token_expires_at = datetime.utcnow()
+                session_data.refresh_token = '' # force sign-in through OIDC flow
+                await self.session_cache.set(jti, session_data)
+        return session_data.access_token if (jti and session_data) else None
 
     # Usage: Depends(app_session.deps_session_data)
     @staticmethod
