@@ -2,6 +2,7 @@ from fastapi import Depends, APIRouter, Path, HTTPException
 from starlette.requests import Request
 
 import datatypes
+import invitation
 from modauthlib import BITNPSessionFastAPIApp
 from utils import TemplateService
 from typing import List, Tuple
@@ -30,44 +31,87 @@ async def admin_delegated_groups_get(
                 "signed_in": True,
             })
     else:
-        # check if path is inside allowed grouplist - some ACL control
-        current_groups = list(filter(lambda g: g.path == path, grouplist))
-        if len(current_groups) != 1:
-            raise HTTPException(status_code=403, detail="The path is not in the group list that you are allowed to access")
+        # detail page
+        current_group = await admin_delegated_groups_detail_json(request, grouplist, path, session_data)
+        if request.state.response_type.is_json():
+            return [grouplist]
+        else:
+            return request.app.state.templates.TemplateResponse("admin-delegatedgroup-detail.html.jinja2", {
+                "request": request,
+                "group": current_group,
+                "name": session_data.username,
+                "is_admin": session_data.is_admin(),
+                "is_master": session_data.is_master(),
+                "signed_in": True,
+            })
 
-        current_group = current_groups[0]
-        # @managerof- parsing
-        if current_group.path.startswith("@managerof-"):
-            role_name = current_group.path[1:]
-            try:
-                async with request.app.state.app_session.get_service_account_oauth_client() as client:
-                    resp = await client.get(request.app.state.config.keycloak_adminapi_url+'clients/'+request.app.state.config.keycloak_client_uuid+'/roles/'+role_name,
-                        headers={'Accept': 'application/json'})
-                    groupNS = resp.json().get('attributes').get('groupNS')[0]
-                # Merge from group_config
-                # it's possible that this groupNS is not in group_config
-                # this case we should proceed and reuse the previous group_config
-                group_info = request.app.state.config.group_config.get(groupNS)
-                if group_info:
-                    current_group = group_info
-                else:
-                    current_group.path = groupNS
-            except Exception as e:
-                print(e)
-                raise HTTPException(status_code=500, detail="Cannot get group information based on your role")
+async def admin_delegated_groups_detail_json(
+        request: Request,
+        grouplist: List[datatypes.GroupItem],
+        path: str = None,
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session),
+    ) -> datatypes.GroupItem:
+    # check if path is inside allowed grouplist - some ACL control
+    current_groups = list(filter(lambda g: g.path == path, grouplist))
+    if len(current_groups) != 1:
+        raise HTTPException(status_code=403, detail="The path is not in the group list that you are allowed to access")
 
-        # get group invitation token
+    current_group = current_groups[0]
+    # @managerof- parsing
+    if current_group.path.startswith("@managerof-"):
+        role_name = current_group.path[1:]
+        try:
+            async with request.app.state.app_session.get_service_account_oauth_client() as client:
+                resp = await client.get(request.app.state.config.keycloak_adminapi_url+'clients/'+request.app.state.config.keycloak_client_uuid+'/roles/'+role_name,
+                    headers={'Accept': 'application/json'})
+                groupNS = resp.json().get('attributes').get('groupNS')[0]
+            # Merge from group_config
+            # it's possible that this groupNS is not in group_config
+            # this case we should proceed and reuse the previous group_config
+            group_info = request.app.state.config.group_config.get(groupNS)
+            if group_info:
+                current_group = group_info
+            else:
+                current_group.path = groupNS
+        except Exception as e:
+            print(e)
+            raise HTTPException(status_code=500, detail="Cannot get group information based on your role")
 
-        # get group direct users
+    # lookup group id from path
+    # or, we need attributes for invitation nonce
+    if not current_group.id or current_group.attributes is None:
+        try:
+            async with request.app.state.app_session.get_service_account_oauth_client() as client:
+                resp = await client.get(request.app.state.config.keycloak_adminapi_url+'group-by-path/'+current_group.path,
+                    headers={'Accept': 'application/json'})
+                group_info = resp.json()
+                current_group.id = group_info.get('id')
+                current_group.attributes = group_info.get('attributes')
+        except Exception as e:
+            print(e)
+            raise HTTPException(status_code=500, detail="Cannot get group information by path")
 
-        return request.app.state.templates.TemplateResponse("admin-delegatedgroup-detail.html.jinja2", {
-            "request": request,
-            "group": current_group,
-            "name": session_data.username,
-            "is_admin": session_data.is_admin(),
-            "is_master": session_data.is_master(),
-            "signed_in": True,
-        })
+    # get group invitation link
+    # May be None if no nonce is set up
+    current_group.invitation_link = invitation.get_invitation_link(group=current_group, request=request)
+
+    # get group direct users
+    async with request.app.state.app_session.get_service_account_oauth_client() as client:
+        resp = await client.get(request.app.state.config.keycloak_adminapi_url+'groups/'+current_group.id+'/members',
+            headers={'Accept': 'application/json'}, params={'briefRepresentation':1})
+        current_group.members = resp.json()
+
+    return current_group
+
+
+async def admin_delegated_groups_user_add():
+    pass
+
+async def admin_delegated_groups_user_remove():
+    pass
+
+async def admin_delegated_groups_update_invitation_nonce():
+    pass
 
 
 def guess_active_ns(session_data: datatypes.SessionData, group_config: datatypes.GroupConfig) -> Tuple[str, str]:

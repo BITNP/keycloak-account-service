@@ -9,7 +9,7 @@ from fastapi.exception_handlers import http_exception_handler
 import datatypes
 from utils import TemplateService
 from routers import sp, admin
-from routers import publicsvc, assistance, register, migrate_phpcas
+from routers import publicsvc, assistance, register, invitation, migrate_phpcas
 
 from authlib.integrations.starlette_client import OAuth
 from authlib.integrations.httpx_client import OAuthError, AsyncOAuth2Client
@@ -89,6 +89,7 @@ app.include_router(router)
 app.include_router(publicsvc.router)
 app.include_router(assistance.router)
 app.include_router(register.router)
+app.include_router(invitation.router)
 app.include_router(migrate_phpcas.router)
 app.include_router(sp.landing.router, prefix='/sp', dependencies=[Depends(BITNPSessionFastAPIApp.deps_session_data)])
 app.include_router(sp.profile.router, prefix='/sp/profile', dependencies=[Depends(BITNPSessionFastAPIApp.deps_session_data)])

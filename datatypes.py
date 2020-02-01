@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     client_id: str
     client_secret: str
     session_secret: str = Field(..., description="Used for session and CSRF")
+    invitation_secret: str
     server_metadata_url: str = 'https://login.bitnp.net/auth/realms/master/.well-known/openid-configuration'
     group_status_prefix: str = '/bitnp/active'
     group_config_path: str = '/bitnp' # Pending removal?
@@ -35,6 +36,9 @@ class GroupItem(BaseModel):
     path: str
     name: str = None
     internal_note: str = None
+    attributes: dict = None
+    members: list = None
+    invitation_link: str = None
 
     @validator('name', always=True)
     def default_name_as_path(cls, v, values):
