@@ -1,4 +1,4 @@
-from fastapi import Depends, APIRouter, Path
+from fastapi import Depends, APIRouter, Path, HTTPException
 from starlette.requests import Request
 
 import datatypes
@@ -24,10 +24,51 @@ async def admin_delegated_groups_get(
             return request.app.state.templates.TemplateResponse("admin-delegatedgroup-list.html.jinja2", {
                 "request": request,
                 "groups": grouplist,
+                "name": session_data.username,
+                "is_admin": session_data.is_admin(),
+                "is_master": session_data.is_master(),
+                "signed_in": True,
             })
     else:
-        # check if path is inside grouplist
-        return None
+        # check if path is inside allowed grouplist - some ACL control
+        current_groups = list(filter(lambda g: g.path == path, grouplist))
+        if len(current_groups) != 1:
+            raise HTTPException(status_code=403, detail="The path is not in the group list that you are allowed to access")
+
+        current_group = current_groups[0]
+        # @managerof- parsing
+        if current_group.path.startswith("@managerof-"):
+            role_name = current_group.path[1:]
+            try:
+                async with request.app.state.app_session.get_service_account_oauth_client() as client:
+                    resp = await client.get(request.app.state.config.keycloak_adminapi_url+'clients/'+request.app.state.config.keycloak_client_uuid+'/roles/'+role_name,
+                        headers={'Accept': 'application/json'})
+                    groupNS = resp.json().get('attributes').get('groupNS')[0]
+                # Merge from group_config
+                # it's possible that this groupNS is not in group_config
+                # this case we should proceed and reuse the previous group_config
+                group_info = request.app.state.config.group_config.get(groupNS)
+                if group_info:
+                    current_group = group_info
+                else:
+                    current_group.path = groupNS
+            except Exception as e:
+                print(e)
+                raise HTTPException(status_code=500, detail="Cannot get group information based on your role")
+
+        # get group invitation token
+
+        # get group direct users
+
+        return request.app.state.templates.TemplateResponse("admin-delegatedgroup-detail.html.jinja2", {
+            "request": request,
+            "group": current_group,
+            "name": session_data.username,
+            "is_admin": session_data.is_admin(),
+            "is_master": session_data.is_master(),
+            "signed_in": True,
+        })
+
 
 def guess_active_ns(session_data: datatypes.SessionData, group_config: datatypes.GroupConfig) -> Tuple[str, str]:
     """

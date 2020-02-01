@@ -1,0 +1,17 @@
+{% extends "base.html.jinja2" %}
+{% block content %}
+    <div class="content">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('sp_landing') }}">管理首页</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_delegated_groups_get') }}">群组管理</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ group.name }}</li>
+            </ol>
+        </nav>
+        <div class="row">
+            <div class="col-12 col-lg-6 offset-lg-3 mb-3">
+                {{ group }}
+            </div>
+        </div>
+    </div>
+{% endblock %}
