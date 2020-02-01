@@ -19,7 +19,7 @@ async def admin_delegated_groups_get(
     return ''
 
 def guess_active_ns(session_data: datatypes.SessionData, group_config: datatypes.GroupConfig) -> Tuple[str, str]:
-    pub_memberof = session_data.memberof.copy()
+    pub_memberof = session_data.memberof
     active_groups, _ = group_config.filter_active_groups(pub_memberof)
     active_groups.sort(key=attrgetter('path'), reverse=True)
     if len(active_groups) < 1:
@@ -39,7 +39,7 @@ def guess_group_item(name: str, group_config: datatypes.GroupConfig) -> datatype
         return None
     if len(ret) == 1:
         return ret[0]
-    status = [item for item in ret if item.path.startswith(group_config.settings.group_status_prefix)]
+    status = list(item for item in ret if item.path.startswith(group_config.settings.group_status_prefix))
     if len(status) == 1:
         return status[0]
     return None # not sure, don't guess
@@ -53,19 +53,19 @@ def admin_delegated_groups_list_json(
         active_ns, year = guess_active_ns(session_data, request.app.state.config.group_config)
         item: datatypes.GroupItem
         for item in request.app.state.config.group_config.values():
-            copied = item.copy()
+            copied = item.copy(deep=True)
             if copied.path.startswith(datatypes.GroupConfig.active_ns_placeholder):
                 copied.path = copied.path.replace(datatypes.GroupConfig.active_ns_placeholder, active_ns)
                 copied.name = copied.name + year
             ret.append(copied)
         return ret
     else:
-        names = [r[10:] for r in session_data.client_roles if r.startswith('managerof-')]
+        names = list(r[10:] for r in session_data.client_roles if r.startswith('managerof-'))
         ret = list()
         for n in names:
             guess = guess_group_item(n, request.app.state.config.group_config)
             if guess:
-                copied = guess.copy()
+                copied = guess.copy(deep=True)
                 copied.path = "@managerof-"+n
                 ret.append(copied)
             else:

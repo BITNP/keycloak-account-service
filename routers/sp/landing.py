@@ -60,7 +60,7 @@ async def sp_permission(
     ) -> datatypes.PermissionInfo:
     pub_memberof = list()
     for item in session_data.memberof:
-        pub_memberof.append(item.copy(exclude=('internal_note',)))
+        pub_memberof.append(item.copy(exclude={'internal_note'}, deep=True))
     permission_dict = session_data.dict()
     permission_dict['active_groups'], permission_dict['memberof'] \
         = request.app.state.config.group_config.filter_active_groups(pub_memberof)
