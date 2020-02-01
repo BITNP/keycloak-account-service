@@ -52,11 +52,17 @@ async def admin_delegated_groups_detail_json(
         session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session),
     ) -> datatypes.GroupItem:
     # check if path is inside allowed grouplist - some ACL control
+
     current_groups = list(filter(lambda g: g.path == path, grouplist))
     if len(current_groups) != 1:
-        raise HTTPException(status_code=403, detail="The path is not in the group list that you are allowed to access")
+        if not session_data.is_master():
+            raise HTTPException(status_code=403, detail="The path is not in the group list that you are allowed to access")
+        else:
+            # master exception
+            current_group = datatypes.GroupItem(path=path)
+    else:
+        current_group = current_groups[0]
 
-    current_group = current_groups[0]
     # @managerof- parsing
     if current_group.path.startswith("@managerof-"):
         role_name = current_group.path[1:]
@@ -75,7 +81,7 @@ async def admin_delegated_groups_detail_json(
                 current_group.path = groupNS
         except Exception as e:
             print(e)
-            raise HTTPException(status_code=500, detail="Cannot get group information based on your role")
+            raise HTTPException(status_code=404, detail="Cannot get group information based on your role")
 
     # lookup group id from path
     # or, we need attributes for invitation nonce
@@ -85,11 +91,11 @@ async def admin_delegated_groups_detail_json(
                 resp = await client.get(request.app.state.config.keycloak_adminapi_url+'group-by-path/'+current_group.path,
                     headers={'Accept': 'application/json'})
                 group_info = resp.json()
-                current_group.id = group_info.get('id')
-                current_group.attributes = group_info.get('attributes')
+                current_group.id = group_info['id']
+                current_group.attributes = group_info['attributes']
         except Exception as e:
             print(e)
-            raise HTTPException(status_code=500, detail="Cannot get group information by path")
+            raise HTTPException(status_code=404, detail="Cannot get group information by path")
 
     # get group invitation link
     # May be None if no nonce is set up
