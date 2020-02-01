@@ -121,14 +121,22 @@ class PermissionInfo(BaseModel):
     active_groups: List[GroupItem] = list()
 
 class ProfileInfo(BaseModel):
-    subject: str = None
+    id: str = None
     username: str = ''
+    firstName: str = None
+    lastName: str = None
     name: str = None
     email: str = ''
     emailVerified: bool = None
-    firstName: str = None
-    lastName: str = None
     attributes: dict = None
+    createdTimestamp: datetime = None
+    enabled: bool = True
+
+    @validator('name', always=True)
+    def name_default(cls, v, values):
+        if not v:
+            return (values.get('lastName') or '') + (values.get('firstName') or '')
+        return v
 
 class ProfileUpdateInfo(BaseModel):
     name: str = None

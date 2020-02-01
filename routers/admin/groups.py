@@ -16,6 +16,7 @@ async def admin_delegated_groups_get(
         request: Request,
         path: str = None,
         session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session),
+        first: int = 0,
     ):
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
     if path is None:
@@ -32,7 +33,7 @@ async def admin_delegated_groups_get(
             })
     else:
         # detail page
-        current_group = await admin_delegated_groups_detail_json(request, grouplist, path, session_data)
+        current_group = await admin_delegated_groups_detail_json(request, grouplist, path, session_data, first)
         if request.state.response_type.is_json():
             return [grouplist]
         else:
@@ -40,6 +41,9 @@ async def admin_delegated_groups_get(
                 "request": request,
                 "group": current_group,
                 "name": session_data.username,
+                "new_nonce": invitation.generate_random_nonce(),
+                "first": first,
+                "path": path,
                 "is_admin": session_data.is_admin(),
                 "is_master": session_data.is_master(),
                 "signed_in": True,
@@ -50,6 +54,7 @@ async def admin_delegated_groups_detail_json(
         grouplist: List[datatypes.GroupItem],
         path: str = None,
         session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session),
+        first: int = 0,
     ) -> datatypes.GroupItem:
     # check if path is inside allowed grouplist - some ACL control
 
@@ -92,7 +97,7 @@ async def admin_delegated_groups_detail_json(
                     headers={'Accept': 'application/json'})
                 group_info = resp.json()
                 current_group.id = group_info['id']
-                current_group.attributes = group_info['attributes']
+                current_group.attributes = group_info.get('attributes', dict())
         except Exception as e:
             print(e)
             raise HTTPException(status_code=404, detail="Cannot get group information by path")
@@ -102,7 +107,7 @@ async def admin_delegated_groups_detail_json(
     current_group.invitation_link = invitation.get_invitation_link(group=current_group, request=request)
 
     # get group direct users - first 100
-    current_group.members = await _admin_groups_members_json(request=request, id=current_group.id)
+    current_group.members = await _admin_groups_members_json(request, current_group.id, first)
 
     return current_group
 
@@ -111,12 +116,13 @@ async def _admin_groups_members_json(
         id: str,
         first: int = 0,
         briefRepresentation: bool = True
-    ) -> list:
+    ) -> List[datatypes.ProfileInfo]:
     # This method DOES NOT authenticate at all; use with caution
     async with request.app.state.app_session.get_service_account_oauth_client() as client:
         resp = await client.get(request.app.state.config.keycloak_adminapi_url+'groups/'+id+'/members',
             headers={'Accept': 'application/json'}, params={'briefRepresentation':True, 'first': first})
-        return resp.json()
+        ret = resp.json()
+        return list(datatypes.ProfileInfo.parse_obj(u) for u in ret)
 
 
 async def admin_delegated_groups_user_add():

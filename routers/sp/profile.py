@@ -49,9 +49,10 @@ async def sp_profile_json(
         )
         profile = resp.json()
         profile['name'] = session_data.name
-        profile['subject'] = session_data.subject
+        profile['id'] = session_data.subject
     else:
-        profile = session_data
+        profile = session_data.dict()
+        profile['id'] = profile['subject']
     return datatypes.ProfileInfo.parse_obj(profile)
 
 @router.post("/", include_in_schema=True, status_code=200, response_model=datatypes.ProfileUpdateInfo, responses={

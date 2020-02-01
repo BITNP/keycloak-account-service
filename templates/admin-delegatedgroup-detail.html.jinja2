@@ -8,10 +8,43 @@
                 <li class="breadcrumb-item active" aria-current="page">{{ group.name }}</li>
             </ol>
         </nav>
-        <div class="row">
-            <div class="col-12 col-lg-6 offset-lg-3 mb-3">
-                {{ group }}
+        <p>{{ group.internal_note }} {% if is_master %}<small class="text-muted">（此信息来自 <code>group_config.json</code>）</small>{% endif %}</p>
+        <div class="card">
+            <div class="card-header">用户邀请链接 {% if group.invitation_link is sameas None %}<span class="text-danger">未启用</span>{% else %}<span class="text-success">已启用</span>{% endif %}</div>
+            <div class="card-body">
+                {% if group.invitation_link is sameas None %}
+                <form class="form-inline">
+                    <label class="col-form-label" for="setup-nonce">设置链接密钥为</label>
+                    <input type="text" class="form-control mb-2 mb-sm-0 mx-sm-2" id="setup-nonce" name="nonce" value="{{ new_nonce }}" required>
+                    <button type="submit" class="btn btn-primary mb-2 mb-sm-0">启用链接</button>
+                </form>
+                {% else %}
+                <p><a href="{{ group.invitation_link }}" class="card-link">{{ group.invitation_link }}</a></p>
+                <form><a href="https://cli.im/api/qrcode/code?text={{ group.invitation_link | urlencode }}" class="btn btn-outline-primary">草料网生成链接二维码</a> <button type="submit" class="btn btn-outline-danger">禁用链接</button> <small class="text-muted">如出现异常用户，请移除异常用户并禁用启用一次链接，获取新链接（旧的链接会失效）。</small>
+                </form>
+                {% endif %}
             </div>
         </div>
+        <table class="table">
+            <caption>直接下属的用户（不显示子群组用户）</caption>
+            <thead>
+                <tr>
+                <th scope="col">用户名</th>
+                <th scope="col">启用</th>
+                <th scope="col">姓名</th>
+                <th scope="col">邮箱</th>
+                <th scope="col">用户创建</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in group.members %}
+                <tr id="user-{{ user.id }}"><th scope="row"><a href="">{{ user.username }}</a></th><td>{{ user.enabled }}</td><td>{{ user.name }}</td><td><a href="mailto:{{ user.email }}">{{ user.email }}</a></td><td>{{ user.createdTimestamp | local_timestring }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <form method="GET">
+        本表记录数 {{ group.members | length }}，从第 <input type="number" class="form-control form-control-sm col-1 d-inline-block" min="0" id="members-first" name="first" value="{{ (first+100) if (group.members|length) == 100 else ([first-100, 0]|max) }}" required> 条记录开始 <button type="submit" class="btn btn-outline-primary btn-sm">查看</button>
+        <input type="hidden" name="path" value="{{ path }}">
+        </form>
     </div>
 {% endblock %}
