@@ -1,5 +1,5 @@
 {
-    "@active/alumni": {"name": "会友", "internal_note": "曾经是网协成员，但已不再属于正式成员的管理层"},
+    "@active/alumni": {"name": "会友", "internal_note": "曾经是网协成员，但已不再属于正式成员，权限同管理层"},
     "@active/management": {"name": "管理层", "internal_note": "现任管理层（包括副部长）"},
     "@active/master": {"name": "主席团", "internal_note": "现任主席团"},
     "@active/member": {"name": "部员", "internal_note": "现任网协部员（不属于管理层）"},
