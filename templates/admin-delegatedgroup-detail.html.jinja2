@@ -8,7 +8,16 @@
                 <li class="breadcrumb-item active" aria-current="page">{{ group.name }}</li>
             </ol>
         </nav>
-        <p>{{ group.internal_note }} {% if is_master %}<small class="text-muted">（此信息来自 <code>group_config.json</code>）</small>{% endif %}</p>
+        <div class="card">
+            <div class="card-body">
+                <p class="card-text">{{ group.internal_note }} {% if is_master %}<small class="text-muted">（此信息来自 <code>group_config.json</code>）</small>{% endif %}</p>
+                <form class="form-inline">
+                    <label class="col-form-label" for="enroll-username">用户名</label>
+                    <input type="text" class="form-control mb-2 mb-sm-0 mx-sm-2" id="enroll-username" name="username" value="" required autocomplete="off">
+                    <button type="submit" class="btn btn-outline-primary mb-2 mb-sm-0">加入用户</button>
+                </form>
+            </div>
+        </div>
         <div class="card">
             <div class="card-header">用户邀请链接 {% if group.invitation_link is sameas None %}<span class="text-danger">未启用</span>{% else %}<span class="text-success">已启用</span>{% endif %}</div>
             <div class="card-body">
@@ -34,11 +43,12 @@
                 <th scope="col">姓名</th>
                 <th scope="col">邮箱</th>
                 <th scope="col">用户创建</th>
+                <th scope="col">操作</th>
                 </tr>
             </thead>
             <tbody>
                 {% for user in group.members %}
-                <tr id="user-{{ user.id }}"><th scope="row"><a href="">{{ user.username }}</a></th><td>{{ user.enabled }}</td><td>{{ user.name }}</td><td><a href="mailto:{{ user.email }}">{{ user.email }}</a></td><td>{{ user.createdTimestamp | local_timestring }}</td></tr>
+                <tr id="user-{{ user.id }}"><th scope="row"><a href="{{ console_prefix }}#/realms/master/users/{{ user.id }}">{{ user.username }}</a></th><td>{{ user.enabled }}</td><td>{{ user.name }}</td><td><a href="mailto:{{ user.email }}">{{ user.email }}</a></td><td>{{ user.createdTimestamp | local_timestring }}</td><td><button type="submit" class="btn btn-outline-danger btn-sm">移出</button></td></tr>
                 {% endfor %}
             </tbody>
         </table>

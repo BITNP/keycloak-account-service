@@ -11,7 +11,7 @@ class Settings(BaseSettings):
         env_prefix = 'acct_'
         env_file = '.env'
 
-    keycloak_admin_url: str = 'https://login.bitnp.net/'
+    keycloak_admin_console_url: str = 'https://login.bitnp.net/auth/admin/master/console/'
     keycloak_adminapi_url: str = 'https://login.bitnp.net/auth/admin/realms/master/'
     keycloak_accountapi_url: str = 'https://login.bitnp.net/auth/realms/master/account/'
     keycloak_forgotpw_url: str = 'https://login.bitnp.net/auth/realms/master/login-actions/reset-credentials'
