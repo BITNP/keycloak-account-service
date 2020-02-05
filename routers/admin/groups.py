@@ -1,6 +1,6 @@
 from fastapi import Depends, APIRouter, Path, HTTPException, Form
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
+from starlette.responses import Response, RedirectResponse
 
 import datatypes
 import invitation
@@ -145,11 +145,14 @@ async def _admin_groups_members_json(
 async def admin_delegated_groups_member_add(
         request: Request,
         path: str = Form(...),
-        username: str = Form(...),
+        username: str = Form(None),
+        user_id: str = Form(None),
         session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session),
         csrf_valid: bool = Depends(BITNPSessionFastAPIApp.deps_requires_csrf_posttoken),
     ):
-    user = await admin_delegated_groups_member_add_json(request, path, username, session_data)
+    user = await admin_delegated_groups_member_add_json(
+        request, path, session_data, username, user_id
+    )
     # success
     if request.state.response_type.is_json():
         return user
@@ -159,33 +162,68 @@ async def admin_delegated_groups_member_add(
 async def admin_delegated_groups_member_add_json(
         request: Request,
         path: str,
-        username: str,
-        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session),
+        session_data: datatypes.SessionData,
+        username: str = None,
+        user_id: str = None,
     ) -> datatypes.ProfileInfo:
+    if not username and not id:
+        raise HTTPException(status_code=422, detail="username or user_id required")
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
     current_group = await _admin_delegated_groups_path_to_group(request, grouplist, path)
-    parsed_user = await _admin_search_users_by_username(request, username)
-    if len(parsed_user) == 0:
-        # Try again with search=username
-        parsed_user = await _admin_search_users(request, username)
-    print(parsed_user)
-    if len(parsed_user) == 0:
-        raise HTTPException(status_code=404, detail="Cannot find any user according to username")
-    if len(parsed_user) > 1:
-        raise HTTPException(status_code=422, detail="No exact match username is available, and search result contains more than one user; please check username input")
+    parsed_user = None
+    if not user_id:
+        parsed_user = await _admin_search_users_by_username(request, username)
+        if len(parsed_user) == 0:
+            # Try again with search=username
+            parsed_user = await _admin_search_users(request, username)
+        print(parsed_user)
+        if len(parsed_user) == 0:
+            raise HTTPException(status_code=404, detail="Cannot find any user according to username")
+        if len(parsed_user) > 1:
+            raise HTTPException(status_code=422, detail="No exact match username is available, and search result contains more than one user; please check username input")
+        user_id = parsed_user[0].id
     async with request.app.state.app_session.get_service_account_oauth_client() as client:
         resp = await client.put(
-            request.app.state.config.keycloak_adminapi_url+'users/'+parsed_user[0].id+'/groups/'+quote(current_group.id),
+            request.app.state.config.keycloak_adminapi_url+'users/'+user_id+'/groups/'+quote(current_group.id),
             # user id is always returned from Keycloak so it should be fine to use it without encoding
             headers={'Accept': 'application/json'})
         if resp.status_code == 204:
-            return parsed_user[0]
+            return parsed_user[0] if parsed_user else datatypes.ProfileInfo(id=user_id)
         else:
             raise HTTPException(resp.status_code, detail=resp.json())
 
-@router.post("/delegated-groups/member-remove", include_in_schema=True)
-async def admin_delegated_groups_member_remove():
-    pass
+@router.post("/delegated-groups/member-remove", include_in_schema=True, status_code=204)
+async def admin_delegated_groups_member_remove(
+        request: Request,
+        path: str = Form(...),
+        user_id: str = Form(...),
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session),
+        csrf_valid: bool = Depends(BITNPSessionFastAPIApp.deps_requires_csrf_posttoken),
+    ):
+    await admin_delegated_groups_member_remove_json(request, path, user_id, session_data)
+    # success
+    if request.state.response_type.is_json():
+        return Response(status_code=204)
+    else:
+        return RedirectResponse(request.url_for('admin_delegated_groups_get')+"?path="+quote(path)+"&updated=1", status_code=303)
+
+async def admin_delegated_groups_member_remove_json(
+        request: Request,
+        path: str,
+        user_id: str,
+        session_data: datatypes.SessionData,
+    ) -> None:
+    grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
+    current_group = await _admin_delegated_groups_path_to_group(request, grouplist, path)
+
+    async with request.app.state.app_session.get_service_account_oauth_client() as client:
+        resp = await client.delete(
+            request.app.state.config.keycloak_adminapi_url+'users/'+quote(user_id)+'/groups/'+quote(current_group.id),
+            headers={'Accept': 'application/json'})
+        if resp.status_code == 204:
+            pass
+        else:
+            raise HTTPException(resp.status_code, detail=resp.json())
 
 async def admin_delegated_groups_update_invitation_nonce():
     pass
@@ -233,7 +271,7 @@ def guess_group_item(name: str, group_config: datatypes.GroupConfig) -> datatype
 
 def admin_delegated_groups_list_json(
         request: Request,
-        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session),
+        session_data: datatypes.SessionData,
     ) -> List[datatypes.GroupItem]:
     if session_data.is_master():
         ret = list()
