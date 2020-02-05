@@ -25,14 +25,28 @@
             <div class="card-header">用户邀请链接 {% if group.invitation_link is sameas None %}<span class="text-danger">未启用</span>{% else %}<span class="text-success">已启用</span>{% endif %}</div>
             <div class="card-body">
                 {% if group.invitation_link is sameas None %}
-                <form class="form-inline">
-                    <label class="col-form-label" for="setup-nonce">设置链接密钥为</label>
-                    <input type="text" class="form-control mb-2 mb-sm-0 mx-sm-2" id="setup-nonce" name="nonce" value="{{ new_nonce }}" required>
+                <form class="form-inline" action="{{ url_for('admin_delegated_groups_update_invitation_link') }}" method="POST" enctype="application/x-www-form-urlencoded">
+                    <label class="col-form-label" for="setup-add-days">链接有效天数</label>
+                    <input type="number" class="form-control mb-2 mb-sm-0 mx-sm-2" id="setup-add-days" name="days_from_now" value="7" min="1" required>
+                    <input type="hidden" name="path" value="{{ path }}">
+                    <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">
                     <button type="submit" class="btn btn-primary mb-2 mb-sm-0">启用链接</button>
                 </form>
                 {% else %}
                 <p><a href="{{ group.invitation_link }}" class="card-link">{{ group.invitation_link }}</a></p>
-                <form><a href="https://cli.im/api/qrcode/code?text={{ group.invitation_link | urlencode }}" class="btn btn-outline-primary">草料网生成链接二维码</a> <button type="submit" class="btn btn-outline-danger">禁用链接</button> <small class="text-muted">如出现异常用户，请移除异常用户并禁用启用一次链接，获取新链接（旧的链接会失效）。</small>
+                <form action="{{ url_for('admin_delegated_groups_update_invitation_link') }}" method="POST" enctype="application/x-www-form-urlencoded">
+                    <a href="https://cli.im/api/qrcode/code?text={{ group.invitation_link | urlencode }}" class="btn btn-outline-primary">草料网生成链接二维码</a> <button type="submit" class="btn btn-outline-danger">禁用链接</button> <small class="text-muted">禁用链接后，原链接将立即失效。如出现异常用户注册，请移除异常用户，并禁用、启用获取新链接。</small>
+                    <input type="hidden" name="path" value="{{ path }}">
+                    <input type="hidden" name="days_from_now" value="-1">
+                    <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">
+                </form>
+                <form class="form-inline" action="{{ url_for('admin_delegated_groups_update_invitation_link') }}" method="POST" enctype="application/x-www-form-urlencoded">
+                    {% if group.invitation_expires %}链接将在 {{ group.invitation_expires }} 失效{% else %}链接不会失效{% endif %}
+                    <label class="col-form-label" for="setup-add-days">设置从现在开始的链接有效天数（原链接仍可用）</label>
+                    <input type="number" class="form-control mb-2 mb-sm-0 mx-sm-2" id="setup-add-days" name="days_from_now" value="1" min="0" required>
+                    <input type="hidden" name="path" value="{{ path }}">
+                    <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">
+                    <button type="submit" class="btn btn-primary mb-2 mb-sm-0">更新</button>
                 </form>
                 {% endif %}
             </div>

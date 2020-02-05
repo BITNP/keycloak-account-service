@@ -39,6 +39,7 @@ class GroupItem(BaseModel):
     attributes: dict = None
     members: list = None
     invitation_link: str = None
+    invitation_expires: datetime = None
 
     @validator('name', always=True)
     def default_name_as_path(cls, v, values):

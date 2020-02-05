@@ -3,12 +3,23 @@ import datatypes
 import itsdangerous
 import base64
 from typing import Tuple
-from authlib.common.security import generate_token
+from datetime import datetime, timezone
+from authlib.common.security import generate_token as _generate_token
 
 SEPARATOR = "@"
 
+def get_invitation_expires(group: datatypes.GroupItem) -> int:
+    expires = group.attributes.get('invitationExpires')
+    if isinstance(expires, list):
+        if len(expires) > 0:
+            return int(expires[0]) if expires[0] else None
+        else:
+            return None
+    return int(expires) if expires else None
+
 def get_invitation_token(group: datatypes.GroupItem, config: datatypes.Settings) -> str:
     assert group.path.find(SEPARATOR) == -1, "Group path should not include separator: "+group.path
+
     nonce = group.attributes.get('invitationNonce')
     # we actually allow separator in nonce due to how this works
     if not nonce:
@@ -16,6 +27,12 @@ def get_invitation_token(group: datatypes.GroupItem, config: datatypes.Settings)
         return None
     if isinstance(nonce, list):
         nonce = nonce[0]
+
+    # expiry check - if expiry is None then we ignore the check
+    expires = get_invitation_expires(group)
+    if expires is not None and datetime.fromttimestamp(expires, timezone.utc) < datetime.utcnow():
+        return None
+
     text = SEPARATOR.join([group.path, nonce])
     signer = itsdangerous.Signer(secret_key=config.invitation_secret, sep=SEPARATOR)
     return base64.urlsafe_b64encode(signer.sign(text)).decode()
@@ -38,4 +55,4 @@ def parse_invitation_token(token: str, config: datatypes.Settings) -> Tuple[str,
         return None, None
 
 def generate_random_nonce() -> str:
-    return generate_token(length=4)
+    return _generate_token(length=4)

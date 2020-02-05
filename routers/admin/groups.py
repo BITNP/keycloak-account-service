@@ -122,6 +122,7 @@ async def admin_delegated_groups_detail_json(
     # get group invitation link
     # May be None if no nonce is set up
     current_group.invitation_link = invitation.get_invitation_link(group=current_group, request=request)
+    current_group.invitation_expires = invitation.get_invitation_expires(group=current_group)
 
     # get group direct users - first 100
     current_group.members = await _admin_groups_members_json(request, current_group.id, first)
@@ -225,7 +226,18 @@ async def admin_delegated_groups_member_remove_json(
         else:
             raise HTTPException(resp.status_code, detail=resp.json())
 
-async def admin_delegated_groups_update_invitation_nonce():
+@router.post("/delegated-groups/update-invitation-link", include_in_schema=True, status_code=204)
+async def admin_delegated_groups_update_invitation_link(
+        request: Request,
+        days_from_now: int,
+        # expires: datetime,
+        csrf_valid: bool = Depends(BITNPSessionFastAPIApp.deps_requires_csrf_posttoken),
+    ):
+    """
+    days_from_now < 0: nonce = None
+    days_from_now == 0: nonce = new
+    days_from_now > 0: expires = now + days_from_now, nonce = new if not nonce else nonce
+    """
     pass
 
 
