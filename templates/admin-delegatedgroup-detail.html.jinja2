@@ -8,12 +8,15 @@
                 <li class="breadcrumb-item active" aria-current="page">{{ group.name }}</li>
             </ol>
         </nav>
+        {% if updated %}<div class="alert alert-success" role="alert">请求已完成。</div>{% endif %}
         <div class="card">
             <div class="card-body">
                 <p class="card-text">{{ group.internal_note }} {% if is_master %}<small class="text-muted">（此信息来自 <code>group_config.json</code>）</small>{% endif %}</p>
-                <form class="form-inline">
+                <form class="form-inline" action="{{ url_for('admin_delegated_groups_member_add') }}" method="POST" enctype="application/x-www-form-urlencoded">
                     <label class="col-form-label" for="enroll-username">用户名</label>
                     <input type="text" class="form-control mb-2 mb-sm-0 mx-sm-2" id="enroll-username" name="username" value="" required autocomplete="off">
+                    <input type="hidden" name="path" value="{{ path }}">
+                    <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">
                     <button type="submit" class="btn btn-outline-primary mb-2 mb-sm-0">加入用户</button>
                 </form>
             </div>
@@ -48,7 +51,7 @@
             </thead>
             <tbody>
                 {% for user in group.members %}
-                <tr id="user-{{ user.id }}"><th scope="row"><a href="{{ console_prefix }}#/realms/master/users/{{ user.id }}">{{ user.username }}</a></th><td>{{ user.enabled }}</td><td>{{ user.name }}</td><td><a href="mailto:{{ user.email }}">{{ user.email }}</a></td><td>{{ user.createdTimestamp | local_timestring }}</td><td><button type="submit" class="btn btn-outline-danger btn-sm">移出</button></td></tr>
+                <tr id="user-{{ user.id }}"><th scope="row"><a href="{{ console_prefix }}#/realms/master/users/{{ user.id }}">{{ user.username }}</a></th><td>{{ user.enabled }}</td><td>{{ user.name }}</td><td><a href="mailto:{{ user.email }}">{{ user.email }}</a></td><td>{{ user.createdTimestamp | local_timestring }}</td><td><form><button type="submit" class="btn btn-outline-danger btn-sm">移出</button><input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}"></form></td></tr>
                 {% endfor %}
             </tbody>
         </table>

@@ -410,4 +410,4 @@ def deps_requires_master_session(session_data: SessionData = Depends(BITNPSessio
         raise UnauthorizedException
     return session_data
 
-BITNPSessionFastAPIApp.deps_requires_admin_session = deps_requires_admin_session
+BITNPSessionFastAPIApp.deps_requires_master_session = deps_requires_master_session

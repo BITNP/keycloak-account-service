@@ -1,22 +1,27 @@
-from fastapi import Depends, APIRouter, Path, HTTPException
+from fastapi import Depends, APIRouter, Path, HTTPException, Form
 from starlette.requests import Request
+from starlette.responses import RedirectResponse
 
 import datatypes
 import invitation
 from modauthlib import BITNPSessionFastAPIApp
+from .users import _admin_search_users, _admin_search_users_by_username
+
 from utils import TemplateService
 from typing import List, Tuple
 from operator import attrgetter
+from urllib.parse import quote
 
 router = APIRouter()
 
 
-@router.get("/delegated-groups", include_in_schema=True, response_model=List[datatypes.GroupItem])
+@router.get("/delegated-groups/", include_in_schema=True, response_model=List[datatypes.GroupItem])
 async def admin_delegated_groups_get(
         request: Request,
         path: str = None,
         session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session),
         first: int = 0,
+        csrf_field: tuple = Depends(BITNPSessionFastAPIApp.deps_get_csrf_field),
     ):
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
     if path is None:
@@ -35,8 +40,9 @@ async def admin_delegated_groups_get(
         # detail page
         current_group = await admin_delegated_groups_detail_json(request, grouplist, path, session_data, first)
         if request.state.response_type.is_json():
-            return [grouplist]
+            return [current_group]
         else:
+            updated = request.query_params.get('updated', False)
             return request.app.state.templates.TemplateResponse("admin-delegatedgroup-detail.html.jinja2", {
                 "request": request,
                 "group": current_group,
@@ -48,17 +54,16 @@ async def admin_delegated_groups_get(
                 "is_admin": session_data.is_admin(),
                 "is_master": session_data.is_master(),
                 "signed_in": True,
+                "updated": updated,
+                "csrf_field": csrf_field,
             })
 
-async def admin_delegated_groups_detail_json(
+async def _admin_delegated_groups_path_to_group(
         request: Request,
         grouplist: List[datatypes.GroupItem],
-        path: str = None,
-        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session),
-        first: int = 0,
-    ) -> datatypes.GroupItem:
+        path: str,
+    ):
     # check if path is inside allowed grouplist - some ACL control
-
     current_groups = list(filter(lambda g: g.path == path, grouplist))
     if len(current_groups) != 1:
         if not session_data.is_master():
@@ -103,6 +108,17 @@ async def admin_delegated_groups_detail_json(
             print(e)
             raise HTTPException(status_code=404, detail="Cannot get group information by path")
 
+    return current_group
+
+async def admin_delegated_groups_detail_json(
+        request: Request,
+        grouplist: List[datatypes.GroupItem],
+        path: str,
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session),
+        first: int = 0,
+    ) -> datatypes.GroupItem:
+    current_group = await _admin_delegated_groups_path_to_group(request, grouplist, path)
+
     # get group invitation link
     # May be None if no nonce is set up
     current_group.invitation_link = invitation.get_invitation_link(group=current_group, request=request)
@@ -125,11 +141,50 @@ async def _admin_groups_members_json(
         ret = resp.json()
         return list(datatypes.ProfileInfo.parse_obj(u) for u in ret)
 
+@router.post("/delegated-groups/member-add", include_in_schema=True, response_model=datatypes.ProfileInfo)
+async def admin_delegated_groups_member_add(
+        request: Request,
+        path: str = Form(...),
+        username: str = Form(...),
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session),
+        csrf_valid: bool = Depends(BITNPSessionFastAPIApp.deps_requires_csrf_posttoken),
+    ):
+    user = await admin_delegated_groups_member_add_json(request, path, username, session_data)
+    # success
+    if request.state.response_type.is_json():
+        return user
+    else:
+        return RedirectResponse(request.url_for('admin_delegated_groups_get')+"?path="+quote(path)+"&updated=1", status_code=303)
 
-async def admin_delegated_groups_user_add():
-    pass
+async def admin_delegated_groups_member_add_json(
+        request: Request,
+        path: str,
+        username: str,
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session),
+    ) -> datatypes.ProfileInfo:
+    grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
+    current_group = await _admin_delegated_groups_path_to_group(request, grouplist, path)
+    parsed_user = await _admin_search_users_by_username(request, username)
+    if len(parsed_user) == 0:
+        # Try again with search=username
+        parsed_user = await _admin_search_users(request, username)
+    print(parsed_user)
+    if len(parsed_user) == 0:
+        raise HTTPException(status_code=404, detail="Cannot find any user according to username")
+    if len(parsed_user) > 1:
+        raise HTTPException(status_code=422, detail="No exact match username is available, and search result contains more than one user; please check username input")
+    async with request.app.state.app_session.get_service_account_oauth_client() as client:
+        resp = await client.put(
+            request.app.state.config.keycloak_adminapi_url+'users/'+parsed_user[0].id+'/groups/'+quote(current_group.id),
+            # user id is always returned from Keycloak so it should be fine to use it without encoding
+            headers={'Accept': 'application/json'})
+        if resp.status_code == 204:
+            return parsed_user[0]
+        else:
+            raise HTTPException(resp.status_code, detail=resp.json())
 
-async def admin_delegated_groups_user_remove():
+@router.post("/delegated-groups/member-remove", include_in_schema=True)
+async def admin_delegated_groups_member_remove():
     pass
 
 async def admin_delegated_groups_update_invitation_nonce():
