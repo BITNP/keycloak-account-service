@@ -18,6 +18,12 @@ def get_invitation_expires(group: datatypes.GroupItem) -> int:
     return int(expires) if expires else None
 
 def get_invitation_token(group: datatypes.GroupItem, config: datatypes.Settings) -> str:
+    """
+    This token should be consistent during different execution as long as:
+    - secret did not change
+    - nonce did not change
+    - before expiry date
+    """
     assert group.path.find(SEPARATOR) == -1, "Group path should not include separator: "+group.path
 
     nonce = group.attributes.get('invitationNonce')
@@ -30,7 +36,7 @@ def get_invitation_token(group: datatypes.GroupItem, config: datatypes.Settings)
 
     # expiry check - if expiry is None then we ignore the check
     expires = get_invitation_expires(group)
-    if expires is not None and datetime.fromttimestamp(expires, timezone.utc) < datetime.utcnow():
+    if expires is not None and datetime.fromtimestamp(expires) < datetime.utcnow():
         return None
 
     text = SEPARATOR.join([group.path, nonce])

@@ -11,6 +11,7 @@ from utils import TemplateService
 from typing import List, Tuple
 from operator import attrgetter
 from urllib.parse import quote
+from datetime import datetime, timedelta, timezone
 
 router = APIRouter()
 
@@ -105,7 +106,7 @@ async def _admin_delegated_groups_path_to_group(
                 current_group.id = group_info['id']
                 current_group.attributes = group_info.get('attributes', dict())
         except Exception as e:
-            print(e)
+            print(str(e))
             raise HTTPException(status_code=404, detail="Cannot get group information by path")
 
     return current_group
@@ -122,7 +123,8 @@ async def admin_delegated_groups_detail_json(
     # get group invitation link
     # May be None if no nonce is set up
     current_group.invitation_link = invitation.get_invitation_link(group=current_group, request=request)
-    current_group.invitation_expires = invitation.get_invitation_expires(group=current_group)
+    expires = invitation.get_invitation_expires(group=current_group)
+    current_group.invitation_expires = datetime.fromtimestamp(expires, tz=timezone.utc) if expires else None
 
     # get group direct users - first 100
     current_group.members = await _admin_groups_members_json(request, current_group.id, first)
@@ -226,11 +228,13 @@ async def admin_delegated_groups_member_remove_json(
         else:
             raise HTTPException(resp.status_code, detail=resp.json())
 
-@router.post("/delegated-groups/update-invitation-link", include_in_schema=True, status_code=204)
+@router.post("/delegated-groups/update-invitation-link", include_in_schema=True)
 async def admin_delegated_groups_update_invitation_link(
         request: Request,
-        days_from_now: int,
-        # expires: datetime,
+        path: str = Form(...),
+        days_from_now: int = Form(...),
+        expires: datetime = Form(None),
+        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session),
         csrf_valid: bool = Depends(BITNPSessionFastAPIApp.deps_requires_csrf_posttoken),
     ):
     """
@@ -238,7 +242,37 @@ async def admin_delegated_groups_update_invitation_link(
     days_from_now == 0: nonce = new
     days_from_now > 0: expires = now + days_from_now, nonce = new if not nonce else nonce
     """
-    pass
+    grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
+    current_group = await _admin_delegated_groups_path_to_group(request, grouplist, path)
+
+    attributes : dict = current_group.attributes
+
+    if days_from_now > 0:
+        if not attributes.get('invitationNonce'):
+            attributes['invitationNonce'] = [invitation.generate_random_nonce()]
+    elif days_from_now == 0:
+        # reset nonce
+        attributes['invitationNonce'] = [invitation.generate_random_nonce()]
+    else:
+        # remove nonce
+        attributes['invitationNonce'] = []
+
+    if days_from_now > 0 or expires:
+        if not expires:
+            expires : datetime = datetime.utcnow() + timedelta(days=days_from_now)
+        attributes['invitationExpires'] = [int(expires.timestamp())]
+
+    async with request.app.state.app_session.get_service_account_oauth_client() as client:
+        resp = await client.put(
+            request.app.state.config.keycloak_adminapi_url+'groups/'+quote(current_group.id),
+            json={"attributes": attributes})
+        if resp.status_code == 204:
+            if request.state.response_type.is_json():
+                return attributes
+            else:
+                return RedirectResponse(request.url_for('admin_delegated_groups_get')+"?path="+quote(path)+"&updated=1", status_code=303)
+        else:
+            raise HTTPException(resp.status_code, detail=resp.json())
 
 
 def guess_active_ns(session_data: datatypes.SessionData, group_config: datatypes.GroupConfig) -> Tuple[str, str]:
