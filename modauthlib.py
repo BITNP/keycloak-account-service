@@ -35,7 +35,7 @@ class CSRFTokenInvalidException(HTTPException):
 
 
 class BITNPOAuthRemoteApp(RemoteApp):
-    async def authorize_redirect(self, request: Request, redirect_uri:str=None, **kwargs):
+    async def authorize_redirect(self, request: Request, redirect_uri:str=None, **kwargs) -> RedirectResponse:
         """Create a HTTP Redirect for Authorization Endpoint.
         :param request: Starlette Request instance.
         :param redirect_uri: Callback or redirect URI for authorization.
@@ -145,9 +145,9 @@ class BITNPFastAPICSRFAddon:
 
 def deps_requires_csrf_posttoken(
         request: Request,
-        token: str = Form(None, alias=BITNPFastAPICSRFAddon.csrf_field_name, description="CSRF token (not required if Accept header include json)")
+        csrf_token: str = Form(None, alias=BITNPFastAPICSRFAddon.csrf_field_name, description="CSRF token (not required if Accept header include json)")
     ) -> bool:
-    if not request.app.state.app_session.check_csrf_token(token, request):
+    if not request.app.state.app_session.check_csrf_token(csrf_token, request):
         raise CSRFTokenInvalidException
     return True
 BITNPFastAPICSRFAddon.deps_requires_csrf_posttoken = deps_requires_csrf_posttoken

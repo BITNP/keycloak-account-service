@@ -23,6 +23,9 @@ def get_invitation_token(group: datatypes.GroupItem, config: datatypes.Settings)
     - secret did not change
     - nonce did not change
     - before expiry date
+
+    Thus, this will be used to compare against submitted token - one more
+    sign process but consistent validation logic
     """
     assert group.path.find(SEPARATOR) == -1, "Group path should not include separator: "+group.path
 

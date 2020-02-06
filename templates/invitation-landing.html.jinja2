@@ -1,0 +1,44 @@
+{% extends "base.html.jinja2" %}
+{% block content %}
+    <div class="content">
+        <h2 class="display-5">欢迎使用网协通行证</h2>
+        <p class="lead">你可在注册登录网协通行证后，受邀加入 <span class="badge badge-primary">{{ group.name }}</span> 用户组，拥有访问相应网协系统的权限。请根据你的情况，在下方选择相应的功能菜单以继续。</p>
+        <p class="text-muted">如对注册或用户组有疑问，请联系向你提供本链接的网协成员。</p>
+        <div class="card-group mb-3">
+            {% if session_data is sameas None %}
+            <div class="card">
+                <form class="card-body" action="{{ url_for('invitation_join', token=token) }}" method="POST" enctype="application/x-www-form-urlencoded">
+                    <h3 class="card-title">&#x1F4B3; 我已经有网协通行证</h3>
+                    <p class="card-text">请登录后继续操作。
+                    <br><small class="text-muted">如果你登录后没有看到邀请加入用户组的界面，请重新访问本邀请链接。</small></p>
+                    <button type="submit" class="btn btn-outline-primary stretched-link">登录</button>
+                    <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">
+                </form>
+            </div>
+            {% else %}
+            <div class="card">
+                <form class="card-body" action="{{ url_for('invitation_join', token=token) }}" method="POST" enctype="application/x-www-form-urlencoded">
+                    <h3 class="card-title">&#x1F4B3; 我已经有网协通行证</h3>
+                    {% if in_group %}
+                    <p class="card-text">{{ session_data.name }}，你已经在这一用户组，无法使用此邀请链接。</p>
+                    {% else %}
+                    <p class="card-text">{{ session_data.name }}，请点击按钮加入用户组。</p>
+                    {% endif %}
+                    <p class="card-text">如果你不是{{ session_data.name }}，<a href="{{ url_for('logout') }}?redirect_uri=/i/{{ token }}">请点击这里退出</a>，然后重新登录。</p>
+                    {% if not in_group %}
+                    <button type="submit" class="btn btn-primary">以 {{ session_data.username }} 加入用户组</button>
+                    <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">
+                    {% endif %}
+                </form>
+            </div>
+            {% endif %}
+            <div class="card">
+                <div class="card-body">
+                <h3 class="card-title">&#x1F195; 我需要注册网协通行证</h3>
+                <p class="card-text">请实名注册新账户，注册完成后继续操作。
+                <br><small class="text-muted">如果你注册后没有看到邀请加入用户组的界面，请重新访问本邀请链接。</small></p>
+                <a href="{{ url_for('index') }}?i={{ token }}" class="btn btn-outline-primary stretched-link">注册</a>
+                </div>
+            </div>
+    </div>
+{% endblock %}

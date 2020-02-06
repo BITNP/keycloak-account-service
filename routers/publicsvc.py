@@ -5,6 +5,7 @@ from starlette.responses import RedirectResponse
 import datatypes
 from modauthlib import BITNPSessionFastAPIApp
 from utils import TemplateService
+from urllib.parse import urlencode
 
 router = APIRouter()
 
@@ -45,4 +46,9 @@ async def logout(request: Request):
     if not url:
         return RedirectResponse(request.url_for('index'))
     else:
-        return RedirectResponse(url+"?"+urlencode({"post_logout_redirect_uri": request.url_for('index')}))
+        redirect_uri = request.url_for('index')
+        input_redirect_uri : str = request.query_params.get("redirect_uri")
+        if input_redirect_uri.startswith("/"):
+            base_url = request.url.replace(path="", query="")
+            redirect_uri = str(base_url) + input_redirect_uri
+        return RedirectResponse(url+"?"+urlencode({"post_logout_redirect_uri": redirect_uri}))
