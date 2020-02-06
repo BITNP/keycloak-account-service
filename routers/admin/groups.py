@@ -153,8 +153,11 @@ async def admin_delegated_groups_member_add(
         session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_admin_session),
         csrf_valid: bool = Depends(BITNPSessionFastAPIApp.deps_requires_csrf_posttoken),
     ):
-    user = await admin_delegated_groups_member_add_json(
-        request, path, session_data, username, user_id
+    grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
+    current_group = await _admin_delegated_groups_path_to_group(request, grouplist, path)
+
+    user = await _delegated_groups_member_add_json(
+        request, current_group, username, user_id
     )
     # success
     if request.state.response_type.is_json():
@@ -162,17 +165,18 @@ async def admin_delegated_groups_member_add(
     else:
         return RedirectResponse(request.url_for('admin_delegated_groups_get')+"?path="+quote(path)+"&updated=1", status_code=303)
 
-async def admin_delegated_groups_member_add_json(
+async def _delegated_groups_member_add_json(
         request: Request,
-        path: str,
-        session_data: datatypes.SessionData,
+        current_group: datatypes.GroupItem,
         username: str = None,
         user_id: str = None,
     ) -> datatypes.ProfileInfo:
-    if not username and not id:
+    """
+    This function is also used on client-faced invitation join i.e. no permission check against session_data
+    """
+    if not username and not user_id:
         raise HTTPException(status_code=422, detail="username or user_id required")
-    grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
-    current_group = await _admin_delegated_groups_path_to_group(request, grouplist, path)
+
     parsed_user = None
     if not user_id:
         parsed_user = await _admin_search_users_by_username(request, username)
@@ -185,6 +189,7 @@ async def admin_delegated_groups_member_add_json(
         if len(parsed_user) > 1:
             raise HTTPException(status_code=422, detail="No exact match username is available, and search result contains more than one user; please check username input")
         user_id = parsed_user[0].id
+
     async with request.app.state.app_session.get_service_account_oauth_client() as client:
         resp = await client.put(
             request.app.state.config.keycloak_adminapi_url+'users/'+user_id+'/groups/'+quote(current_group.id),

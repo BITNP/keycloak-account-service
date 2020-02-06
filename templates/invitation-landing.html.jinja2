@@ -8,7 +8,7 @@
             {% if session_data is sameas None %}
             <div class="card">
                 <form class="card-body" action="{{ url_for('invitation_join', token=token) }}" method="POST" enctype="application/x-www-form-urlencoded">
-                    <h3 class="card-title">&#x1F4B3; 我已经有网协通行证</h3>
+                    <h3 class="card-title">&#x1F4B3; 已经有网协通行证</h3>
                     <p class="card-text">请登录后继续操作。
                     <br><small class="text-muted">如果你登录后没有看到邀请加入用户组的界面，请重新访问本邀请链接。</small></p>
                     <button type="submit" class="btn btn-outline-primary stretched-link">登录</button>
@@ -18,7 +18,7 @@
             {% else %}
             <div class="card">
                 <form class="card-body" action="{{ url_for('invitation_join', token=token) }}" method="POST" enctype="application/x-www-form-urlencoded">
-                    <h3 class="card-title">&#x1F4B3; 我已经有网协通行证</h3>
+                    <h3 class="card-title">&#x1F4B3; 已经有网协通行证</h3>
                     {% if in_group %}
                     <p class="card-text">{{ session_data.name }}，你已经在这一用户组，无法使用此邀请链接。</p>
                     {% else %}
@@ -34,9 +34,9 @@
             {% endif %}
             <div class="card">
                 <div class="card-body">
-                <h3 class="card-title">&#x1F195; 我需要注册网协通行证</h3>
-                <p class="card-text">请实名注册新账户，注册完成后继续操作。
-                <br><small class="text-muted">如果你注册后没有看到邀请加入用户组的界面，请重新访问本邀请链接。</small></p>
+                <h3 class="card-title">&#x1F195; 需要注册网协通行证</h3>
+                <p class="card-text">请实名注册新账户，注册时一并入组。
+                <br><small class="text-muted">如果你注册后发现没有进入本组，请登出、登录一次账户并重新访问本邀请链接。</small></p>
                 <a href="{{ url_for('index') }}?i={{ token }}" class="btn btn-outline-primary stretched-link">注册</a>
                 </div>
             </div>

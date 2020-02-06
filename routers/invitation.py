@@ -6,8 +6,16 @@ import datatypes
 import invitation
 from modauthlib import BITNPSessionFastAPIApp
 from utils import TemplateService
+from .admin.groups import _delegated_groups_member_add_json
 
 router = APIRouter()
+
+# static page
+@router.get("/i/completed", include_in_schema=False)
+async def invitation_completed(
+        templates: TemplateService = Depends(),
+    ):
+    return templates.TemplateResponse("invitation-completed.html.jinja2")
 
 async def validate_token(request: Request, token: str) -> datatypes.GroupItem:
     path, nonce = invitation.parse_invitation_token(token=token, config=request.app.state.config)
@@ -69,8 +77,18 @@ async def invitation_join(
     ):
     current_group = await validate_token(request, token)
 
+    # do not enforce membership existance check
+    """
     for g in session_data.memberof:
         if g.path == current_group.path:
             # in_group
             raise HTTPException(status_code=403)
-
+    """
+    try:
+        await _delegated_groups_member_add_json(request=request, current_group=current_group, user_id=session_data.subject)
+        # success
+        return RedirectResponse(request.url_for("invitation_completed"), status_code=303)
+    except HTTPException as e:
+        # friendier message towards client
+        print(e)
+        raise HTTPException(status_code=500, detail="Error joining you to the group")

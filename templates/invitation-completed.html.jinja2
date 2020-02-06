@@ -1,0 +1,10 @@
+{% extends "base.html.jinja2" %}
+{% block content %}
+    <div class="content">
+        <div class="alert alert-success" role="alert">
+            <h4 class="alert-heading">账户配置完成</h4>
+            <p>你的新权限需要在各应用重新获取你的通行证信息时才会生效，这通常需要你登出并重新登录各应用。</p>
+            <p><a href="{{ url_for('logout') }}?redirect_uri=/sp/" class="btn btn-primary">重新登录网协通行证自服务</a></p>
+        </div>
+    </div>
+{% endblock %}
