@@ -36,6 +36,18 @@ async def tos(request: Request, templates: TemplateService = Depends()):
     else:
         return templates.TemplateResponse("tos.html.jinja2")
 
+@router.get("/register", include_in_schema=False)
+async def register_landing(
+        request: Request,
+        redirect_uri: str = None,
+    ):
+    if not redirect_uri.startswith('/'):
+        redirect_uri = None
+    else:
+        base_url = request.url.replace(path="", query="")
+        redirect_uri = str(base_url) + redirect_uri
+    return await request.app.state.app_session.oauth_client.register_redirect(request, redirect_uri)
+
 @router.get("/logout", include_in_schema=False)
 async def logout(request: Request):
     access_token = await request.app.state.app_session.end_session(request)

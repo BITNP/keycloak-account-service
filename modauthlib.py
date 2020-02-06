@@ -50,7 +50,25 @@ class BITNPOAuthRemoteApp(RemoteApp):
             kwargs['state'] = state
         rv = await self.create_authorization_url(redirect_uri, **kwargs)
         self.save_authorize_data(request, redirect_uri=redirect_uri, **rv)
-        return RedirectResponse(rv['url'])
+        return RedirectResponse(rv['url'], status_code=303)
+
+    async def register_redirect(self, request: Request, redirect_uri:str=None, **kwargs) -> RedirectResponse:
+        """Create a HTTP Redirect for Registration Endpoint. Pribably Keycloak-only.
+        :param request: Starlette Request instance.
+        :param redirect_uri: Callback or redirect URI for registration completion.
+        :param kwargs: Extra parameters to include.
+        :return: Starlette ``RedirectResponse`` instance.
+        """
+        state = self._get_session_data(request, 'state')
+        if state is not None:
+            # reuse state if multiple pages in the same session needs relogin
+            # relaxing this CSRF token's enforcement
+            # TODO: is this safe in a CSRF context?
+            kwargs['state'] = state
+        rv = await self.create_authorization_url(redirect_uri, **kwargs)
+        rv['url'] = rv['url'].replace('protocol/openid-connect/auth', 'protocol/openid-connect/registrations', 1)
+        self.save_authorize_data(request, redirect_uri=redirect_uri, **rv)
+        return RedirectResponse(rv['url'], status_code=303)
 
     async def authorize_access_token(self, request: Request, **kwargs):
         """Fetch an access token.
@@ -364,10 +382,7 @@ class BITNPSessionFastAPIApp(BITNPFastAPICSRFAddon):
 
     async def exception_handler(self, request: Request, exc: Exception):
         if isinstance(exc, RequiresTokenException):
-            response = await self.oauth_client.authorize_redirect(request, str(request.url))
-            # monkey patch to make sure GET only
-            response.status_code = 303
-            return response
+            return await self.oauth_client.authorize_redirect(request, str(request.url))
         if isinstance(exc, RemovesAuthParamsException):
             clean_url = str(
                 request.url.remove_query_params('code').remove_query_params('state')

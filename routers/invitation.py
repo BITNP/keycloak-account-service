@@ -64,6 +64,7 @@ async def invitation_landing(
                 "in_group": in_group,
                 "session_data": session_data,
                 "csrf_field": csrf_field,
+                "register_url": request.url_for('register_landing')+'?redirect_uri=/i/'+token,
                 "token": token,
             })
     return current_group.name
