@@ -172,7 +172,9 @@ async def _delegated_groups_member_add_json(
         user_id: str = None,
     ) -> datatypes.ProfileInfo:
     """
-    This function is also used on client-faced invitation join i.e. no permission check against session_data
+    This function is also used on client-faced invitation join i.e. no permission check against session_data.
+
+    Another logic of this is located at register.register_process
     """
     if not username and not user_id:
         raise HTTPException(status_code=422, detail="username or user_id required")

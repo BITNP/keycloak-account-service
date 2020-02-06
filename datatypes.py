@@ -1,4 +1,4 @@
-from pydantic import BaseModel, BaseSettings, IPvAnyAddress, validator, root_validator, conlist, Field, MissingError
+from pydantic import BaseModel, BaseSettings, IPvAnyAddress, validator, root_validator, conlist, constr, Field, MissingError
 from datetime import datetime, tzinfo, timezone, timedelta
 from typing import Union, List, Dict, Any, Optional, ForwardRef
 from collections import UserDict
@@ -142,7 +142,7 @@ class ProfileInfo(BaseModel):
 class ProfileUpdateInfo(BaseModel):
     name: str = None
     lastName: str = None
-    firstName: str
+    firstName: str = None
     email: str
 
     @validator('firstName', always=True, pre=True)
@@ -152,6 +152,28 @@ class ProfileUpdateInfo(BaseModel):
                 return values.get('name')
             raise MissingError
         return v
+
+class UserCreationInfo(ProfileUpdateInfo):
+    enabled: bool = True
+    emailVerified: bool = False
+    username: constr(min_length=2, max_length=20, regex="^[a-zA-Z0-9_-]+$")
+    credentials: list = None
+    newPassword: str
+    confirmation: str
+
+    def request_json(self) -> str:
+        return self.json(exclude={"name", "newPassword", "confirmation"})
+
+    @root_validator
+    def check_passwords_match_and_init_creds(cls, values):
+        pw1, pw2 = values.get('newPassword'), values.get('confirmation')
+        if pw1 is not None and pw2 is not None and pw1 != pw2:
+            raise ValueError('Psswords do not match')
+
+        # init credentials
+        if not values.get('credentials'):
+            values['credentials'] = [{'type': 'password', 'temporary': False, 'value': pw1}]
+        return values
 
 class PasswordInfo(BaseModel):
     registered: bool = None
