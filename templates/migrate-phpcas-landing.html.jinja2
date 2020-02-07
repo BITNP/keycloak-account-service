@@ -11,7 +11,7 @@
                         <a href="{{ url_for('phpcas_migrate_landing') }}" class="btn btn-primary stretched-link" tabindex="1">账户迁移</a>
                     </div>
                 </div>
-                <form id="form-password-update" action="{{ url_for('register_process') }}?i={{ i | urlencode }}" method="POST" enctype="application/x-www-form-urlencoded">
+                <form id="form-password-update" action="?i={{ i | urlencode }}" method="POST" enctype="application/x-www-form-urlencoded">
                     <div class="form-group">
                         <label>身份</label>
                         {% if not i_name %}
@@ -53,34 +53,6 @@
                     <button type="reset" class="btn btn-light">重填</button>
                     <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">
                 </form>
-<script>
-var $id = function(id){return document.getElementById(id) || {};};
-var hint_html = $id('confirmation-desc').innerHTML;
-var error_text = '请确认输入了两次相同的新密码。';
-function validate_form(){
-    var np = $id('newPassword').value, co = $id('confirmation').value, cl = $id('confirmation-desc').classList;
-    if(np != co && np != ''){
-        $id('confirmation').setCustomValidity(error_text);
-        $id('confirmation-desc').innerHTML = error_text;
-        cl.add('text-danger');
-        cl.remove('text-muted');
-        return false;
-    }else{
-        $id('confirmation').setCustomValidity('');
-        $id('confirmation-desc').innerHTML = hint_html;
-        cl.add('text-muted');
-        cl.remove('text-danger');
-        return true;
-    }
-}
-$id('newPassword').addEventListener('input', function(){validate_form();});
-$id('confirmation').addEventListener('input', function(){validate_form();});
-$id('form-password-update').addEventListener('submit', function(e){
-    if(!validate_form()){
-        e.preventDefault();
-    }
-});
-</script>
             </div>
         </div>
     </div>
