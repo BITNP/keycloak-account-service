@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     group_status_prefix: str = '/bitnp/active'
     group_config_path: str = '/bitnp' # Pending removal?
     role_active_name: str = 'bitnp-active'
+    iam_master_group_id: str = None
 
     group_config: 'GroupConfig' = None
 
@@ -161,6 +162,7 @@ class UserCreationInfo(ProfileUpdateInfo):
     credentials: list = None
     newPassword: constr(min_length=6)
     confirmation: str
+    attributes: dict = None
 
     def request_json(self) -> str:
         return self.json(exclude={"name", "newPassword", "confirmation"})
@@ -169,6 +171,7 @@ class UserCreationInfo(ProfileUpdateInfo):
     def check_username_password_match(cls, v, values):
         if values.get('username') == v:
             raise ValueError('Password cannot match username')
+        return v
 
     @root_validator
     def check_passwords_match_and_init_creds(cls, values):

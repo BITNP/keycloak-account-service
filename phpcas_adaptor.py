@@ -46,11 +46,11 @@ class FakePHPCASAdaptor(PHPCASAdaptor):
         if email == 'testph@bitnp.net':
             # pw: testphp
             return PHPCASUserInfo(id=1, email=email, name="testph", password='$2b$12$JCc.2OHhGup1Jt12Bdyz5eXebeLfCk0Etix.G7HXRoJCWX8eGDE0K', real_name="TEST")
-        elif email == 'testphp@bitnp.net':
-            # pw: test (pwpolicy)
+        elif email == 'test@phy25.com':
+            # pw: test (pwpolicy violation)
             return PHPCASUserInfo(id=2, email=email, name="testphp", password="$2b$12$uQ7eceNo4mw6ljQYUjiUJ.KylZ.D5pld1lpO5giqrX8ltezhmWExG", real_name="TEST")
         elif email == 'test@bitnp.net':
-            # pw: test (pwpolicy)
+            # pw: test (pwpolicy violation)
             return PHPCASUserInfo(id=20, email=email, name="test", password="$2b$12$uQ7eceNo4mw6ljQYUjiUJ.KylZ.D5pld1lpO5giqrX8ltezhmWExG", real_name="TEST")
         else:
             return None

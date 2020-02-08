@@ -35,8 +35,11 @@ async def phpcas_migrate_process(
         csrf_valid: bool = Depends(BITNPSessionFastAPIApp.deps_requires_csrf_posttoken),
     ):
     session_email = request.session.get(EMAIL_SESSION_NAME)
+    user: PHPCASUserInfo
     if session_email and password is None:
-        print('Restoring session for '+session_email)
+        # we assume that their previous password has been validated
+        # and they are authorized to set up a new password
+        print("phpcas-migrate: Restoring session for "+session_email)
         user, resp = await _phpcas_migrate_validate_cred(
             request=request,
             email=session_email,
@@ -49,6 +52,7 @@ async def phpcas_migrate_process(
             return resp
 
         user_uri, resp = await _phpcas_migrate_create_user(
+            user_id=user.id,
             request=request,
             email=user.email,
             password=newPassword,
@@ -84,6 +88,7 @@ async def phpcas_migrate_process(
             return resp
 
         user_uri, resp = await _phpcas_migrate_create_user(
+            user_id=user.id,
             request=request,
             email=user.email,
             password=password,
@@ -96,7 +101,20 @@ async def phpcas_migrate_process(
         if resp:
             return resp
 
-    # user_uri - iam-admin
+    # iam-master add
+    IAM_MASTER_GROUP_ID = request.app.state.config.iam_master_group_id
+    if user.admin is True and IAM_MASTER_GROUP_ID:
+        try:
+            print("phpcas-migrate: Upgrading {} to iam-master".format(user.name))
+            async with request.app.state.app_session.get_service_account_oauth_client() as client:
+                resp = await client.put(
+                    user_uri+'/groups/'+IAM_MASTER_GROUP_ID,
+                    headers={'Accept': 'application/json'}
+                )
+                if resp.status_code != 204:
+                    raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        except Exception as e:
+            print("phpcas-migrate: Failed upgrading to iam-master {}".format(e))
 
     return request.app.state.templates.TemplateResponse("migrate-phpcas-completed.html.jinja2", {
         "request": request,
@@ -105,6 +123,7 @@ async def phpcas_migrate_process(
 
 
 async def _phpcas_migrate_create_user(request: Request,
+        user_id: int,
         email: str,
         password: str,
         confirmation: str,
@@ -127,6 +146,7 @@ async def _phpcas_migrate_create_user(request: Request,
             username=username,
             newPassword=password,
             confirmation=confirmation,
+            attributes={'phpCAS_id': [user_id]},
         )
     except ValidationError as e:
         incorrect = "迁移失败，错误信息："+(
@@ -158,6 +178,31 @@ async def _phpcas_migrate_create_user(request: Request,
                 })
 
     # when creating user, make sure we don't create duplicates
+    async with request.app.state.app_session.get_service_account_oauth_client() as client:
+        resp = await client.post(request.app.state.config.keycloak_adminapi_url+'users',
+            data=new_user.request_json(),
+            headers={'Accept': 'application/json', 'Content-Type': 'application/json'}
+        )
+        if resp.status_code == 201:
+            return resp.headers.get('location'), None
+        else:
+            incorrect = "迁移失败，如有疑问请联系管理员。错误信息："+resp.text
+            print("phpcas-migrate: Error creating {}: {}".format(new_user.username, resp.text))
+            try:
+                resp_json = resp.json()
+                if resp_json['errorMessage'].startswith('User exists with same '):
+                    incorrect = "你的账户已被迁移，不能再迁移。如有疑问请联系管理员。"
+            except Exception:
+                pass
+
+            return None, request.app.state.templates.TemplateResponse("migrate-phpcas-landing.html.jinja2", {
+                "request": request,
+                "csrf_field": csrf_field,
+                "input_name": name,
+                "input_email": email,
+                "incorrect": incorrect,
+            })
+
     return None, None
 
 
