@@ -159,17 +159,22 @@ class UserCreationInfo(ProfileUpdateInfo):
     emailVerified: bool = False
     username: constr(min_length=2, max_length=20, regex="^[a-zA-Z0-9_-]+$")
     credentials: list = None
-    newPassword: str
+    newPassword: constr(min_length=6)
     confirmation: str
 
     def request_json(self) -> str:
         return self.json(exclude={"name", "newPassword", "confirmation"})
 
+    @validator('newPassword')
+    def check_username_password_match(cls, v, values):
+        if values.get('username') == v:
+            raise ValueError('Password cannot match username')
+
     @root_validator
     def check_passwords_match_and_init_creds(cls, values):
         pw1, pw2 = values.get('newPassword'), values.get('confirmation')
         if pw1 is not None and pw2 is not None and pw1 != pw2:
-            raise ValueError('Psswords do not match')
+            raise ValueError('Passwords do not match')
 
         # init credentials
         if not values.get('credentials'):
@@ -189,7 +194,7 @@ class PasswordUpdateRequest(BaseModel):
     def check_passwords_match(cls, values):
         pw1, pw2 = values.get('newPassword'), values.get('confirmation')
         if pw1 is not None and pw2 is not None and pw1 != pw2:
-            raise ValueError('Psswords do not match')
+            raise ValueError('Passwords do not match')
         return values
 
 class KeycloakSessionClient(BaseModel):

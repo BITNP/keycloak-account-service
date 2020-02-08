@@ -1,55 +1,32 @@
 {% extends "base.html.jinja2" %}
 {% block content %}
     <div class="content">
-        <h2 class="display-5">注册网协通行证</h2>
+        <h2 class="display-5">旧版网协通行证账户迁移</h2>
         {% if incorrect %}<div class="alert alert-warning" role="alert">{{ incorrect }}</div>{% endif %}
         <div class="row">
             <div class="col-12 col-lg-6 offset-lg-3 mb-3">
-                <div class="card mb-3 bg-warning">
-                    <div class="card-body">
-                        <p class="card-text">&#x1F504; 有旧版 CAS 网协通行证、但第一次在 Keycloak 登录提示密码错误？请不要尝试在这里重复注册账户，请先尝试进行账户迁移。</p>
-                        <a href="{{ url_for('phpcas_migrate_landing') }}" class="btn btn-primary stretched-link" tabindex="1">账户迁移</a>
-                    </div>
-                </div>
-                <form id="form-password-update" action="?i={{ i | urlencode }}" method="POST" enctype="application/x-www-form-urlencoded">
+                <p>旧版 CAS 网协通行证需要通过此页面进行账户迁移，才可在 Keycloak 上使用。迁移后你可使用旧邮箱与密码进行登录。</p>
+                <form id="form-validate-creds" method="POST" enctype="application/x-www-form-urlencoded">
                     <div class="form-group">
-                        <label>身份</label>
-                        {% if not i_name %}
-                        <div class="form-text"><strong>无身份</strong> 请优先使用管理层发送的邀请链接进行注册，以正确激活你的账户。</div>
-                        {% else %}
-                        <div class="form-text"><span class="badge badge-primary">{{ i_name }}</span> <span class="text-muted">注册完成后将自动配置账户。</span></div>
-                        {% endif %}
-                    </div>
-                    <div class="form-group">
-                        <label for="name">真实姓名 <span class="required">*</span></label>
-                        <input type="text" class="form-control" id="name" name="name" required autocomplete="name" tabindex="2" value="{{ input_name }}">
-                    </div>
-                    <div class="form-group">
-                        <label for="email">邮箱 <span class="required">*</span></label>
+                        <label for="email">登录邮箱 <span class="required">*</span></label>
                         <input type="email" class="form-control" id="email" name="email" required autocomplete="email" tabindex="3" value="{{ input_email }}">
                     </div>
                     <div class="form-group">
-                        <label for="username">用户名 <span class="required">*</span></label>
-                        <input type="text" class="form-control" id="username" name="username" aria-describedby="username-hint" required autocomplete="username" tabindex="4" value="{{ input_username }}" minlength="2">
-                        <small id="username-hint" class="form-text text-muted">
-                            应为小写字母、数字、划线的组合，最少 2 位
+                        <label for="password">旧版通行证密码 <span class="required">*</span></label>
+                        <input type="password" class="form-control" id="password" name="password" required autocomplete="password" tabindex="5" aria-describedby="password-forgot">
+                        <small id="password-forgot" class="form-text text-muted">
+                            忘记旧密码？请联系 <a href="mailto:webmaster@bitnp.net">webmaster@bitnp.net</a> 重设
                         </small>
                     </div>
                     <div class="form-group">
-                        <label for="newPassword">密码 <span class="required">*</span></label>
-                        <input type="password" class="form-control" id="newPassword" name="newPassword" required aria-describedby="newPassword-desc" autocomplete="new-password" tabindex="5" minlength="6">
-                        <small id="newPassword-desc" class="form-text text-muted">至少 6 位</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="confirmation">确认密码 <span class="required">*</span></label>
-                        <input type="password" class="form-control" id="confirmation" name="confirmation" aria-describedby="confirmation-desc" value="" required autocomplete="new-password" tabindex="6"  minlength="6">
-                        <small id="confirmation-desc" class="form-text text-muted">请再输入一次密码</small>
+                        <label for="name">真实姓名 <span class="required">*</span></label>
+                        <input type="text" class="form-control" id="name" name="name" required autocomplete="name" tabindex="6" value="{{ input_name }}">
                     </div>
                     <div class="form-group">
                         <label for="confirmation">使用条款</label>
                         {% include "tos-content.html.jinja2" %}
                     </div>
-                    <button type="submit" class="btn btn-primary" tabindex="7">同意使用条款并注册</button>
+                    <button type="submit" class="btn btn-primary" tabindex="7">同意使用条款并迁移</button>
                     <button type="reset" class="btn btn-light">重填</button>
                     <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">
                 </form>

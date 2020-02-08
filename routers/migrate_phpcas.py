@@ -1,12 +1,16 @@
-from fastapi import Depends, APIRouter
+from fastapi import Depends, APIRouter, Form
 from starlette.requests import Request
 from starlette.responses import Response
+from pydantic import ValidationError
+import re
 
 import datatypes
+from phpcas_adaptor import PHPCASAdaptor, PHPCASUserInfo
 from modauthlib import BITNPSessionFastAPIApp
 from utils import TemplateService
 
 router = APIRouter()
+EMAIL_SESSION_NAME = 'mpc_email'
 
 @router.get("/migrate-phpcas/", include_in_schema=False)
 async def phpcas_migrate_landing(
@@ -18,13 +22,202 @@ async def phpcas_migrate_landing(
         "csrf_field": csrf_field,
     })
 
-@router.post("/migrate-phpcas/", include_in_schema=False)
-async def phpcas_migrate_process(request: Request):
-    return None
 
-@router.get("/migrate-phpcas/is-required", include_in_schema=False)
-async def phpcas_migrate_is_required(request: Request, username: str, email: str=None):
-    if True:
-        return Response(status_code=204)
+@router.post("/migrate-phpcas/", include_in_schema=False)
+async def phpcas_migrate_process(
+        request: Request,
+        email: str = Form(...),
+        password: str = Form(None),
+        newPassword: str = Form(None),
+        confirmation: str = Form(None),
+        name: str = Form(...),
+        csrf_field: tuple = Depends(BITNPSessionFastAPIApp.deps_get_csrf_field),
+        csrf_valid: bool = Depends(BITNPSessionFastAPIApp.deps_requires_csrf_posttoken),
+    ):
+    session_email = request.session.get(EMAIL_SESSION_NAME)
+    if session_email and password is None:
+        print('Restoring session for '+session_email)
+        user, resp = await _phpcas_migrate_validate_cred(
+            request=request,
+            email=session_email,
+            password=None,
+            name=name,
+            csrf_field=csrf_field,
+        )
+
+        if resp:
+            return resp
+
+        user_uri, resp = await _phpcas_migrate_create_user(
+            request=request,
+            email=user.email,
+            password=newPassword,
+            confirmation=confirmation,
+            name=name,
+            username=user.name,
+            csrf_field=csrf_field,
+        )
+
+        if resp:
+            return resp
+
+        del request.session[EMAIL_SESSION_NAME]
     else:
-        return Response(content="yes", status_code=409)
+        if not password:
+            return request.app.state.templates.TemplateResponse("migrate-phpcas-landing.html.jinja2", {
+                    "request": request,
+                    "csrf_field": csrf_field,
+                    "input_name": name,
+                    "input_email": email,
+                    "incorrect": "请输入密码。",
+                })
+
+        user, resp = await _phpcas_migrate_validate_cred(
+            request=request,
+            email=email,
+            password=password,
+            name=name,
+            csrf_field=csrf_field,
+        )
+
+        if resp:
+            return resp
+
+        user_uri, resp = await _phpcas_migrate_create_user(
+            request=request,
+            email=user.email,
+            password=password,
+            confirmation=password,
+            name=name,
+            username=user.name,
+            csrf_field=csrf_field,
+        )
+
+        if resp:
+            return resp
+
+    # user_uri - iam-admin
+
+    return request.app.state.templates.TemplateResponse("migrate-phpcas-completed.html.jinja2", {
+        "request": request,
+        "username": user.name,
+    })
+
+
+async def _phpcas_migrate_create_user(request: Request,
+        email: str,
+        password: str,
+        confirmation: str,
+        name: str,
+        username: str,
+        csrf_field: tuple,
+    ) -> (str, Response):
+    """
+    temp auth - use (signed) session
+    # email - use as is
+    # password - if not in compliance, we need to ask for a new password
+    # name - use the latest input
+    # username - if not in compliance, block migration and refer to asssitance; use as is (show this to user sometime)
+    """
+    try:
+        new_user = datatypes.UserCreationInfo(
+            email=email,
+            emailVerified=False,
+            name=name,
+            username=username,
+            newPassword=password,
+            confirmation=confirmation,
+        )
+    except ValidationError as e:
+        incorrect = "迁移失败，错误信息："+(
+            ', '.join(['.'.join(field_error['loc'])+':'+field_error['msg'] for field_error in e.errors()])
+        )
+
+        for field_error in e.errors():
+            if field_error['loc'][0] == 'username':
+                incorrect= "你创建旧版账户时使用的用户名包含了中文，无法自动迁移，请访问此网址提交用户名修改请求，由人工处理： "+request.app.state.config.assistance_url
+                break
+
+            if field_error['loc'][0] == 'newPassword':
+                # direct to setup new password
+                request.session[EMAIL_SESSION_NAME] = email
+                return None, request.app.state.templates.TemplateResponse("migrate-phpcas-password.html.jinja2", {
+                    "request": request,
+                    "csrf_field": csrf_field,
+                    "input_name": name,
+                    "input_email": email,
+                    "incorrect": incorrect,
+                })
+
+        return None, request.app.state.templates.TemplateResponse("migrate-phpcas-landing.html.jinja2", {
+                    "request": request,
+                    "csrf_field": csrf_field,
+                    "input_name": name,
+                    "input_email": email,
+                    "incorrect": incorrect,
+                })
+
+    # when creating user, make sure we don't create duplicates
+    return None, None
+
+
+async def _phpcas_migrate_validate_cred(request: Request,
+        email: str,
+        password: str,
+        name: str,
+        csrf_field: tuple,
+    ) -> (PHPCASUserInfo, Response):
+    phpcas_adaptor: PHPCASAdaptor = request.app.state.phpcas_adaptor
+    user = await phpcas_adaptor.get_user_by_email(email)
+    if not user or (password and not user.check_password(password)):
+        return None, request.app.state.templates.TemplateResponse("migrate-phpcas-landing.html.jinja2", {
+            "request": request,
+            "csrf_field": csrf_field,
+            "input_name": name,
+            "input_email": email,
+            "incorrect": "你的邮箱与密码不正确，请确保使用正确的旧版网协通行证密码。",
+        })
+
+    if not user.enabled:
+        # helpdesk
+        return None, request.app.state.templates.TemplateResponse("migrate-phpcas-landing.html.jinja2", {
+            "request": request,
+            "csrf_field": csrf_field,
+            "input_name": name,
+            "input_email": email,
+            "incorrect": "你的账户被禁用，无法迁移。请联系 webmaster@bitnp.net 以启用账户。",
+        })
+
+    return user, None
+
+
+@router.get("/migrate-phpcas/user-lookup", include_in_schema=False)
+async def phpcas_migrate_user_lookup(request: Request, username: str, email: str=None):
+    """
+    This is an internal API; include_in_schema=False
+
+    Disabled users should also be required to migrate (and they will see a helpdesk option eventually).
+
+    We won't check to see if an account exists in Keycloak here (so that they may have done migration)
+    because this endpoint is usually used by Keycloak during register and pwreset, after no user is hit.
+
+    Additional check should be done during the actual migration (after verifying password) to see
+    if Keycloak account exists or not.
+    """
+    if email is None and username.find('@') != -1:
+        # Keycloak's pwreset will send username or email as username, regardless of actaul value
+        email = username
+
+    phpcas_adaptor: PHPCASAdaptor = request.app.state.phpcas_adaptor
+    user: PHPCASUserInfo = None
+
+    if email:
+        user = await phpcas_adaptor.get_user_by_email(email)
+
+    if not user and username:
+        user = await phpcas_adaptor.get_user_by_username(username)
+
+    if user:
+        return Response(content="yes", status_code=200)
+    else:
+        return Response(status_code=200)

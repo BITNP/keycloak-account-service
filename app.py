@@ -10,6 +10,7 @@ import datatypes
 from utils import TemplateService
 from routers import sp, admin
 from routers import publicsvc, assistance, invitation, migrate_phpcas
+from phpcas_adaptor import FakePHPCASAdaptor, MySQLPHPCASAdaptor
 
 from authlib.integrations.starlette_client import OAuth
 from authlib.integrations.httpx_client import OAuthError, AsyncOAuth2Client
@@ -62,6 +63,10 @@ app.state.templates.env.globals["app_title"] = app.title
 app.state.templates.env.filters["local_timestring"] = (
     lambda dt, format='%Y-%m-%d %H:%M': local_timestring(app.state.config.local_timezone, dt, format)
 )
+
+@app.on_event("startup")
+async def init_phpcas_adaptor():
+    app.state.phpcas_adaptor = await FakePHPCASAdaptor.create(app.state.config)
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_accept_handler(request, exc):
