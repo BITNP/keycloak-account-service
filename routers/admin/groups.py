@@ -106,7 +106,7 @@ async def _admin_delegated_groups_path_to_group(
                 current_group.id = group_info['id']
                 current_group.attributes = group_info.get('attributes', dict())
         except Exception as e:
-            print(str(e))
+            print(e)
             raise HTTPException(status_code=404, detail="Cannot get group information by path")
 
     return current_group
@@ -185,7 +185,6 @@ async def _delegated_groups_member_add_json(
         if len(parsed_user) == 0:
             # Try again with search=username
             parsed_user = await _admin_search_users(request, username)
-        print(parsed_user)
         if len(parsed_user) == 0:
             raise HTTPException(status_code=404, detail="Cannot find any user according to username")
         if len(parsed_user) > 1:
@@ -294,7 +293,7 @@ def guess_active_ns(session_data: datatypes.SessionData, group_config: datatypes
     active_groups, _ = group_config.filter_active_groups(pub_memberof)
     active_groups.sort(key=attrgetter('path'), reverse=True)
     if len(active_groups) < 1:
-        return None
+        return (None, None)
     path = active_groups[0].path
     year = path[len(group_config.settings.group_status_prefix):].split('/', 1)[0]
     return (group_config.settings.group_status_prefix
@@ -332,7 +331,7 @@ def admin_delegated_groups_list_json(
         item: datatypes.GroupItem
         for item in request.app.state.config.group_config.values():
             copied = item.copy(deep=True)
-            if copied.path.startswith(datatypes.GroupConfig.active_ns_placeholder):
+            if active_ns and copied.path.startswith(datatypes.GroupConfig.active_ns_placeholder):
                 copied.path = copied.path.replace(datatypes.GroupConfig.active_ns_placeholder, active_ns)
                 copied.name = copied.name + year
             ret.append(copied)
