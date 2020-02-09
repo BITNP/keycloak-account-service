@@ -41,11 +41,15 @@ async def register_landing(
         request: Request,
         redirect_uri: str = None,
     ):
-    if not redirect_uri.startswith('/'):
-        redirect_uri = None
-    else:
-        base_url = request.url.replace(path="", query="")
-        redirect_uri = str(base_url) + redirect_uri
+    if redirect_uri:
+        if not redirect_uri.startswith('/'):
+            redirect_uri = None
+        else:
+            base_url = request.url.replace(path="", query="")
+            redirect_uri = str(base_url) + redirect_uri
+    if not redirect_uri:
+        redirect_uri = request.url_for('sp_landing')
+
     return await request.app.state.app_session.oauth_client.register_redirect(request, redirect_uri)
 
 @router.get("/logout", include_in_schema=False)
