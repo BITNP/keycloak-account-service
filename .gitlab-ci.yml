@@ -35,6 +35,7 @@ test-image:
 test-docker-compose-config:
   stage: test
   script:
+    - touch .env
     - docker-compose config
 
 release-image:
