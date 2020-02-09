@@ -32,6 +32,11 @@ test-image:
   after_script:
     - docker stop bitnp-accounts
 
+test-docker-compose-config:
+  stage: test
+  script:
+    - docker-compose config
+
 release-image:
   stage: release
   script:
