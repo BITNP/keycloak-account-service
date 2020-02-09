@@ -123,12 +123,12 @@ class BITNPOAuthRemoteApp(RemoteApp):
     async def get_service_account_config(self):
         token_endpoint = await self.get_token_endpoint()
         return {
-            'client_id':self.client_id,
-            'client_secret':self.client_secret,
-            'token_endpoint':token_endpoint,
-            'token_endpoint_auth_method':'client_secret_basic',
-            'revocation_endpoint_auth_method':'client_secret_basic',
-            'scope':None,
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+            'token_endpoint': token_endpoint,
+            'token_endpoint_auth_method': 'client_secret_basic',
+            'revocation_endpoint_auth_method': 'client_secret_basic',
+            'scope': None,
         }
 
 
@@ -402,7 +402,12 @@ class BITNPSessionFastAPIApp(BITNPFastAPICSRFAddon):
             kwargs['token'] = self.sa_tokens
 
         async with AsyncOAuth2Client(**kwargs) as client:
-            if not client.token:
+            # we are not going to make use of refresh_token
+            # every time access_token expires, we can go ahead and get a new token
+            # since this is a service account and we have credentials
+
+            # this comparison requires that token dict has a valid 'expires_at'
+            if not isinstance(client.token, dict) or datetime.utcnow() > client.token.get('expires_at', 0):
                 await client.update_token(await client.fetch_token())
             yield client
 
