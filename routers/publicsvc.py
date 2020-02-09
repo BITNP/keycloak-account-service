@@ -3,7 +3,7 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
 import datatypes
-from modauthlib import BITNPSessions
+from modauthlib import BITNPSessions, SessionData
 from utils import TemplateService
 from urllib.parse import urlencode
 
@@ -12,7 +12,7 @@ router = APIRouter()
 
 @router.get("/", include_in_schema=False)
 async def index(request: Request,
-    session_data: datatypes.SessionData = Depends(BITNPSessions.deps_get_session)):
+    session_data: SessionData = Depends(BITNPSessions.deps_get_session)):
     tdata = {
         "request": request,
         "name": None,

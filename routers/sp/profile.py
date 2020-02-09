@@ -5,7 +5,7 @@ from starlette.responses import Response, RedirectResponse
 import datatypes
 from pydantic import ValidationError
 
-from modauthlib import BITNPSessions
+from modauthlib import BITNPSessions, SessionData
 
 router = APIRouter()
 
@@ -16,7 +16,7 @@ router = APIRouter()
 async def sp_profile(
         request: Request,
         csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
-        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_session),
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_session),
     ):
     # prefer_onename is used if user has firstName+lastName and they initiated oneName setup process
     prefer_onename = request.query_params.get('prefer_onename', False)
@@ -38,7 +38,7 @@ async def sp_profile(
 
 async def sp_profile_json(
         request: Request,
-        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_session),
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_session),
         load_session_only: bool= False
     ) -> datatypes.ProfileInfo:
     if not load_session_only:
@@ -67,7 +67,7 @@ async def sp_profile_update(
         firstName: str = Form(None),
         lastName: str = Form(None),
         email: str = Form(None),
-        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_session),
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_session),
         csrf_valid: bool = Depends(BITNPSessions.deps_requires_csrf_posttoken),
     ):
     if not profile:
@@ -85,7 +85,7 @@ async def sp_profile_update(
 async def sp_profile_update_json(
         request: Request,
         profile: datatypes.ProfileUpdateInfo,
-        session_data: datatypes.SessionData
+        session_data: SessionData
     ):
     data : str = profile.json(exclude={'name',})
     resp = await request.app.state.app_session.oauth_client.post(
@@ -107,7 +107,7 @@ async def sp_profile_update_json(
     })
 async def sp_profile_emailverify(
         request: Request,
-        session_data: datatypes.SessionData,
+        session_data: SessionData,
     ):
     # Won't implement
     return Response(status_code=404)

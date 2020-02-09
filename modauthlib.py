@@ -10,11 +10,12 @@ from authlib.jose.rfc7519.jwt import decode_payload as decode_jwt_payload
 from aiocache import Cache
 from aiocache.base import BaseCache
 
-from datatypes import SessionData, SessionExpiringData, SessionRefreshData, GroupConfig, GroupItem
-from datetime import datetime, timedelta
+from datatypes import GroupConfig, GroupItem
+from datetime import datetime, timedelta, timezone
+from pydantic import BaseModel, validator
 from pydantic.utils import deep_update
 from contextlib import asynccontextmanager
-from typing import ContextManager
+from typing import ContextManager, List, Union
 from hashlib import sha1
 from authlib.common.security import generate_token
 import time
@@ -33,6 +34,57 @@ class RemovesAuthParamsException(Exception):
 class CSRFTokenInvalidException(HTTPException):
     def __init__(self):
         super().__init__(status_code=403, detail="post token invalid; this request may be unauthorized")
+
+
+class SessionData(BaseModel):
+    access_token_issued_at: datetime
+    access_token_expires_at: datetime
+    access_token: str
+    refresh_token: str = ''
+    token_type: str = ''
+    memberof: List[GroupItem] = list()
+    realm_roles: List[str] = list()
+    client_roles: List[str] = list()
+    subject: str
+    username: str = ''
+    name: str = None
+    email: str = ''
+    scope: List[str] = list()
+    id_token: dict = {} # temp
+
+    def to_tokens(self):
+        return {
+            'access_token': self.access_token,
+            'token_type': self.token_type,
+            'refresh_token': self.refresh_token,
+            'expires_at': int(self.access_token_expires_at.replace(tzinfo=timezone.utc).timestamp()),
+        }
+
+    def is_admin(self):
+        return 'iam-admin' in self.scope
+
+    def is_master(self):
+        return 'admin' in self.realm_roles
+
+    @validator('realm_roles', 'client_roles', pre=True, always=True)
+    def roles_default_list(cls, v):
+        return v or list()
+
+
+class SessionPointerData(BaseModel):
+    target_jti: str
+    expires_at: datetime
+
+
+class SessionExpiringData(SessionPointerData):
+    pass
+
+
+class SessionRefreshData(SessionPointerData):
+    # access_token_jti = target_jti
+    pass
+
+SessionItem = Union[SessionData, SessionExpiringData, SessionRefreshData]
 
 
 class BITNPOAuthRemoteApp(RemoteApp):
@@ -210,7 +262,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
                 await self.session_cache.delete(jti)
                 return None
             else:
-                data = await self.session_cache.get(data.new_jti)
+                data = await self.session_cache.get(data.target_jti)
         if data and isinstance(data, SessionData):
             # check not_before_policy
             if data.access_token_issued_at < self.not_before_policy:
@@ -255,7 +307,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
             refresh_body = await self.oauth_client.parse_token_body(tokens['refresh_token'])
             refresh_jti = refresh_body['jti']
             refresh_data = SessionRefreshData(
-                access_token_jti=access_jti,
+                target_jti=access_jti,
                 expires_at=datetime.utcfromtimestamp(refresh_body['exp'])
             )
             await self.session_cache.set(refresh_jti, refresh_data)
@@ -265,7 +317,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
                 refresh_body = await self.oauth_client.parse_token_body(old_session_data.refresh_token)
                 refresh_jti = refresh_body['jti']
                 refresh_data = SessionRefreshData(
-                    access_token_jti=access_jti,
+                    target_jti=access_jti,
                     expires_at=datetime.utcnow()+self.bearer_grace_period
                 )
                 await self.session_cache.set(refresh_jti, refresh_data)
@@ -297,7 +349,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
         # get old access token's jti before we update
         refresh_data = await self.session_cache.get(refresh_jti)
         if refresh_data:
-            return refresh_data.access_token_jti
+            return refresh_data.target_jti
         else:
             return None
 
@@ -322,7 +374,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
         if jti and session_data and jti != new_jti:
             # if jti == new_jti, we will have infinite loop
             session_expiring_data = SessionExpiringData(
-                new_jti=new_jti,
+                target_jti=new_jti,
                 expires_at=session_data.access_token_expires_at+self.bearer_grace_period
             )
             await self.session_cache.set(jti, session_expiring_data)

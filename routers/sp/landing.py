@@ -2,7 +2,7 @@ from fastapi import Depends, APIRouter
 from starlette.requests import Request
 import datatypes
 
-from modauthlib import BITNPSessions
+from modauthlib import BITNPSessions, SessionData
 from .profile import sp_profile_json
 from .sessions import sp_sessions_json
 from ..admin.groups import admin_delegated_groups_list_json
@@ -12,7 +12,7 @@ router = APIRouter()
 
 @router.get("/", include_in_schema=False)
 async def sp_landing(request: Request,
-        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_session)
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_session)
     ):
     tdata = {
         "request": request,
@@ -56,7 +56,7 @@ async def sp_landing(request: Request,
 @router.get("/permission", include_in_schema=True, response_model=datatypes.PermissionInfo)
 async def sp_permission(
     request: Request,
-    session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_session)
+    session_data: SessionData = Depends(BITNPSessions.deps_requires_session)
     ) -> datatypes.PermissionInfo:
     pub_memberof = list()
     for item in session_data.memberof:

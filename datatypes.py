@@ -234,58 +234,6 @@ KeycloakSessionInfo = List[KeycloakSessionItem]
 #class KeycloakSessionInfo(BaseModel):
 #    sessions: List[KeycloakSessionItem] = []
 
-class SessionData(BaseModel):
-    access_token_issued_at: datetime
-    access_token_expires_at: datetime
-    access_token: str
-    refresh_token: str = ''
-    token_type: str = ''
-    memberof: List[GroupItem] = list()
-    realm_roles: List[str] = list()
-    client_roles: List[str] = list()
-    subject: str
-    username: str = ''
-    name: str = None
-    email: str = ''
-    scope: List[str] = list()
-    id_token: dict = {} # temp
-
-    def to_tokens(self):
-        return {
-            'access_token': self.access_token,
-            'token_type': self.token_type,
-            'refresh_token': self.refresh_token,
-            'expires_at': int(self.access_token_expires_at.replace(tzinfo=timezone.utc).timestamp()),
-        }
-
-    def is_admin(self):
-        return 'iam-admin' in self.scope
-
-    def is_master(self):
-        return 'admin' in self.realm_roles
-
-    @validator('realm_roles', 'client_roles', pre=True, always=True)
-    def roles_default_list(cls, v):
-        return v or list()
-
-
-class SessionPointerData(BaseModel):
-    target_jti: str
-    expires_at: datetime
-
-
-class SessionExpiringData(BaseModel):
-    new_jti: str
-    expires_at: datetime
-
-
-class SessionRefreshData(BaseModel):
-    access_token_jti: str
-    expires_at: datetime
-
-SessionItem = Union[SessionData, SessionExpiringData, SessionRefreshData]
-
-
 class BITNPResponseType(Enum):
     json = 'json'
     html = 'html'

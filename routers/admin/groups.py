@@ -4,7 +4,7 @@ from starlette.responses import Response, RedirectResponse
 
 import datatypes
 import invitation
-from modauthlib import BITNPSessions
+from modauthlib import BITNPSessions, SessionData
 from .users import _admin_search_users, _admin_search_users_by_username
 
 from utils import TemplateService
@@ -20,7 +20,7 @@ router = APIRouter()
 async def admin_delegated_groups_get(
         request: Request,
         path: str = None,
-        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_admin_session),
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_admin_session),
         first: int = 0,
         csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
     ):
@@ -115,7 +115,7 @@ async def admin_delegated_groups_detail_json(
         request: Request,
         grouplist: List[datatypes.GroupItem],
         path: str,
-        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_admin_session),
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_admin_session),
         first: int = 0,
     ) -> datatypes.GroupItem:
     current_group = await _admin_delegated_groups_path_to_group(request, grouplist, path)
@@ -150,7 +150,7 @@ async def admin_delegated_groups_member_add(
         path: str = Form(...),
         username: str = Form(None),
         user_id: str = Form(None),
-        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_admin_session),
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_admin_session),
         csrf_valid: bool = Depends(BITNPSessions.deps_requires_csrf_posttoken),
     ):
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
@@ -206,7 +206,7 @@ async def admin_delegated_groups_member_remove(
         request: Request,
         path: str = Form(...),
         user_id: str = Form(...),
-        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_admin_session),
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_admin_session),
         csrf_valid: bool = Depends(BITNPSessions.deps_requires_csrf_posttoken),
     ):
     await admin_delegated_groups_member_remove_json(request, path, user_id, session_data)
@@ -220,7 +220,7 @@ async def admin_delegated_groups_member_remove_json(
         request: Request,
         path: str,
         user_id: str,
-        session_data: datatypes.SessionData,
+        session_data: SessionData,
     ) -> None:
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
     current_group = await _admin_delegated_groups_path_to_group(request, grouplist, path)
@@ -240,7 +240,7 @@ async def admin_delegated_groups_update_invitation_link(
         path: str = Form(...),
         days_from_now: int = Form(...),
         expires: datetime = Form(None),
-        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_admin_session),
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_admin_session),
         csrf_valid: bool = Depends(BITNPSessions.deps_requires_csrf_posttoken),
     ):
     """
@@ -281,7 +281,7 @@ async def admin_delegated_groups_update_invitation_link(
             raise HTTPException(resp.status_code, detail=resp.json())
 
 
-def guess_active_ns(session_data: datatypes.SessionData, group_config: datatypes.GroupConfig) -> Tuple[str, str]:
+def guess_active_ns(session_data: SessionData, group_config: datatypes.GroupConfig) -> Tuple[str, str]:
     """
     Guess active_ns by checking the last available year in status groups.
     Since session_data is usually admin, we assume that they have latest affiliation.
@@ -323,7 +323,7 @@ def guess_group_item(name: str, group_config: datatypes.GroupConfig) -> datatype
 
 def admin_delegated_groups_list_json(
         request: Request,
-        session_data: datatypes.SessionData,
+        session_data: SessionData,
     ) -> List[datatypes.GroupItem]:
     if session_data.is_master():
         ret = list()
@@ -352,7 +352,7 @@ def admin_delegated_groups_list_json(
 @router.get("/groups", include_in_schema=True)
 async def admin_groups(
         request: Request,
-        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_admin_session)
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_admin_session)
     ):
     client: AsyncOAuth2Client
     async with request.app.state.app_session.get_service_account_oauth_client() as client:
@@ -364,7 +364,7 @@ async def admin_groups(
 async def admin_role_groups(
         request: Request,
         role_name: str = Path(..., regex="^[A-Za-z0-9-_]+$"),
-        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_admin_session)
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_admin_session)
     ):
     resp = await request.app.state.app_session.oauth_client.get(
         request.app.state.config.keycloak_adminapi_url+'roles/'+role_name+'/groups',
@@ -377,7 +377,7 @@ async def admin_role_groups(
 async def admin_client_role_groups(
         request: Request,
         role_name: str = Path(..., regex="^[A-Za-z0-9-_]+$"),
-        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_admin_session)
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_admin_session)
     ):
     resp = await request.app.state.app_session.oauth_client.get(
         request.app.state.config.keycloak_adminapi_url+'clients/3513512c-c67b-4fc4-a540-939d1d29c12c/roles/'+role_name+'/groups',

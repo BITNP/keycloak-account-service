@@ -5,7 +5,7 @@ from starlette.responses import Response, RedirectResponse
 import datatypes
 from pydantic import ValidationError
 
-from modauthlib import BITNPSessions
+from modauthlib import BITNPSessions, SessionData
 
 router = APIRouter()
 
@@ -13,7 +13,7 @@ router = APIRouter()
 async def sp_password(
         request: Request,
         csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
-        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_session),
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_session),
     ):
     resp = await request.app.state.app_session.oauth_client.get(
         request.app.state.config.keycloak_accountapi_url+'credentials/password',
@@ -51,7 +51,7 @@ async def sp_password_update(
         currentPassword: str = Form(...),
         newPassword: str = Form(...),
         confirmation: str = Form(...),
-        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_session),
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_session),
         csrf_valid: bool = Depends(BITNPSessions.deps_requires_csrf_posttoken),
         csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
     ):
@@ -92,7 +92,7 @@ async def sp_password_update(
 async def sp_password_update_json(
         request: Request,
         pwupdate: datatypes.PasswordUpdateRequest,
-        session_data: datatypes.SessionData
+        session_data: SessionData
     ):
     resp = await request.app.state.app_session.oauth_client.post(
         request.app.state.config.keycloak_accountapi_url+'credentials/password',
