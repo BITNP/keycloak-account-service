@@ -1,0 +1,14 @@
+version: "2.1"
+services:
+  accountsvc:
+    image: docker.bitnp.net/BITNP/keycloak-account-service:master
+    restart: always
+    environment: # more config in .env which starts with acct_
+      VIRTUAL_HOST: accounts.bitnp.net, accounts.proxy.bitnp.net
+      VIRTUAL_PORT: 80
+      TZ: Asia/Shanghai
+    network_mode: bridge
+    external_links:
+      - mysql
+    expose:
+      - 80
