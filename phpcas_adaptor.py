@@ -70,24 +70,25 @@ class MySQLPHPCASAdaptor(PHPCASAdaptor):
     pool: aiomysql.Pool
 
     @classmethod
-    async def create(cls, settings) -> 'MySQLPHPCASAdaptor':
-        self = Foo()
-        self.pool = await create_pool()
+    async def create(cls, config) -> 'MySQLPHPCASAdaptor':
+        self = MySQLPHPCASAdaptor(config)
+        self.pool = await self.create_pool()
         return self
 
     def __init__(self, config: datatypes.Settings):
         self.config = config
 
     async def create_pool(self):
-        return await aiomysql.create_pool(host='mysql',
-            user='cas',
-            password='lzI0ASXf8Gt5tFN7',
-            db='cas',
+        if not self.config.phpcas_db:
+            return None
+        return await aiomysql.create_pool(host=self.config.phpcas_host,
+            user=self.config.phpcas_user,
+            password=self.config.phpcas_password,
+            db=self.config.phpcas_db,
             charset='utf8mb4',
             cursorclass=aiomysql.cursors.DictCursor)
 
     async def get_user_by_email(self, email: str) -> PHPCASUserInfo:
-        conn = self.connection()
         async with self.pool.acquire() as connection:
             async with connection.cursor() as cursor:
                 sql = "SELECT * FROM `users` WHERE `email`=%s"
@@ -99,7 +100,6 @@ class MySQLPHPCASAdaptor(PHPCASAdaptor):
                     return None
 
     async def get_user_by_username(self, username: str) -> PHPCASUserInfo:
-        conn = self.connection()
         async with self.pool.acquire() as connection:
             async with connection.cursor() as cursor:
                 sql = "SELECT * FROM `users` WHERE `name`=%s"

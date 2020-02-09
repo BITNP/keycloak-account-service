@@ -33,6 +33,11 @@ class Settings(BaseSettings):
 
     group_config: 'GroupConfig' = None
 
+    phpcas_host: str = ''
+    phpcas_user: str = ''
+    phpcas_password: str = ''
+    phpcas_db: str = ''
+
 class GroupItem(BaseModel):
     id: str = None
     path: str
