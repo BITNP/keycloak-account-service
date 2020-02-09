@@ -66,7 +66,7 @@ app.state.templates.env.filters["local_timestring"] = (
 
 @app.on_event("startup")
 async def init_phpcas_adaptor():
-    app.state.phpcas_adaptor = await FakePHPCASAdaptor.create(app.state.config)
+    app.state.phpcas_adaptor = await MySQLPHPCASAdaptor.create(app.state.config)
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_accept_handler(request, exc):
