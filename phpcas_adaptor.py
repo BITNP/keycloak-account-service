@@ -86,7 +86,8 @@ class MySQLPHPCASAdaptor(PHPCASAdaptor):
             password=self.config.phpcas_password,
             db=self.config.phpcas_db,
             charset='utf8mb4',
-            cursorclass=aiomysql.cursors.DictCursor)
+            cursorclass=aiomysql.cursors.DictCursor,
+            autocommit=True)
 
     async def get_user_by_email(self, email: str) -> PHPCASUserInfo:
         async with self.pool.acquire() as connection:
