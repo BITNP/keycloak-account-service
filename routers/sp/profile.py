@@ -5,7 +5,7 @@ from starlette.responses import Response, RedirectResponse
 import datatypes
 from pydantic import ValidationError
 
-from modauthlib import BITNPSessionFastAPIApp
+from modauthlib import BITNPSessions
 
 router = APIRouter()
 
@@ -15,8 +15,8 @@ router = APIRouter()
     })
 async def sp_profile(
         request: Request,
-        csrf_field: tuple = Depends(BITNPSessionFastAPIApp.deps_get_csrf_field),
-        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session),
+        csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
+        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_session),
     ):
     # prefer_onename is used if user has firstName+lastName and they initiated oneName setup process
     prefer_onename = request.query_params.get('prefer_onename', False)
@@ -38,7 +38,7 @@ async def sp_profile(
 
 async def sp_profile_json(
         request: Request,
-        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session),
+        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_session),
         load_session_only: bool= False
     ) -> datatypes.ProfileInfo:
     if not load_session_only:
@@ -67,8 +67,8 @@ async def sp_profile_update(
         firstName: str = Form(None),
         lastName: str = Form(None),
         email: str = Form(None),
-        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session),
-        csrf_valid: bool = Depends(BITNPSessionFastAPIApp.deps_requires_csrf_posttoken),
+        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_session),
+        csrf_valid: bool = Depends(BITNPSessions.deps_requires_csrf_posttoken),
     ):
     if not profile:
         try:

@@ -171,7 +171,7 @@ def deps_requires_csrf_posttoken(
     return True
 BITNPFastAPICSRFAddon.deps_requires_csrf_posttoken = deps_requires_csrf_posttoken
 
-class BITNPSessionFastAPIApp(BITNPFastAPICSRFAddon):
+class BITNPSessions(BITNPFastAPICSRFAddon, object):
     group_config: GroupConfig
     oauth_client: RemoteApp
     session_cache: BaseCache
@@ -412,23 +412,23 @@ class BITNPSessionFastAPIApp(BITNPFastAPICSRFAddon):
                 await client.update_token(await client.fetch_token())
             yield client
 
-def deps_requires_session(session_data: SessionData = Depends(BITNPSessionFastAPIApp.deps_session_data)):
+def deps_requires_session(session_data: SessionData = Depends(BITNPSessions.deps_session_data)):
     if session_data is None:
         raise RequiresTokenException
     return session_data
 
-BITNPSessionFastAPIApp.deps_requires_session = deps_requires_session
+BITNPSessions.deps_requires_session = deps_requires_session
 
-def deps_requires_admin_session(session_data: SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session)):
+def deps_requires_admin_session(session_data: SessionData = Depends(BITNPSessions.deps_requires_session)):
     if not session_data.is_admin():
         raise UnauthorizedException
     return session_data
 
-BITNPSessionFastAPIApp.deps_requires_admin_session = deps_requires_admin_session
+BITNPSessions.deps_requires_admin_session = deps_requires_admin_session
 
-def deps_requires_master_session(session_data: SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_session)):
+def deps_requires_master_session(session_data: SessionData = Depends(BITNPSessions.deps_requires_session)):
     if not session_data.is_master():
         raise UnauthorizedException
     return session_data
 
-BITNPSessionFastAPIApp.deps_requires_master_session = deps_requires_master_session
+BITNPSessions.deps_requires_master_session = deps_requires_master_session

@@ -2,7 +2,7 @@ from fastapi import Depends, APIRouter
 from starlette.requests import Request
 
 import datatypes
-from modauthlib import BITNPSessionFastAPIApp
+from modauthlib import BITNPSessions
 from utils import TemplateService
 
 router = APIRouter()

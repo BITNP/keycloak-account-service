@@ -3,7 +3,7 @@ from starlette.requests import Request
 from typing import List
 
 import datatypes
-from modauthlib import BITNPSessionFastAPIApp
+from modauthlib import BITNPSessions
 from utils import TemplateService
 from urllib.parse import quote
 
@@ -13,7 +13,7 @@ router = APIRouter()
 @router.get("/users", include_in_schema=True)
 async def admin_groups(
         request: Request,
-        session_data: datatypes.SessionData = Depends(BITNPSessionFastAPIApp.deps_requires_master_session)
+        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_requires_master_session)
     ):
     client: AsyncOAuth2Client
     async with request.app.state.app_session.oauth_client as client:

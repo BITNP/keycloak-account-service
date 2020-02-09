@@ -6,7 +6,7 @@ import re
 
 import datatypes
 from phpcas_adaptor import PHPCASAdaptor, PHPCASUserInfo
-from modauthlib import BITNPSessionFastAPIApp
+from modauthlib import BITNPSessions
 from utils import TemplateService
 
 router = APIRouter()
@@ -15,7 +15,7 @@ EMAIL_SESSION_NAME = 'mpc_email'
 @router.get("/migrate-phpcas/", include_in_schema=False)
 async def phpcas_migrate_landing(
         request: Request,
-        csrf_field: tuple = Depends(BITNPSessionFastAPIApp.deps_get_csrf_field),
+        csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
     ):
     return request.app.state.templates.TemplateResponse("migrate-phpcas-landing.html.jinja2", {
         "request": request,
@@ -31,8 +31,8 @@ async def phpcas_migrate_process(
         newPassword: str = Form(None),
         confirmation: str = Form(None),
         name: str = Form(...),
-        csrf_field: tuple = Depends(BITNPSessionFastAPIApp.deps_get_csrf_field),
-        csrf_valid: bool = Depends(BITNPSessionFastAPIApp.deps_requires_csrf_posttoken),
+        csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
+        csrf_valid: bool = Depends(BITNPSessions.deps_requires_csrf_posttoken),
     ):
     session_email = request.session.get(EMAIL_SESSION_NAME)
     user: PHPCASUserInfo
