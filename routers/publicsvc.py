@@ -63,7 +63,7 @@ async def logout(request: Request):
         return RedirectResponse(request.url_for('index'))
     else:
         redirect_uri = request.url_for('index')
-        input_redirect_uri : str = request.query_params.get("redirect_uri")
+        input_redirect_uri : str = request.query_params.get("redirect_uri", "")
         if input_redirect_uri.startswith("/"):
             base_url = request.url.replace(path="", query="")
             redirect_uri = str(base_url) + input_redirect_uri
