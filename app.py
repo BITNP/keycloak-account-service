@@ -102,6 +102,7 @@ app.include_router(sp.landing.router, prefix='/sp', dependencies=[Depends(BITNPS
 app.include_router(sp.profile.router, prefix='/sp/profile', dependencies=[Depends(BITNPSessionFastAPIApp.deps_session_data)])
 app.include_router(sp.credentials.router, prefix='/sp/credentials', dependencies=[Depends(BITNPSessionFastAPIApp.deps_session_data)])
 app.include_router(sp.sessions.router, prefix='/sp/sessions', dependencies=[Depends(BITNPSessionFastAPIApp.deps_session_data)])
+app.include_router(admin.landing.router, prefix='/admin', dependencies=[Depends(BITNPSessionFastAPIApp.deps_requires_admin_session)])
 app.include_router(admin.groups.router, prefix='/admin', dependencies=[Depends(BITNPSessionFastAPIApp.deps_requires_admin_session)])
 app.include_router(admin.users.router, prefix='/admin', dependencies=[Depends(BITNPSessionFastAPIApp.deps_requires_admin_session)])
 
