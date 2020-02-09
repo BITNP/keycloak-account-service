@@ -1,18 +1,21 @@
-image: docker/compose
-services:
-  - docker:dind
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
   RELEASE_TAG: $CI_REGISTRY_IMAGE:latest
+
 stages:
   - build
   - test
   - release
 
-before_script:
-  - docker info
-  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+default:
+  image: docker/compose
+  services:
+    - docker:dind
+    # https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#use-docker-in-docker-workflow-with-docker-executor
+  before_script:
+    - docker info
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
 
 build-image:
   stage: build
