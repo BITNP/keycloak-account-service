@@ -337,9 +337,9 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
                 await self.session_cache.set(jti, session_data)
         return session_data.access_token if (jti and session_data) else None
 
-    # Usage: Depends(app_session.deps_session_data)
+    # Usage: Depends(BITNPSessions.deps_get_session)
     @staticmethod
-    async def deps_session_data(request: Request) -> SessionData:
+    async def deps_get_session(request: Request) -> SessionData:
         _self = request.app.state.app_session
         # check code, state in query to complete auth
         if request.query_params.get('code') and request.query_params.get('state'):
@@ -412,7 +412,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
                 await client.update_token(await client.fetch_token())
             yield client
 
-def deps_requires_session(session_data: SessionData = Depends(BITNPSessions.deps_session_data)):
+def deps_requires_session(session_data: SessionData = Depends(BITNPSessions.deps_get_session)):
     if session_data is None:
         raise RequiresTokenException
     return session_data

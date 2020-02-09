@@ -12,7 +12,7 @@ router = APIRouter()
 
 @router.get("/", include_in_schema=False)
 async def index(request: Request,
-    session_data: datatypes.SessionData = Depends(BITNPSessions.deps_session_data)):
+    session_data: datatypes.SessionData = Depends(BITNPSessions.deps_get_session)):
     tdata = {
         "request": request,
         "name": None,

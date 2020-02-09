@@ -47,7 +47,7 @@ async def validate_token(request: Request, token: str) -> datatypes.GroupItem:
 @router.get("/i/{token}", include_in_schema=False)
 async def invitation_landing(
         request: Request, token: str,
-        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_session_data),
+        session_data: datatypes.SessionData = Depends(BITNPSessions.deps_get_session),
         csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
     ):
     current_group = await validate_token(request, token)
