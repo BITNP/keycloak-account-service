@@ -39,7 +39,7 @@ def get_invitation_token(group: datatypes.GroupItem, config: datatypes.Settings)
 
     # expiry check - if expiry is None then we ignore the check
     expires = get_invitation_expires(group)
-    if expires is not None and datetime.fromtimestamp(expires) < datetime.utcnow():
+    if expires is not None and datetime.utcfromtimestamp(expires) < datetime.utcnow():
         return None
 
     text = SEPARATOR.join([group.path, nonce])

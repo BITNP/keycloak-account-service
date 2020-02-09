@@ -124,7 +124,7 @@ async def admin_delegated_groups_detail_json(
     # May be None if no nonce is set up
     current_group.invitation_link = invitation.get_invitation_link(group=current_group, request=request)
     expires = invitation.get_invitation_expires(group=current_group)
-    current_group.invitation_expires = datetime.fromtimestamp(expires, tz=timezone.utc) if expires else None
+    current_group.invitation_expires = datetime.utcfromtimestamp(expires) if expires else None
 
     # get group direct users - first 100
     current_group.members = await _admin_groups_members_json(request, current_group.id, first)
@@ -266,7 +266,7 @@ async def admin_delegated_groups_update_invitation_link(
     if days_from_now > 0 or expires:
         if not expires:
             expires : datetime = datetime.utcnow() + timedelta(days=days_from_now)
-        attributes['invitationExpires'] = [int(expires.timestamp())]
+        attributes['invitationExpires'] = [int(expires.replace(tzinfo=timezone.utc).timestamp())]
 
     async with request.app.state.app_session.get_service_account_oauth_client() as client:
         resp = await client.put(

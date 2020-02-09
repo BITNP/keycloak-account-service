@@ -255,7 +255,7 @@ class SessionData(BaseModel):
             'access_token': self.access_token,
             'token_type': self.token_type,
             'refresh_token': self.refresh_token,
-            'expires_at': int(self.access_token_expires_at.timestamp()),
+            'expires_at': int(self.access_token_expires_at.replace(tzinfo=timezone.utc).timestamp()),
         }
 
     def is_admin(self):
