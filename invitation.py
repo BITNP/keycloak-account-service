@@ -2,6 +2,7 @@ from starlette.requests import Request
 import datatypes
 import itsdangerous
 import base64
+import time
 from typing import Tuple
 from datetime import datetime, timezone
 from authlib.common.security import generate_token as _generate_token
@@ -39,7 +40,7 @@ def get_invitation_token(group: datatypes.GroupItem, config: datatypes.Settings)
 
     # expiry check - if expiry is None then we ignore the check
     expires = get_invitation_expires(group)
-    if expires is not None and datetime.utcfromtimestamp(expires) < datetime.utcnow():
+    if expires is not None and expires < time.time():
         return None
 
     text = SEPARATOR.join([group.path, nonce])

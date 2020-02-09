@@ -17,6 +17,7 @@ from contextlib import asynccontextmanager
 from typing import ContextManager
 from hashlib import sha1
 from authlib.common.security import generate_token
+import time
 
 
 class RequiresTokenException(Exception):
@@ -407,7 +408,7 @@ class BITNPSessionFastAPIApp(BITNPFastAPICSRFAddon):
             # since this is a service account and we have credentials
 
             # this comparison requires that token dict has a valid 'expires_at'
-            if not isinstance(client.token, dict) or datetime.utcnow() > client.token.get('expires_at', 0):
+            if not isinstance(client.token, dict) or time.time() > client.token.get('expires_at', 0):
                 await client.update_token(await client.fetch_token())
             yield client
 
