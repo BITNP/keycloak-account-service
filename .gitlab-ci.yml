@@ -5,10 +5,6 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
   RELEASE_TAG: $CI_REGISTRY_IMAGE:latest
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-cache:
-  paths:
-    - .cache/pip
 stages:
   - build
   - test

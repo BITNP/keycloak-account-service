@@ -11,9 +11,9 @@ WORKDIR /usr/src/app
 #     rm -rf /var/lib/apt/lists/* && \
 
 COPY requirements.txt ./
-
+# only update pip if requirements changed
 RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
-    pip install -r requirements.txt
+    pip install -r requirements.txt --no-cache
 
 COPY . .
 
