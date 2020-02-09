@@ -10,25 +10,32 @@ stages:
 
 default:
   image: docker/compose
-  services:
-    - docker:dind
-    # https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#use-docker-in-docker-workflow-with-docker-executor
   before_script:
     - docker info
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
 
 build-image:
   stage: build
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
   script:
     - docker build -t $IMAGE_TAG .
     - docker push $IMAGE_TAG
 
 test-image:
   stage: test
+  services:
+    - docker:dind
+  before_script:
+    - docker info
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - export
   script:
     - docker pull $IMAGE_TAG
     - docker run -d --rm --name bitnp-accounts -e acct_client_id="bitnp-accounts" -e acct_client_secret="client_secret" -e acct_session_secret="session_secret" -e acct_invitation_secret="invitation_secret" $IMAGE_TAG
     - sleep 10
+    - docker ps -a
     - 'if docker ps -a | grep bitnp-accounts | grep "Stop\|Restart"; then docker logs bitnp-accounts;exit 1; fi'
     - 'if ! wget "http://`docker inspect -f ''{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'' bitnp-accounts`/" -O - -q | grep "网协通行证"; then docker logs bitnp-accounts;exit 1; fi'
     - docker ps
@@ -43,6 +50,10 @@ test-docker-compose-config:
 
 release-image:
   stage: release
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
   script:
     - docker pull $IMAGE_TAG
     - docker tag $IMAGE_TAG $RELEASE_TAG
