@@ -20,6 +20,7 @@ from aiocache import Cache
 from urllib.parse import urlencode
 from utils import local_timestring
 import json
+import traceback
 
 import sys
 MIN_PYTHON = (3, 5)
@@ -70,6 +71,7 @@ async def init_phpcas_adaptor():
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_accept_handler(request, exc):
+    traceback.print_exc()
     if request.state.response_type.is_json():
         return await http_exception_handler(request, exc)
     else:
@@ -77,6 +79,7 @@ async def http_exception_accept_handler(request, exc):
 
 @app.exception_handler(OAuthError)
 async def oauth_exception_handler(request, exc):
+    traceback.print_exc()
     if request.state.response_type.is_json():
         return JSONResponse(
             {"detail": exc.description}, status_code=500
