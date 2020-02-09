@@ -45,7 +45,7 @@ class SessionData(BaseModel):
     memberof: List[GroupItem] = list()
     realm_roles: List[str] = list()
     client_roles: List[str] = list()
-    subject: str
+    id: str # Keycloak UUID
     username: str = ''
     name: str = None
     email: str = ''
@@ -295,7 +295,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
                 session_dict['memberof'] = self.group_config.list_path_to_items(id_body.get('memberof', list()))
                 session_dict['realm_roles'] = id_body.get('realm_access', {}).get('roles')
                 session_dict['client_roles'] = id_body.get('roles')
-                session_dict['subject'] = id_body.get('sub')
+                session_dict['id'] = id_body.get('sub')
                 session_dict['username'] = id_body.get('preferred_username')
                 session_dict['name'] = id_body.get('name')
                 session_dict['email'] = id_body.get('email')

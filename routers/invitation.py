@@ -86,7 +86,7 @@ async def invitation_join(
             raise HTTPException(status_code=403)
     """
     try:
-        await _delegated_groups_member_add_json(request=request, current_group=current_group, user_id=session_data.subject)
+        await _delegated_groups_member_add_json(request=request, current_group=current_group, user_id=session_data.id)
         # success
         return RedirectResponse(request.url_for("invitation_completed"), status_code=303)
     except HTTPException as e:
