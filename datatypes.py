@@ -94,10 +94,9 @@ class GroupConfig(UserDict):
                     # no specifics
                     year = cutted
                     ret = GroupItem(path=key, name='')
-                finally:
-                    year = year.lstrip('-')
-                    ret.set_status_name(year)
-                    return ret
+                year = year.lstrip('-')
+                ret.set_status_name(year)
+                return ret
             else:
                 raise
 
