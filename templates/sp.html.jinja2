@@ -136,7 +136,7 @@
                     <p class="card-text">一些高级操作需要在 Keycloak 进行配置。</p>
                 </div>
                 <div class="list-group list-group-flush">
-                    <a href="{{ keycloak_admin_console_url }}" class="list-group-item list-group-item-action">Keycloak 管理</a>
+                    <a href="{{ url_for('admin_keycloak_redirect') }}" class="list-group-item list-group-item-action">Keycloak 管理</a>
                 </div>
             </div></div>
             {% endif %}
