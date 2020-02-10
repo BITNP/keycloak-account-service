@@ -61,6 +61,7 @@ async def admin_delegated_groups_get(
 
 async def _admin_delegated_groups_path_to_group(
         request: Request,
+        session_data: SessionData,
         grouplist: List[datatypes.GroupItem],
         path: str,
     ):
@@ -118,7 +119,7 @@ async def admin_delegated_groups_detail_json(
         session_data: SessionData = Depends(BITNPSessions.deps_requires_admin_session),
         first: int = 0,
     ) -> datatypes.GroupItem:
-    current_group = await _admin_delegated_groups_path_to_group(request, grouplist, path)
+    current_group = await _admin_delegated_groups_path_to_group(request, session_data, grouplist, path)
 
     # get group invitation link
     # May be None if no nonce is set up
@@ -154,7 +155,7 @@ async def admin_delegated_groups_member_add(
         csrf_valid: bool = Depends(BITNPSessions.deps_requires_csrf_posttoken),
     ):
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
-    current_group = await _admin_delegated_groups_path_to_group(request, grouplist, path)
+    current_group = await _admin_delegated_groups_path_to_group(request, session_data, grouplist, path)
 
     user = await _delegated_groups_member_add_json(
         request, current_group, username, user_id
@@ -223,7 +224,7 @@ async def admin_delegated_groups_member_remove_json(
         session_data: SessionData,
     ) -> None:
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
-    current_group = await _admin_delegated_groups_path_to_group(request, grouplist, path)
+    current_group = await _admin_delegated_groups_path_to_group(request, session_data, grouplist, path)
 
     async with request.app.state.app_session.get_service_account_oauth_client() as client:
         resp = await client.delete(
@@ -249,7 +250,7 @@ async def admin_delegated_groups_update_invitation_link(
     days_from_now > 0: expires = now + days_from_now, nonce = new if not nonce else nonce
     """
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
-    current_group = await _admin_delegated_groups_path_to_group(request, grouplist, path)
+    current_group = await _admin_delegated_groups_path_to_group(request, session_data, grouplist, path)
 
     attributes : dict = current_group.attributes
 
