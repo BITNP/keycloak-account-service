@@ -286,8 +286,10 @@ def guess_active_ns(session_data: SessionData, group_config: datatypes.GroupConf
     Guess active_ns by checking the last available year in status groups.
     Since session_data is usually admin, we assume that they have latest affiliation.
 
-    e.g. I have `/bitnp/active-2018/master, /bitnp/active-2019/alumni`,
+    e.g. I have `/bitnp/active-2018/2018-master, /bitnp/active-2019/2019-alumni`,
     then 2019 is the guessed active_ns.
+
+    First return value will only include ns; you may want ret[0]+ret[1]+'-'
     """
     pub_memberof = session_data.memberof
     active_groups, _ = group_config.filter_active_groups(pub_memberof)
@@ -332,8 +334,9 @@ def admin_delegated_groups_list_json(
         for item in request.app.state.config.group_config.values():
             copied = item.copy(deep=True)
             if active_ns and copied.path.startswith(datatypes.GroupConfig.active_ns_placeholder):
-                copied.path = copied.path.replace(datatypes.GroupConfig.active_ns_placeholder, active_ns)
-                copied.name = copied.name + year
+                copied.path = copied.path.replace(
+                    datatypes.GroupConfig.active_ns_placeholder, active_ns+year+'-')
+                copied.name = copied.name + ' ' + year
             ret.append(copied)
         return ret
     else:

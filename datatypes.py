@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     session_secret: str = Field(..., description="Used for session and CSRF")
     invitation_secret: str
     server_metadata_url: str = 'https://login.bitnp.net/auth/realms/master/.well-known/openid-configuration'
-    group_status_prefix: str = '/bitnp/active'
+    group_status_prefix: str = '/bitnp/active-'
     group_config_path: str = '/bitnp' # Pending removal?
     role_active_name: str = 'bitnp-active'
     iam_master_group_id: str = None
@@ -86,7 +86,8 @@ class GroupConfig(UserDict):
                 cutted = key[len(self.settings.group_status_prefix):]
                 try:
                     year, specifics = cutted.split('/', 1)
-                    item : GroupItem = super().__getitem__(self.active_ns_placeholder + specifics)
+                    parsed_key = self.active_ns_placeholder + specifics.replace(year+'-', '', 1)
+                    item : GroupItem = super().__getitem__(parsed_key)
                     ret = GroupItem(**item.dict())
                     ret.path = key
                 except ValueError:
