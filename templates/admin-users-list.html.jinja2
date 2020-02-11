@@ -1,0 +1,44 @@
+{% extends "base.html.jinja2" %}
+{% block content %}
+    <div class="content">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('sp_landing') }}">管理首页</a></li>
+                <li class="breadcrumb-item active" aria-current="page">用户集成</li>
+            </ol>
+        </nav>
+        {% if updated %}<div class="alert alert-success" role="alert">请求已完成。</div>{% endif %}
+        <div class="card">
+            <div class="card-body">
+                <form class="form-inline" method="GET" enctype="application/x-www-form-urlencoded">
+                    <label class="sr-only col-form-label" for="user-search">用户名、邮箱等</label>
+                    <input type="text" class="form-control mb-2 mb-sm-0 mr-sm-2 col-sm" id="user-search" name="search" placeholder="用户名 / 邮箱等" value="{{ search }}">
+                    <button type="submit" class="btn btn-primary mb-2 mb-sm-0 col-auto">搜索</button>
+                </form>
+            </div>
+        </div>
+        <table class="table">
+            <thead>
+                <tr>
+                <th scope="col" class="border-top-0">用户名</th>
+                <th scope="col" class="border-top-0">启用</th>
+                <th scope="col" class="border-top-0">姓名</th>
+                <th scope="col" class="border-top-0">邮箱</th>
+                <th scope="col" class="border-top-0">用户创建</th>
+                <th scope="col" class="border-top-0">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr id="user-{{ user.id }}">
+                    <th scope="row"><a href="">{{ user.username }}</a></th><td>{{ user.enabled }}</td><td>{{ user.name }}</td><td><a href="mailto:{{ user.email }}">{{ user.email }}</a></td><td><time title="{{ user.createdTimestamp }}">{{ user.createdTimestamp | local_timestring }}</time></td><td><a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}" target="_blank">KC</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <form method="GET">
+        本表记录数 {{ users | length }}，从第 <input type="number" class="form-control form-control-sm col-1 d-inline-block" min="0" id="members-first" name="first" value="{{ (first+100) if (users|length) == 100 else ([first-100, 0]|max) }}" required> 条记录开始 <button type="submit" class="btn btn-outline-primary btn-sm">查看</button>
+        <input type="hidden" name="search" value="{{ search }}">
+        </form>
+    </div>
+{% endblock %}

@@ -51,7 +51,7 @@ async def admin_delegated_groups_get(
                 "new_nonce": invitation.generate_random_nonce(),
                 "first": first,
                 "path": path,
-                "console_prefix": request.app.state.config.keycloak_admin_console_url,
+                "console_prefix": request.url_for('admin_keycloak_redirect'),
                 "is_admin": session_data.is_admin(),
                 "is_master": session_data.is_master(),
                 "signed_in": True,
