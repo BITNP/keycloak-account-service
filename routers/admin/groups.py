@@ -8,7 +8,7 @@ from modauthlib import BITNPSessions, SessionData
 from .users import _admin_search_users, _admin_search_users_by_username
 
 from utils import TemplateService
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from operator import attrgetter
 from urllib.parse import quote
 from datetime import datetime, timedelta, timezone
@@ -353,39 +353,63 @@ def admin_delegated_groups_list_json(
                 ret.append(datatypes.GroupItem(path="@managerof-"+n, name=n))
         return ret
 
-@router.get("/groups", include_in_schema=True)
-async def admin_groups(
+@router.get("/group-config/", include_in_schema=True, response_model=List[datatypes.GroupItem])
+async def admin_group_config(
         request: Request,
-        session_data: SessionData = Depends(BITNPSessions.deps_requires_admin_session)
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_master_session),
+        templates: TemplateService = Depends(),
     ):
-    client: AsyncOAuth2Client
-    async with request.app.state.app_session.get_service_account_oauth_client() as client:
-        resp = await client.get(request.app.state.config.keycloak_adminapi_url+'groups',
-            headers={'Accept': 'application/json'})
-        return resp.json()
+    config: datatypes.Settings = request.app.state.config
+    guessed_ns = guess_active_ns(session_data, config.group_config)
+    incorrect: Optional[str] = None
+    active_role_groups: list = []
+    managerof_roles: list = []
+    group_config: list = config.group_config.values()
+    try:
+        active_role_groups_resp = await request.app.state.app_session.oauth_client.get(
+            request.app.state.config.keycloak_adminapi_url+'roles/'+config.role_active_name+'/groups',
+            token=session_data.to_tokens(),
+            headers={'Accept': 'application/json'}
+        )
+        active_role_groups = active_role_groups_resp.json()
+        managerof_roles = await admin_group_config_get_managerof(request, session_data, config)
+    except Exception as e:
+        print(e)
+        incorrect = '{}: {}'.format(e.__class__.__name__,str(e))
 
-@router.get("/roles/{role_name}/groups", include_in_schema=True)
-async def admin_role_groups(
-        request: Request,
-        role_name: str = Path(..., regex="^[A-Za-z0-9-_]+$"),
-        session_data: SessionData = Depends(BITNPSessions.deps_requires_admin_session)
-    ):
-    resp = await request.app.state.app_session.oauth_client.get(
-        request.app.state.config.keycloak_adminapi_url+'roles/'+role_name+'/groups',
+    return templates.TemplateResponse('admin-group-config.html.jinja2', {
+        'client_uuid': config.keycloak_client_uuid,
+        'guess_active_ns': guessed_ns,
+        'group_config': group_config,
+        'active_role_groups': active_role_groups,
+        'managerof_roles': managerof_roles,
+        'incorrect': incorrect,
+    })
+
+async def admin_group_config_get_managerof(request: Request, session_data: SessionData, config: datatypes.Settings) -> list:
+    managerof_roles_resp = await request.app.state.app_session.oauth_client.get(
+        request.app.state.config.keycloak_adminapi_url+'clients/'+config.keycloak_client_uuid+'/roles',
         token=session_data.to_tokens(),
         headers={'Accept': 'application/json'}
     )
-    return resp.json()
+    managerof_roles = []
+    for r in managerof_roles_resp.json():
+        if not r['name'].startswith("managerof-"):
+            continue
 
-@router.get("/client-roles/{role_name}/groups", include_in_schema=True)
-async def admin_client_role_groups(
-        request: Request,
-        role_name: str = Path(..., regex="^[A-Za-z0-9-_]+$"),
-        session_data: SessionData = Depends(BITNPSessions.deps_requires_admin_session)
-    ):
-    resp = await request.app.state.app_session.oauth_client.get(
-        request.app.state.config.keycloak_adminapi_url+'clients/3513512c-c67b-4fc4-a540-939d1d29c12c/roles/'+role_name+'/groups',
-        token=session_data.to_tokens(),
-        headers={'Accept': 'application/json'}
-    )
-    return resp.json()
+        attr_resp = await request.app.state.app_session.oauth_client.get(
+            request.app.state.config.keycloak_adminapi_url+'roles-by-id/'+r['id'],
+            token=session_data.to_tokens(),
+            headers={'Accept': 'application/json'}
+        )
+        r['attributes'] = attr_resp.json()['attributes']
+
+        group_resp = await request.app.state.app_session.oauth_client.get(
+            request.app.state.config.keycloak_adminapi_url+'clients/'+config.keycloak_client_uuid+'/roles/'+r['name']+'/groups',
+            token=session_data.to_tokens(),
+            headers={'Accept': 'application/json'}
+        )
+        r['groups'] = group_resp.json()
+
+        managerof_roles.append(r)
+    return managerof_roles

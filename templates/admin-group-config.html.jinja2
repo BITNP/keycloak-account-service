@@ -1,0 +1,95 @@
+{% extends "base.html.jinja2" %}
+{% block content %}
+    <div class="content">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('sp_landing') }}">管理首页</a></li>
+                <li class="breadcrumb-item active" aria-current="page">群组映射配置</li>
+            </ol>
+        </nav>
+        <div class="row">
+            <div class="col-12 col-lg-8 offset-lg-2 mb-3">
+                {% if incorrect is not sameas None %}
+                <div class="alert alert-warning" role="alert">{{ incorrect }}</div>
+                {% endif %}
+                <h2 id="group-config">Group Config</h2>
+                <p>为了提高速度并保持可审计性，群组名称与内部注释均在 <code>group_config.json</code> 中，如需修改需要重新部署 accountsvc。请去 GitLab 修改。</p>
+                <p>Key 支持 <code>@active/</code>，可能支持 <code>@managerof-</code>（忘记了）。</p>
+                <table class="table">
+                    <thead>
+                        <tr>
+                        <th scope="col">路径</th>
+                        <th scope="col">名称</th>
+                        <th scope="col">内部备注</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for group in group_config %}
+                        <tr id="group-config-{{ group.path }}">
+                            <td>{{ group.path }}</td>
+                            <th scope="row">{{ group.name }}</th>
+                            <td>{{ group.internal_note }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <h2 id="client-role-managerof"><code>managerof-*</code> 客户端角色</h2>
+                <p>可<a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/clients/{{ client_uuid }}/roles" target="_blank">自行在 Keycloak 客户端角色处新建</a>，只要开头为 <code>managerof-</code>，然后记得设置 <code>groupNS</code> 的角色属性（被管理的群组地址），以及相应可管理人员。（如果你创建的群组只允许 iam-master 管理，则不需要增加这个客户端角色）
+                <p>在 accountsvc 中，会自动拿 <code>managerof-</code> 的后缀名与 group_config 存在的所有项目的后缀去匹配，从而向 iam-admin 显示管理用的群组名称。所以如有需要，请取好名字，并相应配置 <code>group_config.json</code>。此匹配方式不会影响 iam-master 和普通用户。
+                <table class="table">
+                    <thead>
+                        <tr>
+                        <th scope="col">名称</th>
+                        <th scope="col">groupNS</th>
+                        <th scope="col">管理组</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for role in managerof_roles %}
+                        <tr id="managerof-{{ role.id }}">
+                            <th scope="row">{{ role.name }}</th>
+                            <td><a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/clients/{{ client_uuid }}/roles/{{ role.id }}/role-attributes" target="_blank">{{ role.attributes.groupNS[0] | default("N/A") }}</a></td>
+                            <td><ul>
+                                {% for group in role.groups %}
+                                <li><a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/groups/{{ group.id }}/role-mappings" target="_blank">{{ group.path }}</a></li>
+                                {% endfor %}
+                            </ul></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <h2 id="election">换届配置</h2>
+                <ol>
+                    <li>不需要修改 <code>group_config.json</code></li>
+                    <li><p>增加群组：前往 <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/groups" target="_blank">Keycloak 群组管理</a>，增加（而不是移动）<code>/bitnp/active-学年开始年/学年开始年-member</code> 等子群组；
+                        <p>请注意每个群组不管在树中的哪个位置，不允许与树中的其它群组重名，以避免 LDAP 异常；此外 <code>/bitnp/active-*</code> 这些必须按照现有格式进行命名，否则需要相应修改 accountsvc 的解析代码</li>
+                    <li><p>增加成员：<i>至少</i>先把你自己加到新一年的群组里，此动作不影响 <code>bitnp-active</code>（用户需要登出再登入，才会更新应用端包括本子服务页面上显示的用户组，因为这些信息都存储在 JWT 中）
+                        <p>当前，系统根据你的用户组，猜测到最新一年的群组是 <mark>{{ guess_active_ns }}</mark> （<code>bitnp-active</code> 不受此影响；delegatedgroup 解析 group_config 中的 <code>@active/</code> 会使用此数据）</li>
+                    <li>当需要正式做换届切换的时候，进行以下步骤：
+                        <ol>
+                            <li>
+                                <p>修改群组到 <code>bitnp-active</code> 角色（accountsvc “网协现任”的显示，由 <code>config.role_active_name</code> 决定）的映射：你需要到 <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/groups" target="_blank">Keycloak 群组管理</a>，进入需要增加映射的群组（通常只需更换 <code>/bitnp/active-学年开始年</code>），然后增加角色。
+                                <p>目前 <code>bitnp-active</code> 角色关联了以下群组，如需移除映射可点击链接去移除：
+                                <ul>
+                                    {% for group in active_role_groups %}
+                                    <li><a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/groups/{{ group.id }}/role-mappings" target="_blank">{{ group.path }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                            </li>
+                            <li>
+                                <p>修改 <code>managerof-*</code> 客户端角色的属性：该角色用于 delegatedgroup 的关联。角色映射的群组是角色属性保存的某一个群组在 accountsvc 的管理员。你需要：
+                                <ol>
+                                    <li>修改属性中保存的目标可管理群组地址 <code>groupNS</code> 到最新一年的；</li>
+                                    <li>修改客户端角色关联的管理员范围群组，修改方法与 <code>bitnp-active</code> 类似。</li>
+                                </ol>
+                                <p>具体的 <code>managerof-*</code> 角色列表请在上方查看。
+                            </li>
+                        </ol>
+                    </li>
+                </ol>
+            </div>
+        </div>
+    </div>
+{% endblock %}

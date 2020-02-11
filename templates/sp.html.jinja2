@@ -102,7 +102,7 @@
         {% if is_admin %}
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3">
             <div class="col mb-4"><div class="card h-100">
-                <div class="card-body">
+                <div class="card-body border-bottom">
                     <div class="position-relative mb-3">
                         <h5 class="card-title"><a href="{{ url_for('admin_delegated_groups_get') }}" class="text-reset text-decoration-none stretched-link">&#x1F465; 群组成员</a></h5>
                         <p class="card-text">管理组成员、获取邀请注册链接。</p>
@@ -111,23 +111,23 @@
                     {% for group in admin_groups %}
                     <a href="{{ url_for('admin_delegated_groups_get')+'?path=' }}{{ group.path | urlencode }}" class="mr-2 d-inline-block" title="{{ group.internal_note | default('', true) }}">{{ group.name }}</a>
                     {% else %}
-                    <a href="#" class="btn btn-outline-primary stretched-link">可维护群组</a>
+                    <a href="{{ url_for('admin_delegated_groups_get') }}" class="btn btn-outline-primary stretched-link">可维护群组</a>
                     {% endfor %}
+                    {% if is_master %}
+                    <div class="mt-3">
+                        <a href="{{ url_for('admin_group_config') }}" class="btn btn-outline-primary">换届群组映射</a>
+                        <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/groups" class="btn btn-outline-primary">Keycloak 群组管理</a>
+                    </div>
+                    {% endif %}
                 </div>
             </div></div>
             {% if is_master %}
             <div class="col mb-4"><div class="card h-100">
                 <div class="card-body">
-                    <h5 class="card-title">&#x1F91D; 群组映射</h5>
-                    <p class="card-text">换届时可通过本模块辅助维护成员身份所属的群组。</p>
-                    <a href="#" class="btn btn-outline-primary stretched-link">群组映射</a>
-                </div>
-            </div></div>
-            <div class="col mb-4"><div class="card h-100">
-                <div class="card-body">
-                    <h5 class="card-title">&#x1F517; 用户集成</h5>
+                    <h5 class="card-title">&#x1F4C7; 用户与集成</h5>
                     <p class="card-text">查询并维护用户信息与 LDAP 等系统的同步状态。</p>
-                    <a href="#" class="btn btn-outline-primary stretched-link">查询用户集成</a>
+                    <a href="#" class="btn btn-outline-primary">用户列表</a>
+                    <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users" class="btn btn-outline-primary">Keycloak 用户管理</a>
                 </div>
             </div></div>
             <div class="col mb-4"><div class="card h-100">
