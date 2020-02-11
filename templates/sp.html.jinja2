@@ -124,8 +124,8 @@
             {% if is_master %}
             <div class="col mb-4"><div class="card h-100">
                 <div class="card-body">
-                    <h5 class="card-title">&#x1F4C7; 用户与集成</h5>
-                    <p class="card-text">查询并维护用户信息与 LDAP 等系统的同步状态。</p>
+                    <h5 class="card-title">&#x1F4C7; 用户集成</h5>
+                    <p class="card-text">查询并维护用户数据与 LDAP 等的同步。</p>
                     <form class="form-inline mb-3" action="{{ url_for('sp_landing') }}" method="GET" enctype="application/x-www-form-urlencoded">
                         <label class="sr-only col-form-label" for="user-search">用户名、邮箱等</label>
                         <input type="text" class="form-control mb-2 mb-sm-0 mr-sm-2 col-sm" id="user-search" name="search" placeholder="用户名 / 邮箱等" required>

@@ -38,13 +38,13 @@ async def sp_landing(request: Request,
         device: str = latest_session.os + ' ' + latest_session.browser
         if latest_session.device:
             device = latest_session.device + ' ' + latest_session.browser
-        tdata['sessions_desc'] = '你在其它位置的最后一次登录是 {time} ({browser})。如有需要你可以远程下线。'.format(
+        tdata['sessions_desc'] = '其它位置最后一次登录于 {time} ({browser})。如有需要可远程下线。'.format(
             time=local_timestring(request.app.state.config.local_timezone, latest_session.lastAccess),
             browser=device)
     elif tdata['sessions_count'] > 0:
-        tdata['sessions_desc'] = '你目前没有在其它位置登录。'
+        tdata['sessions_desc'] = '目前没有在其它位置登录。'
     else:
-        tdata['sessions_desc'] = '查看你在其它设备的登录情况并远程下线。'
+        tdata['sessions_desc'] = '查看在其它设备的登录情况并远程下线。'
 
     # Admin
     if tdata['is_admin']:
