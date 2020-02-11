@@ -1,6 +1,7 @@
 from fastapi import Depends, APIRouter, Path, HTTPException
 from starlette.requests import Request
 from typing import List, Optional
+from pydantic import constr
 
 import datatypes
 from modauthlib import BITNPSessions, SessionData
@@ -91,3 +92,13 @@ async def _admin_search_users_by_username(
             return list(datatypes.ProfileInfo.parse_obj(p) for p in resp.json() if p["username"] == username)
         else:
             raise HTTPException(resp.status_code, detail=resp.json())
+
+@router.get("/users/{user_id}", include_in_schema=True, responses={
+    200: {"content": {"text/html": {}}},
+})
+async def admin_user_detail(
+        request: Request,
+        user_id: constr(regex="^[A-Za-z0-9-_]+$"),
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_master_session),
+    ):
+    return user_id

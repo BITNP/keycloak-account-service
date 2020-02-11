@@ -31,7 +31,7 @@
             <tbody>
                 {% for user in users %}
                 <tr id="user-{{ user.id }}">
-                    <th scope="row"><a href="">{{ user.username }}</a></th><td>{{ user.enabled }}</td><td>{{ user.name }}</td><td><a href="mailto:{{ user.email }}">{{ user.email }}</a></td><td><time title="{{ user.createdTimestamp }}">{{ user.createdTimestamp | local_timestring }}</time></td><td><a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}" target="_blank">KC</a></td>
+                    <th scope="row"><a href="{{ url_for('admin_user_detail', user_id=user.id) }}">{{ user.username }}</a></th><td>{{ user.enabled }}</td><td title="{{ user.lastName }}, {{ user.firstName }}">{{ user.name }}</td><td><a href="mailto:{{ user.email }}">{{ user.email }}</a></td><td><time title="{{ user.createdTimestamp }}">{{ user.createdTimestamp | local_timestring }}</time></td><td><a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}" target="_blank">KC</a></td>
                 </tr>
                 {% endfor %}
             </tbody>
