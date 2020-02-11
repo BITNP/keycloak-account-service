@@ -40,7 +40,7 @@ with open('group_config.json', 'r') as f:
     app.state.config.group_config = datatypes.GroupConfig.from_dict(data, settings=app.state.config)
 
 app.state.oauth = OAuth()
-app.state.oauth.remote_app_class = BITNPOAuthRemoteApp
+app.state.oauth.framework_client_cls = BITNPOAuthRemoteApp
 app.state.oauth.register(
     name='bitnp',
     client_id=app.state.config.client_id,

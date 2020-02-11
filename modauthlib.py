@@ -3,7 +3,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from fastapi import FastAPI, Depends, Form, HTTPException
 
-from authlib.integrations.starlette_client import RemoteApp
+from authlib.integrations.starlette_client import StarletteRemoteApp
 from authlib.integrations.httpx_client import OAuthError, AsyncOAuth2Client
 from authlib.common.encoding import urlsafe_b64decode, to_bytes
 from authlib.jose.rfc7519.jwt import decode_payload as decode_jwt_payload
@@ -87,7 +87,7 @@ class SessionRefreshData(SessionPointerData):
 SessionItem = Union[SessionData, SessionExpiringData, SessionRefreshData]
 
 
-class BITNPOAuthRemoteApp(RemoteApp):
+class BITNPOAuthRemoteApp(StarletteRemoteApp):
     async def authorize_redirect(self, request: Request, redirect_uri:str=None, **kwargs) -> RedirectResponse:
         """Create a HTTP Redirect for Authorization Endpoint.
         :param request: Starlette Request instance.
@@ -95,7 +95,7 @@ class BITNPOAuthRemoteApp(RemoteApp):
         :param kwargs: Extra parameters to include.
         :return: Starlette ``RedirectResponse`` instance.
         """
-        state = self._get_session_data(request, 'state')
+        state = self.framework.get_session_data(request, 'state')
         if state is not None:
             # reuse state if multiple pages in the same session needs relogin
             # relaxing this CSRF token's enforcement
@@ -112,14 +112,14 @@ class BITNPOAuthRemoteApp(RemoteApp):
         :param kwargs: Extra parameters to include.
         :return: Starlette ``RedirectResponse`` instance.
         """
-        state = self._get_session_data(request, 'state')
+        state = self.framework.get_session_data(request, 'state')
         if state is not None:
             # reuse state if multiple pages in the same session needs relogin
             # relaxing this CSRF token's enforcement
             # TODO: is this safe in a CSRF context?
             kwargs['state'] = state
         rv = await self.create_authorization_url(redirect_uri, **kwargs)
-        rv['url'] = rv['url'].replace('protocol/openid-connect/auth', 'protocol/openid-connect/registrations', 1)
+        rv['url'] = rv['url'].replace('/openid-connect/auth', '/openid-connect/registrations', 1)
         self.save_authorize_data(request, redirect_uri=redirect_uri, **rv)
         return RedirectResponse(rv['url'], status_code=303)
 
@@ -155,7 +155,7 @@ class BITNPOAuthRemoteApp(RemoteApp):
         return payload
 
     async def get_token_endpoint(self):
-        metadata = await self._load_server_metadata()
+        metadata = await self.load_server_metadata()
         token_endpoint = self.access_token_url
         if not token_endpoint and not self.request_token_url:
             token_endpoint = metadata.get('token_endpoint')
@@ -170,7 +170,7 @@ class BITNPOAuthRemoteApp(RemoteApp):
         try:
             return self.__getattribute__(key)
         except AttributeError:
-            metadata = await self._load_server_metadata()
+            metadata = await self.load_server_metadata()
             return metadata.get(key)
 
     async def get_service_account_config(self):
@@ -225,13 +225,13 @@ BITNPFastAPICSRFAddon.deps_requires_csrf_posttoken = deps_requires_csrf_posttoke
 
 class BITNPSessions(BITNPFastAPICSRFAddon, object):
     group_config: GroupConfig
-    oauth_client: RemoteApp
+    oauth_client: StarletteRemoteApp
     session_cache: BaseCache
     bearer_grace_period: timedelta
     not_before_policy: datetime = datetime.utcnow()
     sa_tokens: dict = None
 
-    def __init__(self, app: FastAPI, oauth_client: RemoteApp, group_config: GroupConfig,
+    def __init__(self, app: FastAPI, oauth_client: StarletteRemoteApp, group_config: GroupConfig,
         csrf_token: str,
         bearer_grace_period: timedelta = timedelta(seconds=10),
         cache_type: BaseCache = Cache.MEMORY, cache_kwargs: dict = dict()):
