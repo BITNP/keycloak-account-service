@@ -12,7 +12,7 @@ router = APIRouter()
 
 @router.get("/", include_in_schema=False)
 async def sp_landing(request: Request,
-        session_data: SessionData = Depends(BITNPSessions.deps_requires_session)
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_session),
     ):
     tdata = {
         "request": request,
