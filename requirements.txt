@@ -3,7 +3,7 @@ pydantic[dotenv]
 uvicorn
 jinja2
 aiofiles
-Authlib
+Authlib<0.14
 httpx<0.8.0 # lepture/authlib#178
 itsdangerous #session
 pyasn1 #crypto
