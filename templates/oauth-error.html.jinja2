@@ -1,0 +1,10 @@
+{% extends "base.html.jinja2" %}
+{% block content %}
+    <div class="content">
+        <div class="alert alert-danger" role="alert">
+            <h4 class="alert-heading">&#x2639;&#xFE0F; 登录认证失败</h4>
+            <p>{{ error }}</p>
+            <a href="{{ retry_url }}" class="btn btn-primary">尝试重新登录</a> <a href="{{ url_for('index') }}" class="btn btn-outline-primary">返回首页</a>
+        </div>
+    </div>
+{% endblock %}

@@ -1,6 +1,7 @@
 from starlette.responses import RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.datastructures import URL
 from fastapi import FastAPI, Depends, Form, HTTPException
 
 from authlib.integrations.starlette_client import StarletteRemoteApp
@@ -88,6 +89,11 @@ SessionItem = Union[SessionData, SessionExpiringData, SessionRefreshData]
 
 
 class BITNPOAuthRemoteApp(StarletteRemoteApp):
+    @staticmethod
+    def get_cleaned_redirect_url_str(inferred: URL) -> str:
+        return str(inferred.remove_query_params('code').remove_query_params('state')
+                .remove_query_params('session_state')) # Keycloak only
+
     async def authorize_redirect(self, request: Request, redirect_uri:str=None, **kwargs) -> RedirectResponse:
         """Create a HTTP Redirect for Authorization Endpoint.
         :param request: Starlette Request instance.
@@ -135,10 +141,7 @@ class BITNPOAuthRemoteApp(StarletteRemoteApp):
         if not params.get('redirect_uri'):
             # how to generate redirect_uri is more app-specific
             # in starlette this should be the request that triggers this function
-            params['redirect_uri'] = str(
-                request.url.remove_query_params('code').remove_query_params('state')
-                .remove_query_params('session_state') # Keycloak only
-            )
+            params['redirect_uri'] = self.get_cleaned_redirect_url_str(request.url)
         return await self.fetch_access_token(**params)
 
     async def parse_token_body(self, token: str, claims_options=None, claims_params=None):
@@ -437,10 +440,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
         if isinstance(exc, RequiresTokenException):
             return await self.oauth_client.authorize_redirect(request, str(request.url))
         if isinstance(exc, RemovesAuthParamsException):
-            clean_url = str(
-                request.url.remove_query_params('code').remove_query_params('state')
-                .remove_query_params('session_state') # Keycloak only
-            )
+            clean_url = self.oauth_client.get_cleaned_redirect_url_str(request.url)
             return RedirectResponse(clean_url)
 
     async def sa_refresh_token_callback(self, token: dict, refresh_token: str=None,

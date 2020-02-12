@@ -85,7 +85,11 @@ async def oauth_exception_handler(request, exc):
             {"detail": exc.description}, status_code=500
         )
     else:
-        return PlainTextResponse(f"{exc.error}: {exc.description}", status_code=500)
+        return request.app.state.templates.TemplateResponse("oauth-error.html.jinja2", {
+            "request": request,
+            "error": f"{exc.error}: {exc.description}",
+            "retry_url": BITNPOAuthRemoteApp.get_cleaned_redirect_url_str(request.url),
+        }, status_code=500)
 
 @app.middleware("http")
 async def add_response_type_hint(request: Request, call_next):
