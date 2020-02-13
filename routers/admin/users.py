@@ -102,6 +102,7 @@ async def admin_user_detail(
         user_id: constr(regex="^[A-Za-z0-9-_]+$"),
         session_data: SessionData = Depends(BITNPSessions.deps_requires_master_session),
     ):
+    config: datatypes.Settings = request.app.state.config
     user = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)
     if request.state.response_type.is_json():
         return user
@@ -113,6 +114,7 @@ async def admin_user_detail(
                 "is_admin": session_data.is_admin(),
                 "is_master": session_data.is_master(),
                 "signed_in": True,
+                "ldap_kc_fedlink_id": config.ldap_kc_fedlink_id,
             })
 
 async def admin_user_detail_json(
@@ -161,3 +163,25 @@ async def admin_user_detail_json(
 
     user.ldapEntry = ldape
     return user
+
+@router.get("/users/{user_id}/ldapSetup", include_in_schema=False, responses={
+    200: {"content": {"text/html": {}}},
+})
+async def admin_user_ldapsetup_landing(
+        request: Request,
+        user_id: constr(regex="^[A-Za-z0-9-_]+$"),
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_master_session),
+        csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
+    ):
+    config: datatypes.Settings = request.app.state.config
+    user = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)
+
+    return request.app.state.templates.TemplateResponse("admin-users-ldapsetup.html.jinja2", {
+        "request": request,
+        "user": user,
+        "name": session_data.username,
+        "is_admin": session_data.is_admin(),
+        "is_master": session_data.is_master(),
+        "signed_in": True,
+        "ldap_kc_fedlink_id": config.ldap_kc_fedlink_id,
+    })

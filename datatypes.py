@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     ldap_user_dn: str = ''
     ldap_password: str = ''
     ldap_base_dn_users: str = 'ou=users,dc=bitnp,dc=net'
+    ldap_kc_fedlink_id: str = ''
 
 class GroupItem(BaseModel):
     id: str = None

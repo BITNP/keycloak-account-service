@@ -5,13 +5,14 @@
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ url_for('sp_landing') }}">管理首页</a></li>
                 <li class="breadcrumb-item"><a href="{{ url_for('admin_users') }}">用户集成</a></li>
-                <li class="breadcrumb-item active" aria-current="page">{{ user.username }}</li>
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_user_detail', user_id=user.id) }}">{{ user.username }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">LDAP 数据同步</li>
             </ol>
         </nav>
         {% if updated %}<div class="alert alert-success" role="alert">请求已完成。</div>{% endif %}
         <div class="row"><div class="col-12 col-lg-8 offset-lg-2 mb-3">
             <div class="card mb-3">
-                <div class="card-header">基本信息</div>
+                <div class="card-header">LDAP 用户数据生成</div>
                 <div class="card-body">
                     <div class="card-text">
                         <dl class="row mb-0">
@@ -48,7 +49,7 @@
                 </div>
             </div>
             <div class="card mb-3">
-                <div class="card-header">Keycloak 属性</div>
+                <div class="card-header">LDAP 群组数据生成</div>
                 <div class="card-body">
                     <div class="card-text">
                         {% for key, values in user.attributes.items() %}
@@ -61,12 +62,12 @@
                 </div>
             </div>
             <div class="card mb-3">
-                <div class="card-header">LDAP 集成</div>
+                <div class="card-header">激活 Keycloak 集成</div>
                 <div class="card-body">
                     <div class="card-text">
                         <dl class="row mb-0">
                             <dt class="col-4">Keycloak 侧关联状态</dt>
-                            <dd class="col">{% if user.federationLink == ldap_kc_fedlink_id %}<span class="text-success">已关联</span>{% else %}<span class="text-danger">{{ user.federationLink | default('未关联', true) }}</span>{% endif %} <a href="{{ url_for('admin_user_ldapsetup_landing', user_id=user.id) }}">LDAP 数据同步</a></dd>
+                            <dd class="col">{% if user.federationLink == ldap_kc_fedlink_id %}<span class="text-success">已关联</span>{% else %}<span class="text-danger">{{ user.federationLink | default('未关联', true) }}</span>{% endif %}</dd>
                         </dl>
                         {% if user.ldapEntry %}
                         {% for key, values in user.ldapEntry.raw_attributes.items() %}
