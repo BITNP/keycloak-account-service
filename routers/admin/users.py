@@ -2,6 +2,7 @@ from fastapi import Depends, APIRouter, Path, HTTPException
 from starlette.requests import Request
 from typing import List, Optional
 from pydantic import constr
+import ldap3
 
 import datatypes
 from modauthlib import BITNPSessions, SessionData
@@ -101,4 +102,22 @@ async def admin_user_detail(
         user_id: constr(regex="^[A-Za-z0-9-_]+$"),
         session_data: SessionData = Depends(BITNPSessions.deps_requires_master_session),
     ):
-    return user_id
+    client: AsyncOAuth2Client = request.app.state.app_session.oauth_client
+    resp = await client.get(
+        request.app.state.config.keycloak_adminapi_url+'users/'+quote(user_id),
+        headers={'Accept': 'application/json'},
+        token=session_data.to_tokens()
+    )
+    if resp.status_code == 200:
+        user: datatypes.ProfileInfo = datatypes.ProfileInfo.parse_obj(resp.json())
+    else:
+        raise HTTPException(resp.status_code, detail=resp.json())
+
+    # LDAP
+    config: datatypes.Settings = request.app.state.config
+    conn = ldap3.Connection(ldap3.Server(config.ldap_host, get_info='ALL'),
+        config.ldap_user_dn, config.ldap_password, auto_bind=True)
+    if conn.search('uid='+user.username+','+config.ldap_base_dn_users, '(objectclass=inetOrgPerson)'):
+        return conn.entries[0]
+    else:
+        return user

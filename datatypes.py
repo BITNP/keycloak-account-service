@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     phpcas_password: str = ''
     phpcas_db: str = ''
 
+    ldap_host: str = ''
+    ldap_user_dn: str = ''
+    ldap_password: str = ''
+    ldap_base_dn_users: str = 'ou=users,dc=bitnp,dc=net'
+
 class GroupItem(BaseModel):
     id: str = None
     path: str
