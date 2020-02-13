@@ -11,5 +11,6 @@ services:
     network_mode: bridge
     external_links:
       - mysql
+      - ldap
     expose:
       - 80

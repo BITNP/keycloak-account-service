@@ -12,3 +12,4 @@ aiocache
 python-multipart #fastapi.Form
 aiomysql # phpCAS
 bcrypt # PHP hash
+ldap3
