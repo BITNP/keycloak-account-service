@@ -149,10 +149,15 @@ async def admin_user_detail_json(
     if conn.search('uid='+user.username+','+config.ldap_base_dn_users, '(objectclass=*)',
         attributes=(ldap3.ALL_ATTRIBUTES, ldap3.ALL_OPERATIONAL_ATTRIBUTES, )):
         ldape = datatypes.UserLdapEntry.parse_obj(conn.response[0])
+
+        # mask userPassword if needed
+        if not ldape.attributes.get('userPassword', [b''])[0].decode().startswith('{'):
+            ldape.attributes['userPassword'] = ['{MASKED}']
+        if not ldape.raw_attributes.get('userPassword', [''])[0].startswith('{'):
+            ldape.raw_attributes['userPassword'] = ['{MASKED}']
     else:
         # not found in ldap
         ldape = None
 
     user.ldapEntry = ldape
     return user
-    # "LDAP_ENTRY_DN":["uid=test,ou=users,dc=bitnp,dc=net"],"phpCAS_id":["117"],"createTimestamp":["20200209070105Z"],"modifyTimestamp":["20200209071945Z"],"LDAP_ID":["af4c35ce-df55-1039-8b50-c9497b22642b"]
