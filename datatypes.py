@@ -132,6 +132,18 @@ class PermissionInfo(BaseModel):
     client_roles: List[str] = list()
     active_groups: List[GroupItem] = list()
 
+class UserLdapEntry(BaseModel):
+    dn: str
+    attributes: Dict[str, Any]
+    raw_attributes: Dict[str, Any]
+
+    @validator('raw_attributes')
+    def raw_attributes_decode(cls, v):
+        new_dict = dict()
+        for key, values in v.items():
+            new_dict[key] = [(value.decode() if isinstance(value, bytes) else value) for value in values]
+        return new_dict
+
 class ProfileInfo(BaseModel):
     id: str = None
     username: str = ''
@@ -149,6 +161,11 @@ class ProfileInfo(BaseModel):
         if not v:
             return (values.get('lastName') or '') + (values.get('firstName') or '')
         return v
+
+class UserInfoMaster(ProfileInfo):
+    federationLink: Optional[str] = None
+    ldapEntry: Optional[UserLdapEntry] = None
+    memberof: List[GroupItem] = list()
 
 class ProfileUpdateInfo(BaseModel):
     name: str = None

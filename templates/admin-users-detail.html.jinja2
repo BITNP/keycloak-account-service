@@ -1,0 +1,84 @@
+{% extends "base.html.jinja2" %}
+{% block content %}
+    <div class="content">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('sp_landing') }}">管理首页</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_users') }}">用户集成</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ user.username }}</li>
+            </ol>
+        </nav>
+        {% if updated %}<div class="alert alert-success" role="alert">请求已完成。</div>{% endif %}
+        <div class="row"><div class="col-12 col-lg-8 offset-lg-2 mb-3">
+            <div class="card mb-3">
+                <div class="card-header">基本信息</div>
+                <div class="card-body">
+                    <div class="card-text">
+                        <dl class="row mb-0">
+                            <dt class="col-4">用户名</dt>
+                            <dd class="col">{{ user.username | default('', true) }}</dd>
+                        </dl>
+                        <dl class="row mb-0">
+                            <dt class="col-4">启用</dt>
+                            <dd class="col">{{ user.enabled }}</dd>
+                        </dl>
+                        <dl class="row mb-0">
+                            <dt class="col-4">姓名</dt>
+                            <dd class="col">{{ user.name | default('', true) }} ({{ user.lastName }}, {{ user.firstName }})</dd>
+                        </dl>
+                        <dl class="row mb-0">
+                            <dt class="col-4">电邮</dt>
+                            <dd class="col"><a href="mailto:{{ user.email }}">{{ user.email }}</a> (emailVerified={{ user.emailVerified }})</dd>
+                        </dl>
+                        <dl class="row mb-0">
+                            <dt class="col-4">创建时间</dt>
+                            <dd class="col">{{ user.createdTimestamp | local_timestring }} ({{ user.createdTimestamp }})</dd>
+                        </dl>
+                        <dl class="row mb-0">
+                            <dt class="col-4">群组</dt>
+                            <dd class="col">{% for item in user.memberof %}
+                                <span class="badge badge-secondary" title="{{ item.path }}: {{ item.internal_note }}">{{ item.name }}</span>
+                                {% endfor %}</dd>
+                        </dl>
+                        <dl class="row mb-0">
+                            <dt class="col-4">操作</dt>
+                            <dd class="col"><a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}" target="_blank">Keycloak 管理</a> <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}/groups" target="_blank">Keycloak 群组</a> <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}/sessions" target="_blank">Keycloak 进程</a></dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="card mb-3">
+                <div class="card-header">Keycloak 属性</div>
+                <div class="card-body">
+                    <div class="card-text">
+                        {% for key, values in user.attributes.items() %}
+                        <dl class="row mb-0">
+                            <dt class="col-4">{{ key }}</dt>
+                            <dd class="col">{{ values }}</dd>
+                        </dl>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="card mb-3">
+                <div class="card-header">LDAP 集成</div>
+                <div class="card-body">
+                    <div class="card-text">
+                        <dl class="row mb-0">
+                            <dt class="col-4">Keycloak 侧关联状态</dt>
+                            <dd class="col">{{ user.federationLink | default('未关联', true) }}</dd>
+                        </dl>
+                        {% if user.ldapEntry %}
+                        {% for key, values in user.ldapEntry.raw_attributes.items() %}
+                        <dl class="row mb-0">
+                            <dt class="col-4">{{ key }}</dt>
+                            <dd class="col">{{ values }}</dd>
+                        </dl>
+                        {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
