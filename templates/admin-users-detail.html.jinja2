@@ -41,8 +41,8 @@
                                 {% endfor %}</dd>
                         </dl>
                         <dl class="row mb-0">
-                            <dt class="col-4">操作</dt>
-                            <dd class="col"><a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}" target="_blank">Keycloak 管理</a> <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}/groups" target="_blank">Keycloak 群组</a> <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}/sessions" target="_blank">Keycloak 进程</a></dd>
+                            <dt class="col-4">Keycloak 管理</dt>
+                            <dd class="col"><a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}" target="_blank">用户信息</a> <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}/groups" target="_blank">群组</a> <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}/sessions" target="_blank">在线</a></dd>
                         </dl>
                     </div>
                 </div>
@@ -69,6 +69,10 @@
                             <dd class="col">{% if user.federationLink == ldap_kc_fedlink_id %}<span class="text-success">已关联</span>{% else %}<span class="text-danger">{{ user.federationLink | default('未关联', true) }}</span>{% endif %} <a href="{{ url_for('admin_user_ldapsetup_landing', user_id=user.id) }}">LDAP 数据同步</a></dd>
                         </dl>
                         {% if user.ldapEntry %}
+                        <dl class="row mb-0">
+                            <dt class="col-4">LDAP 群组</dt>
+                            <dd class="col">{% if user.ldapMemberof is not sameas None %}{{ user.ldapMemberof }}{% if user.ldapMemberof|length != user.memberof|length %}<span class="badge badge-warning">同步不完整</span>{% endif %}{% else %}无{% endif %}</dd>
+                        </dl>
                         {% for key, values in user.ldapEntry.raw_attributes.items() %}
                         <dl class="row mb-0">
                             <dt class="col-4">{{ key }}</dt>

@@ -157,6 +157,13 @@ async def admin_user_detail_json(
             ldape.attributes['userPassword'] = ['{MASKED}']
         if not ldape.raw_attributes.get('userPassword', [''])[0].startswith('{'):
             ldape.raw_attributes['userPassword'] = ['{MASKED}']
+
+        # LDAP groups
+        if conn.search(config.ldap_base_dn_groups, '(&(objectClass=groupOfNames)(member='+ldape.dn+'))',
+            attributes=None):
+            user.ldapMemberof = [g['dn'].replace(','+config.ldap_base_dn_groups, '') for g in conn.response]
+        else:
+            user.ldapMemberof = []
     else:
         # not found in ldap
         ldape = None
