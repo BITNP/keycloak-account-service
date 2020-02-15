@@ -44,6 +44,10 @@
                             <dt class="col-4">Keycloak 管理</dt>
                             <dd class="col"><a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}" target="_blank">用户信息</a> <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}/groups" target="_blank">群组</a> <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}/sessions" target="_blank">在线</a></dd>
                         </dl>
+                        <dl class="row mb-0">
+                            <dt class="col-4">应用管理</dt>
+                            <dd class="col"><a href="{{ jira_user_search_url_f.format(username=user.username) }}" target="_blank">JIRA</a></dd>
+                        </dl>
                     </div>
                 </div>
             </div>

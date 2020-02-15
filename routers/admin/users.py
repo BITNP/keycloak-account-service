@@ -38,6 +38,7 @@ async def admin_users(
                 "signed_in": True,
                 "search": search,
                 "first": first,
+                "jira_user_search_url_f": request.app.state.config.jira_user_search_url_f,
             })
 
 async def admin_users_json(
@@ -117,6 +118,7 @@ async def admin_user_detail(
                 "signed_in": True,
                 "ldap_kc_fedlink_id": config.ldap_kc_fedlink_id,
                 "ldap_base_dn_groups": config.ldap_base_dn_groups,
+                "jira_user_search_url_f": request.app.state.config.jira_user_search_url_f,
             })
 
 async def admin_user_detail_json(

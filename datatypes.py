@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     ldap_base_dn_groups: str = 'ou=groups,dc=bitnp,dc=net'
     ldap_kc_fedlink_id: str = ''
 
+    jira_user_search_url_f: str = 'https://jira.bitnp.net/secure/admin/user/UserBrowser.jspa?userSearchFilter={username}'
+
 class GroupItem(BaseModel):
     id: str = None
     path: str
