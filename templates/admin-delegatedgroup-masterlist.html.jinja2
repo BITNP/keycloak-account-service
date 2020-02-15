@@ -4,17 +4,15 @@
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ url_for('sp_landing') }}">管理首页</a></li>
-                <li class="breadcrumb-item active" aria-current="page">群组管理</li>
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_delegated_groups_get') }}">群组管理</a></li>
+                <li class="breadcrumb-item active" aria-current="page">超管群组列表</li>
             </ol>
         </nav>
         <div class="row">
             <div class="col-12 col-lg-6 offset-lg-3 mb-3">
                 <div class="list-group">
-                    {% if is_master %}
-                    <a href="{{ url_for('admin_delegated_groups_master_list') }}" class="list-group-item list-group-item-info list-group-item-action">超管群组列表</a>
-                    {% endif %}
                     {% for group in groups %}
-                    <a href="{{ url_for('admin_delegated_groups_get')+'?path=' }}{{ group.path | urlencode }}" class="list-group-item list-group-item-action">{{ group.name }}{% if group.internal_note %} <small class="text-muted">{{ group.internal_note }}</small>{% endif %}</a>
+                    <a href="{{ url_for('admin_delegated_groups_get')+'?path=' }}{{ group.path | urlencode }}" class="list-group-item list-group-item-action">{{ group.name }} <small class="text-muted">{{ group.path }}{% if group.internal_note %} {{ group.internal_note }}{% endif %}</small></a>
                     {% else %}
                     <div class="list-group-item list-group-item-action text-warning">没有可管理的群组。</div>
                     {% endfor %}

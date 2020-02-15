@@ -116,9 +116,10 @@
                     {% for group in admin_groups %}
                     <a href="{{ url_for('admin_delegated_groups_get')+'?path=' }}{{ group.path | urlencode }}" class="mr-3 d-inline-block" title="{{ group.internal_note | default('', true) }}">{{ group.name }}</a>
                     {% else %}
-                    <a href="{{ url_for('admin_delegated_groups_get') }}" class="btn btn-outline-primary stretched-link">可维护群组</a>
+                    <a href="{{ url_for('admin_delegated_groups_get') }}" class="btn btn-outline-primary">可维护群组</a>
                     {% endfor %}
                     {% if is_master %}
+                    <a href="{{ url_for('admin_delegated_groups_master_list') }}" class="mr-3 d-inline-block text-success">所有群组</a>
                     <div class="mt-3">
                         <a href="{{ url_for('admin_group_config') }}" class="btn btn-outline-primary">群组配置与换届</a>
                         <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/groups" class="btn btn-outline-primary">Keycloak 群组管理</a>

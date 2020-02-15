@@ -8,7 +8,7 @@ from modauthlib import BITNPSessions, SessionData
 from .users import _admin_search_users, _admin_search_users_by_username
 
 from utils import TemplateService
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Generator
 from operator import attrgetter
 from urllib.parse import quote
 from datetime import datetime, timedelta, timezone
@@ -58,6 +58,28 @@ async def admin_delegated_groups_get(
                 "updated": updated,
                 "csrf_field": csrf_field,
             })
+
+@router.get("/delegated-groups/all", include_in_schema=True, response_model=List[datatypes.GroupItem])
+async def admin_delegated_groups_master_list(
+        request: Request,
+        path: str = None,
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_admin_session),
+        first: int = 0,
+        csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
+    ):
+    grouplist = await admin_delegated_groups_master_list_json(request=request, session_data=session_data)
+
+    if request.state.response_type.is_json():
+        return grouplist
+    else:
+        return request.app.state.templates.TemplateResponse("admin-delegatedgroup-masterlist.html.jinja2", {
+            "request": request,
+            "groups": grouplist,
+            "name": session_data.username,
+            "is_admin": session_data.is_admin(),
+            "is_master": session_data.is_master(),
+            "signed_in": True,
+        })
 
 async def _admin_delegated_groups_path_to_group(
         request: Request,
@@ -356,6 +378,39 @@ def admin_delegated_groups_list_json(
             else:
                 ret.append(datatypes.GroupItem(path="@managerof-"+n, name=n))
         return ret
+
+def loop_grouptree(grouptree: Optional[list], config: datatypes.GroupConfig) -> Generator[datatypes.GroupItem, None, None]:
+    if isinstance(grouptree, list):
+        for g in grouptree:
+            item: datatypes.GroupItem = config.get(g['path'], None)
+            if item:
+                item = item.copy()
+                item.id = g['id']
+            else:
+                item = datatypes.GroupItem.parse_obj(g)
+            yield item
+
+            yield from loop_grouptree(g['subGroups'], config)
+
+
+async def admin_delegated_groups_master_list_json(
+        request: Request,
+        session_data: SessionData,
+    ) -> List[datatypes.GroupItem]:
+    if session_data.is_master():
+        resp = await request.app.state.app_session.oauth_client.get(
+            request.app.state.config.keycloak_adminapi_url+'groups',
+            token=session_data.to_tokens(),
+            headers={'Accept': 'application/json'}
+        )
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail=resp.json())
+
+        grouptree: list = resp.json()
+
+        return list(loop_grouptree(grouptree, request.app.state.config.group_config))
+    else:
+        return []
 
 @router.get("/group-config/", include_in_schema=True, response_model=List[datatypes.GroupItem])
 async def admin_group_config(
