@@ -155,9 +155,9 @@ async def admin_user_detail_json(
         ldape = datatypes.UserLdapEntry.parse_obj(conn.response[0])
 
         # mask userPassword if needed
-        if not ldape.attributes.get('userPassword', [b''])[0].decode().startswith('{'):
+        if not ldape.attributes.get('userPassword', [b'{'])[0].decode().startswith('{'):
             ldape.attributes['userPassword'] = ['{MASKED}']
-        if not ldape.raw_attributes.get('userPassword', [''])[0].startswith('{'):
+        if not ldape.raw_attributes.get('userPassword', ['{'])[0].startswith('{'):
             ldape.raw_attributes['userPassword'] = ['{MASKED}']
 
         # LDAP groups
