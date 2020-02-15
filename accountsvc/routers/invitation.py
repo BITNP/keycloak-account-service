@@ -17,7 +17,7 @@ async def invitation_completed(
     ):
     return templates.TemplateResponse("invitation-completed.html.jinja2")
 
-async def validate_token(request: Request, token: str) -> datatypes.GroupItem:
+async def validate_token(request: Request, token: str) -> datatypes.KCGroupItem:
     path, nonce = invitation.parse_invitation_token(token=token, config=request.app.state.config)
     if not path:
         raise HTTPException(404)
@@ -27,7 +27,7 @@ async def validate_token(request: Request, token: str) -> datatypes.GroupItem:
         resp = await client.get(request.app.state.config.keycloak_adminapi_url+'group-by-path/'+path,
             headers={'Accept': 'application/json'})
         if resp.status_code == 200:
-            current_group : datatypes.GroupItem = datatypes.GroupItem.parse_obj(resp.json())
+            current_group = datatypes.KCGroupItem.parse_obj(resp.json())
         else:
             print(resp.text)
             raise HTTPException(500)
