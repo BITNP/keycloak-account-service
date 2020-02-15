@@ -214,13 +214,19 @@ def admin_user_ldapsetup_generate(
         user: datatypes.UserInfoMaster,
         config: datatypes.Settings,
     ):
+    """
+    This is where we manually do attribute mappings in accountsvc for a manual sync.
+    If any rules change please change here accordingly.
+    In Keycloak they do this by using ldap-mappers.
+    """
     ldap_new_object_class = ['inetOrgPerson', 'organizationalPerson']
     ldap_new_attributes = {
         'uid': user.username,
         # 'userPassword': '',
         'mail': user.email or '',
         'sn': user.lastName or ' ',
-        'cn': user.firstName or ' ',
+        'givenName': user.firstName or ' ',
+        'cn': ' '.join([part for part in [user.firstName, user.lastName] if part.strip()]),
     }
 
     if user.ldapEntry:
