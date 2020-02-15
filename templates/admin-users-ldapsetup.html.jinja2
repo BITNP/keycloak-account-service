@@ -15,8 +15,9 @@
                 <div class="card-header">LDAP 用户数据生成</div>
                 <div class="card-body">
                     <p class="card-text">
-                        {% if user.ldapEntry %}<span class="text-success">新增</span>{% else %}<span class="text-warning">修改</span>{% endif %} <code>{{ ldap_new_attributes }}</code>
+                        {% if not user.ldapEntry %}<span class="text-success">新增</span>{% else %}<span class="text-warning">修改</span>{% endif %} <code>{{ ldap_new_attributes }}</code>
                     </p>
+                    <p class="card-text">注：<code>userPassword</code> 不会被同步，用户需触发一次密码修改流程（可使用旧密码）触发同步。</p>
                     <form method="POST" enctype="application/x-www-form-urlencoded">
                         <button type="submit" class="btn btn-primary">同步到 LDAP</button>
                         <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">

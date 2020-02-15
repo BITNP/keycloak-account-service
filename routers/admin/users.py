@@ -212,9 +212,9 @@ def admin_user_ldapsetup_generate(
     ldap_new_attributes = {
         'uid': user.username,
         # 'userPassword': '',
-        'mail': user.email,
-        'sn': user.lastName,
-        'cn': user.firstName,
+        'mail': user.email or '',
+        'sn': user.lastName or ' ',
+        'cn': user.firstName or ' ',
     }
 
     if user.ldapEntry:
@@ -314,6 +314,6 @@ async def admin_user_ldapsetup_post(
         updated = True
 
     if updated:
-        return RedirectResponse(request.url_for('admin_user_ldapsetup_landing')+"?updated=1", status=303)
+        return RedirectResponse(request.url_for('admin_user_ldapsetup_landing', user_id=user_id)+"?updated=1", status=303)
     else:
         raise HTTPException(422, detail="type incorrect")
