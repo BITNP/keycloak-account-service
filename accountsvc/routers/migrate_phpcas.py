@@ -1,8 +1,9 @@
-from fastapi import Depends, APIRouter, Form
+from fastapi import Depends, APIRouter, Form, HTTPException
 from starlette.requests import Request
 from starlette.responses import Response
 from pydantic import ValidationError
 import re
+from typing import Tuple, Optional
 
 from accountsvc import datatypes
 from accountsvc.phpcas_adaptor import PHPCASAdaptor, PHPCASUserInfo
@@ -35,7 +36,7 @@ async def phpcas_migrate_process(
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
     ):
     session_email = request.session.get(EMAIL_SESSION_NAME)
-    user: PHPCASUserInfo
+    user: Optional[PHPCASUserInfo]
     if session_email and password is None:
         # we assume that their previous password has been validated
         # and they are authorized to set up a new password
@@ -84,7 +85,7 @@ async def phpcas_migrate_process(
             csrf_field=csrf_field,
         )
 
-        if resp:
+        if not user:
             return resp
 
         user_uri, resp = await _phpcas_migrate_create_user(
@@ -98,7 +99,7 @@ async def phpcas_migrate_process(
             csrf_field=csrf_field,
         )
 
-        if resp:
+        if not user_uri:
             return resp
 
     # iam-master add
@@ -107,12 +108,12 @@ async def phpcas_migrate_process(
         try:
             print("phpcas-migrate: Upgrading {} to iam-master".format(user.name))
             async with request.app.state.app_session.get_service_account_oauth_client() as client:
-                resp = await client.put(
+                resp_iam = await client.put(
                     user_uri+'/groups/'+IAM_MASTER_GROUP_ID,
                     headers={'Accept': 'application/json'}
                 )
-                if resp.status_code != 204:
-                    raise HTTPException(status_code=resp.status_code, detail=resp.text)
+                if resp_iam.status_code != 204:
+                    raise HTTPException(status_code=resp_iam.status_code, detail=resp_iam.body)
         except Exception as e:
             print("phpcas-migrate: Failed upgrading to iam-master {}".format(e))
 
@@ -130,7 +131,7 @@ async def _phpcas_migrate_create_user(request: Request,
         name: str,
         username: str,
         csrf_field: tuple,
-    ) -> (str, Response):
+    ) -> Tuple[Optional[str], Optional[Response]]:
     """
     temp auth - use (signed) session
     # email - use as is
@@ -184,7 +185,7 @@ async def _phpcas_migrate_create_user(request: Request,
             headers={'Accept': 'application/json', 'Content-Type': 'application/json'}
         )
         if resp.status_code == 201:
-            return resp.headers.get('location'), None
+            return resp.headers.get('location', ''), None
         else:
             incorrect = "迁移失败，如有疑问请联系管理员。错误信息："+resp.text
             print("phpcas-migrate: Error creating {}: {}".format(new_user.username, resp.text))
@@ -211,7 +212,7 @@ async def _phpcas_migrate_validate_cred(request: Request,
         password: str,
         name: str,
         csrf_field: tuple,
-    ) -> (PHPCASUserInfo, Response):
+    ) -> Tuple[Optional[PHPCASUserInfo], Optional[Response]]:
     phpcas_adaptor: PHPCASAdaptor = request.app.state.phpcas_adaptor
     user = await phpcas_adaptor.get_user_by_email(email)
     if not user or (password and not user.check_password(password)):
@@ -254,7 +255,7 @@ async def phpcas_migrate_user_lookup(request: Request, username: str, email: str
         email = username
 
     phpcas_adaptor: PHPCASAdaptor = request.app.state.phpcas_adaptor
-    user: PHPCASUserInfo = None
+    user: Optional[PHPCASUserInfo] = None
 
     if email:
         user = await phpcas_adaptor.get_user_by_email(email)

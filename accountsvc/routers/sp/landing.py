@@ -37,7 +37,7 @@ async def sp_landing(request: Request,
 
     if tdata['sessions_count'] > 1:
         latest_session: datatypes.KeycloakSessionItem = tdata['sessions'][1]
-        device: str = latest_session.os + ' ' + latest_session.browser
+        device: str = (latest_session.os or '') + ' ' + (latest_session.browser or '')
         if latest_session.device:
             device = latest_session.device + ' ' + latest_session.browser
         tdata['sessions_desc'] = '其它位置最后一次登录于 {time} ({browser})。如有需要可远程下线。'.format(

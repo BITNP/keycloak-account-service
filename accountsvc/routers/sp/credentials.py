@@ -71,7 +71,7 @@ async def sp_password_update(
         result = await sp_password_update_json(request=request, pwupdate=pwupdate, session_data=session_data)
     except HTTPException as e:
         if not request.state.response_type.is_json():
-            if e.detail.get('errorMessage') == 'invalidPasswordExistingMessage':
+            if isinstance(e.detail, dict) and e.detail.get('errorMessage') == 'invalidPasswordExistingMessage':
                 incorrect = "旧密码错误，请重试，如忘记旧密码请点击下方重设密码。"
             else:
                 incorrect = "请重新选择新密码，错误信息："+str(e.detail)

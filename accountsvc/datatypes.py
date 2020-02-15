@@ -173,6 +173,7 @@ class ProfileInfo(BaseModel):
         return v
 
 class UserInfoMaster(ProfileInfo):
+    id: str
     federationLink: Optional[str] = None
     ldapEntry: Optional[UserLdapEntry] = None
     memberof: List[GroupItem] = list()

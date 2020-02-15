@@ -14,7 +14,7 @@ router = APIRouter()
 @router.get("/", include_in_schema=False)
 async def index(request: Request,
     session_data: SessionData = Depends(deps_get_session)):
-    tdata = {
+    tdata: dict = {
         "request": request,
         "name": None,
         "is_admin": False,

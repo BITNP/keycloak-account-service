@@ -1,10 +1,11 @@
 from fastapi import Depends, APIRouter, Path, HTTPException, Form
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from pydantic import constr
 import ldap3
 import traceback
+from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 from accountsvc import datatypes
 from accountsvc.modauthlib import (BITNPSessions, SessionData,
@@ -103,7 +104,7 @@ async def _admin_search_users_by_username(
 }, response_model=datatypes.UserInfoMaster)
 async def admin_user_detail(
         request: Request,
-        user_id: constr(regex="^[A-Za-z0-9-_]+$"),
+        user_id: constr(regex="^[A-Za-z0-9-_]+$"), # type: ignore # constr
         session_data: SessionData = Depends(deps_requires_master_session),
     ):
     config: datatypes.Settings = request.app.state.config
@@ -126,9 +127,9 @@ async def admin_user_detail(
 
 async def admin_user_detail_json(
         request: Request,
-        user_id: constr(regex="^[A-Za-z0-9-_]+$"),
+        user_id: constr(regex="^[A-Za-z0-9-_]+$"), # type: ignore # constr
         session_data: SessionData,
-    ) -> (datatypes.UserInfoMaster, Optional[Exception]):
+    ) -> Tuple[datatypes.UserInfoMaster, Optional[Exception]]:
     config: datatypes.Settings = request.app.state.config
     warning: Optional[Exception]
 
@@ -150,7 +151,7 @@ async def admin_user_detail_json(
         token=session_data.to_tokens()
     )
     if groups_resp.status_code == 200:
-        user.memberof = [config.group_config.get(g['path']) for g in groups_resp.json()]
+        user.memberof = [config.group_config.get(g['path'], datatypes.KCGroupItem.parse_obj(g)) for g in groups_resp.json()]
     else:
         warning = HTTPException(groups_resp.status_code, detail=groups_resp.text)
 
@@ -189,7 +190,7 @@ async def admin_user_detail_json(
 })
 async def admin_user_ldapsetup_landing(
         request: Request,
-        user_id: constr(regex="^[A-Za-z0-9-_]+$"),
+        user_id: constr(regex="^[A-Za-z0-9-_]+$"), # type: ignore # constr
         session_data: SessionData = Depends(deps_requires_master_session),
         csrf_field: tuple = Depends(deps_get_csrf_field),
     ):
@@ -232,8 +233,12 @@ def admin_user_ldapsetup_generate(
         'mail': user.email or '',
         'sn': user.lastName or ' ',
         'givenName': user.firstName or ' ',
-        'cn': ' '.join([part for part in [user.firstName, user.lastName] if part.strip()]),
+        'cn': ' '.join([part for part in [user.firstName, user.lastName] if part and part.strip()]),
     }
+    ldap_kc_attributes: dict = {}
+    ldap_groups: List[str] = []
+    ldap_groups_add: List[str] = []
+    ldap_groups_remove: List[str] = []
 
     if user.ldapEntry:
         ldap_kc_attributes_new = {
@@ -242,25 +247,21 @@ def admin_user_ldapsetup_generate(
             'modifyTimestamp': user.ldapEntry.raw_attributes['modifyTimestamp'],
             'createTimestamp': user.ldapEntry.raw_attributes['createTimestamp'],
         }
-        ldap_kc_attributes = user.attributes.copy()
+        ldap_kc_attributes = user.attributes.copy() if user.attributes else dict()
         ldap_kc_attributes.update(**ldap_kc_attributes_new)
 
         ldap_groups = ['cn='+g.path.split('/')[-1]+','+config.ldap_base_dn_groups for g in user.memberof]
         current_ldap_groups = user.ldapMemberof
         ldap_groups_add = []
         ldap_groups_remove = []
-        for g in ldap_groups:
-            if g not in current_ldap_groups:
-                ldap_groups_add.append(g)
-        for g in current_ldap_groups:
-            if g not in ldap_groups:
-                ldap_groups_remove.append(g)
-    else:
-        ldap_kc_attributes = None
-        ldap_groups = None
-        ldap_groups_add = None
-        ldap_groups_remove = None
+        if current_ldap_groups:
+            for g in ldap_groups:
+                if g not in current_ldap_groups:
+                    ldap_groups_add.append(g)
 
+            for g in current_ldap_groups:
+                if g not in ldap_groups:
+                    ldap_groups_remove.append(g)
 
     return {
         "ldap_new_object_class": ldap_new_object_class,
@@ -275,7 +276,7 @@ def admin_user_ldapsetup_generate(
 })
 async def admin_user_ldapsetup_post(
         request: Request,
-        user_id: constr(regex="^[A-Za-z0-9-_]+$"),
+        user_id: constr(regex="^[A-Za-z0-9-_]+$"), # type: ignore # constr
         type: str = Form(...),
         session_data: SessionData = Depends(deps_requires_master_session),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
