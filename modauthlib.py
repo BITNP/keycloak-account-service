@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel, validator
 from pydantic.utils import deep_update
 from contextlib import asynccontextmanager
-from typing import ContextManager, List, Union
+from typing import AsyncIterator, List, Union, Optional, Tuple
 from hashlib import sha1
 from authlib.common.security import generate_token
 import time
@@ -48,7 +48,7 @@ class SessionData(BaseModel):
     client_roles: List[str] = list()
     id: str # Keycloak UUID
     username: str = ''
-    name: str = None
+    name: Optional[str] = None
     email: str = ''
     scope: List[str] = list()
     id_token: dict = {} # temp
@@ -164,7 +164,7 @@ class BITNPOAuthRemoteApp(StarletteRemoteApp):
             token_endpoint = metadata.get('token_endpoint')
         return token_endpoint
 
-    async def refresh_token(self, token: dict):
+    async def refresh_token(self, token: SessionData):
         token_endpoint = await self.get_token_endpoint()
         async with self._get_oauth_client() as client:
             return await client.refresh_token(token_endpoint, refresh_token=token.refresh_token)
@@ -213,9 +213,8 @@ class BITNPFastAPICSRFAddon:
             return False
         return True
 
-    @staticmethod
-    def deps_get_csrf_field(request: Request) -> (str, str):
-        return BITNPFastAPICSRFAddon.csrf_field_name, request.app.state.app_session.get_csrf_token(request)
+def deps_get_csrf_field(request: Request) -> Tuple[str, str]:
+    return BITNPFastAPICSRFAddon.csrf_field_name, request.app.state.app_session.get_csrf_token(request)
 
 def deps_requires_csrf_posttoken(
         request: Request,
@@ -224,7 +223,6 @@ def deps_requires_csrf_posttoken(
     if not request.app.state.app_session.check_csrf_token(csrf_token, request):
         raise CSRFTokenInvalidException
     return True
-BITNPFastAPICSRFAddon.deps_requires_csrf_posttoken = deps_requires_csrf_posttoken
 
 class BITNPSessions(BITNPFastAPICSRFAddon, object):
     group_config: GroupConfig
@@ -232,7 +230,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
     session_cache: BaseCache
     bearer_grace_period: timedelta
     not_before_policy: datetime = datetime.utcnow()
-    sa_tokens: dict = None
+    sa_tokens: Optional[dict] = None
 
     def __init__(self, app: FastAPI, oauth_client: StarletteRemoteApp, group_config: GroupConfig,
         csrf_token: str,
@@ -255,7 +253,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
         app.exception_handler(RequiresTokenException)(self.exception_handler)
         app.exception_handler(RemovesAuthParamsException)(self.exception_handler)
 
-    async def get_session(self, jti: str) -> SessionData:
+    async def get_session(self, jti: str) -> Optional[SessionData]:
         if not jti:
             return None
         data = await self.session_cache.get(jti)
@@ -341,7 +339,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
 
         return access_jti, session_data
 
-    async def get_bearer_of_refresh_token(self, token: str):
+    async def get_bearer_of_refresh_token(self, token: Optional[str]):
         if not token:
             return None
 
@@ -356,8 +354,8 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
         else:
             return None
 
-    async def refresh_token_callback(self, token: dict, refresh_token: str=None,
-        access_token: str=None) -> (str, SessionData):
+    async def refresh_token_callback(self, token: dict, refresh_token: Optional[str]=None,
+        access_token: str=None):
         # get old access token jti before we update
         jti = await self.get_bearer_of_refresh_token(refresh_token)
         session_data = None
@@ -382,7 +380,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
             )
             await self.session_cache.set(jti, session_expiring_data)
 
-    async def end_session(self, request: Request) -> str:
+    async def end_session(self, request: Request) -> Optional[str]:
         jti = request.session.pop('bearer_jti', None)
         if jti:
             session_data = await self.get_session(jti)
@@ -391,50 +389,6 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
                 session_data.refresh_token = '' # force sign-in through OIDC flow
                 await self.session_cache.set(jti, session_data)
         return session_data.access_token if (jti and session_data) else None
-
-    # Usage: Depends(BITNPSessions.deps_get_session)
-    @staticmethod
-    async def deps_get_session(request: Request) -> SessionData:
-        _self = request.app.state.app_session
-        # check code, state in query to complete auth
-        if request.query_params.get('code') and request.query_params.get('state'):
-            token = await _self.oauth_client.authorize_access_token(request)
-            await _self.new_session(token, request=request)
-            # if GET, redirect to remove code and state
-            if request.method == 'GET':
-                raise RemovesAuthParamsException
-
-        # login check
-        # TODO: direct Bearer token support
-        jti = request.session.get('bearer_jti')
-        session_data = await _self.get_session(jti)
-
-        # expiry maintainance
-        if session_data and datetime.utcnow() >= session_data.access_token_expires_at:
-            # request a new access token with OIDC
-            try:
-                if not session_data.refresh_token:
-                    raise OAuthError(error='invalid_grant', description='No refresh_token exists')
-                new_token = await _self.oauth_client.refresh_token(session_data)
-                # update should be done in refresh_token_callback()
-                # We need to manaully update session now
-
-                # Get new jti - update session and session_data as well
-                jti = await _self.get_bearer_of_refresh_token(session_data.refresh_token)
-                assert jti != request.session['bearer_jti'], "Refreshed token should have different jti"
-
-                request.session['bearer_jti'] = jti
-                session_data = await _self.get_session(jti)
-            except OAuthError as e:
-                if e.error == 'invalid_grant':
-                    # Unable to refresh token (probably expired token)
-                    session_data = None # remove session
-
-        if not session_data:
-            # expired bearer_jti, removing
-            request.session.pop('bearer_jti', None)
-
-        return session_data
 
     async def exception_handler(self, request: Request, exc: Exception):
         if isinstance(exc, RequiresTokenException):
@@ -448,7 +402,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
         self.sa_tokens = token
 
     @asynccontextmanager
-    async def get_service_account_oauth_client(self) -> ContextManager[AsyncOAuth2Client]:
+    async def get_service_account_oauth_client(self) -> AsyncIterator[AsyncOAuth2Client]:
         kwargs = await self.oauth_client.get_service_account_config()
         kwargs['update_token'] = self.sa_refresh_token_callback
         if self.sa_tokens:
@@ -464,23 +418,60 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
                 await client.update_token(await client.fetch_token())
             yield client
 
-def deps_requires_session(session_data: SessionData = Depends(BITNPSessions.deps_get_session)):
+# Usage: Depends(deps_get_session)
+async def deps_get_session(request: Request) -> SessionData:
+    _self = request.app.state.app_session
+    # check code, state in query to complete auth
+    if request.query_params.get('code') and request.query_params.get('state'):
+        token = await _self.oauth_client.authorize_access_token(request)
+        await _self.new_session(token, request=request)
+        # if GET, redirect to remove code and state
+        if request.method == 'GET':
+            raise RemovesAuthParamsException
+
+    # login check
+    # TODO: direct Bearer token support
+    jti = request.session.get('bearer_jti')
+    session_data = await _self.get_session(jti)
+
+    # expiry maintainance
+    if session_data and datetime.utcnow() >= session_data.access_token_expires_at:
+        # request a new access token with OIDC
+        try:
+            if not session_data.refresh_token:
+                raise OAuthError(error='invalid_grant', description='No refresh_token exists')
+            new_token = await _self.oauth_client.refresh_token(session_data)
+            # update should be done in refresh_token_callback()
+            # We need to manaully update session now
+
+            # Get new jti - update session and session_data as well
+            jti = await _self.get_bearer_of_refresh_token(session_data.refresh_token)
+            assert jti != request.session['bearer_jti'], "Refreshed token should have different jti"
+
+            request.session['bearer_jti'] = jti
+            session_data = await _self.get_session(jti)
+        except OAuthError as e:
+            if e.error == 'invalid_grant':
+                # Unable to refresh token (probably expired token)
+                session_data = None # remove session
+
+    if not session_data:
+        # expired bearer_jti, removing
+        request.session.pop('bearer_jti', None)
+
+    return session_data
+
+def deps_requires_session(session_data: SessionData = Depends(deps_get_session)):
     if session_data is None:
         raise RequiresTokenException
     return session_data
 
-BITNPSessions.deps_requires_session = deps_requires_session
-
-def deps_requires_admin_session(session_data: SessionData = Depends(BITNPSessions.deps_requires_session)):
+def deps_requires_admin_session(session_data: SessionData = Depends(deps_requires_session)):
     if not session_data.is_admin():
         raise UnauthorizedException
     return session_data
 
-BITNPSessions.deps_requires_admin_session = deps_requires_admin_session
-
-def deps_requires_master_session(session_data: SessionData = Depends(BITNPSessions.deps_requires_session)):
+def deps_requires_master_session(session_data: SessionData = Depends(deps_requires_session)):
     if not session_data.is_master():
         raise UnauthorizedException
     return session_data
-
-BITNPSessions.deps_requires_master_session = deps_requires_master_session

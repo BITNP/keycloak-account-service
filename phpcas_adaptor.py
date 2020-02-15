@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 import datatypes
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import aiomysql
 import bcrypt
@@ -27,10 +28,10 @@ class PHPCASAdaptor(ABC):
     def __init__(self, config: datatypes.Settings):
         pass
 
-    async def get_user_by_email(self, email: str) -> PHPCASUserInfo:
+    async def get_user_by_email(self, email: str) -> Optional[PHPCASUserInfo]:
         pass
 
-    async def get_user_by_username(self, username: str) -> PHPCASUserInfo:
+    async def get_user_by_username(self, username: str) -> Optional[PHPCASUserInfo]:
         pass
 
 
@@ -42,7 +43,7 @@ class FakePHPCASAdaptor(PHPCASAdaptor):
     def __init__(self, config: datatypes.Settings):
         pass
 
-    async def get_user_by_email(self, email: str) -> PHPCASUserInfo:
+    async def get_user_by_email(self, email: str) -> Optional[PHPCASUserInfo]:
         if email == 'testph@bitnp.net':
             # pw: testphp
             return PHPCASUserInfo(id=1, email=email, name="testph", password='$2b$12$JCc.2OHhGup1Jt12Bdyz5eXebeLfCk0Etix.G7HXRoJCWX8eGDE0K', real_name="TEST")
@@ -55,7 +56,7 @@ class FakePHPCASAdaptor(PHPCASAdaptor):
         else:
             return None
 
-    async def get_user_by_username(self, username: str) -> PHPCASUserInfo:
+    async def get_user_by_username(self, username: str) -> Optional[PHPCASUserInfo]:
         # pw: test (pwpolicy)
         if username == 'testphp':
             return PHPCASUserInfo(id=2, email="testphp@bitnp.net", name=username, password="$2b$12$uQ7eceNo4mw6ljQYUjiUJ.KylZ.D5pld1lpO5giqrX8ltezhmWExG", real_name="TEST")
@@ -89,7 +90,7 @@ class MySQLPHPCASAdaptor(PHPCASAdaptor):
             cursorclass=aiomysql.cursors.DictCursor,
             autocommit=True)
 
-    async def get_user_by_email(self, email: str) -> PHPCASUserInfo:
+    async def get_user_by_email(self, email: str) -> Optional[PHPCASUserInfo]:
         async with self.pool.acquire() as connection:
             async with connection.cursor() as cursor:
                 sql = "SELECT * FROM `users` WHERE `email`=%s"
@@ -100,7 +101,7 @@ class MySQLPHPCASAdaptor(PHPCASAdaptor):
                 else:
                     return None
 
-    async def get_user_by_username(self, username: str) -> PHPCASUserInfo:
+    async def get_user_by_username(self, username: str) -> Optional[PHPCASUserInfo]:
         async with self.pool.acquire() as connection:
             async with connection.cursor() as cursor:
                 sql = "SELECT * FROM `users` WHERE `name`=%s"

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, BaseSettings, IPvAnyAddress, validator, root_validator, conlist, constr, Field, MissingError
 from datetime import datetime, tzinfo, timezone, timedelta
-from typing import Union, List, Dict, Any, Optional, ForwardRef
+from typing import Union, List, Dict, Any, Optional, Tuple
 from collections import UserDict
 from enum import Enum
 from starlette.requests import Request
@@ -28,9 +28,9 @@ class Settings(BaseSettings):
     group_status_prefix: str = '/bitnp/active-'
     group_config_path: str = '/bitnp' # Pending removal?
     role_active_name: str = 'bitnp-active'
-    iam_master_group_id: str = None
+    iam_master_group_id: Optional[str] = None
 
-    group_config: 'GroupConfig' = None
+    group_config: 'Optional[GroupConfig]' = None
 
     phpcas_host: str = ''
     phpcas_user: str = ''
@@ -47,14 +47,14 @@ class Settings(BaseSettings):
     jira_user_search_url_f: str = 'https://jira.bitnp.net/secure/admin/user/UserBrowser.jspa?userSearchFilter={username}'
 
 class GroupItem(BaseModel):
-    id: str = None
+    id: Optional[str] = None
     path: str
-    name: str = None
-    internal_note: str = None
-    attributes: dict = None
-    members: list = None
-    invitation_link: str = None
-    invitation_expires: datetime = None
+    name: Optional[str] = None
+    internal_note: Optional[str] = None
+    attributes: Optional[dict] = None
+    members: Optional[list] = None
+    invitation_link: Optional[str] = None
+    invitation_expires: Optional[datetime] = None
 
     @validator('name', always=True)
     def default_name_as_path(cls, v, values):
@@ -109,7 +109,7 @@ class GroupConfig(UserDict):
             else:
                 raise
 
-    def filter_active_groups(self, source: List[GroupItem]) -> (List[GroupItem], List[GroupItem]):
+    def filter_active_groups(self, source: List[GroupItem]) -> Tuple[List[GroupItem], List[GroupItem]]:
         trues = []
         falses = []
         for item in source:
@@ -149,15 +149,15 @@ class UserLdapEntry(BaseModel):
         return new_dict
 
 class ProfileInfo(BaseModel):
-    id: str = None
+    id: Optional[str] = None
     username: str = ''
-    firstName: str = None
-    lastName: str = None
-    name: str = None
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
+    name: Optional[str] = None
     email: str = ''
-    emailVerified: bool = None
-    attributes: dict = None
-    createdTimestamp: datetime = None
+    emailVerified: Optional[bool] = None
+    attributes: Optional[dict] = None
+    createdTimestamp: Optional[datetime] = None
     enabled: bool = True
 
     @validator('name', always=True)
@@ -173,9 +173,9 @@ class UserInfoMaster(ProfileInfo):
     ldapMemberof: Optional[List[str]] = None
 
 class ProfileUpdateInfo(BaseModel):
-    name: str = None
-    lastName: str = None
-    firstName: str = None
+    name: Optional[str] = None
+    lastName: Optional[str] = None
+    firstName: Optional[str] = None
     email: str
 
     @validator('firstName', always=True, pre=True)
@@ -189,11 +189,11 @@ class ProfileUpdateInfo(BaseModel):
 class UserCreationInfo(ProfileUpdateInfo):
     enabled: bool = True
     emailVerified: bool = False
-    username: constr(min_length=2, max_length=20, regex="^[a-zA-Z0-9_-]+$")
-    credentials: list = None
-    newPassword: constr(min_length=6)
+    username: constr(min_length=2, max_length=20, regex="^[a-zA-Z0-9_-]+$") # type: ignore # for constr
+    credentials: Optional[list] = None
+    newPassword: constr(min_length=6) # type: ignore # for constr
     confirmation: str
-    attributes: dict = None
+    attributes: Optional[dict] = None
 
     def request_json(self) -> str:
         return self.json(exclude={"name", "newPassword", "confirmation"})
@@ -216,8 +216,8 @@ class UserCreationInfo(ProfileUpdateInfo):
         return values
 
 class PasswordInfo(BaseModel):
-    registered: bool = None
-    lastUpdate: datetime = None # created date, not updated date
+    registered: Optional[bool] = None
+    lastUpdate: Optional[datetime] = None # created date, not updated date
 
 class PasswordUpdateRequest(BaseModel):
     currentPassword: str
@@ -233,7 +233,7 @@ class PasswordUpdateRequest(BaseModel):
 
 class KeycloakSessionClient(BaseModel):
     clientId: str
-    clientName: str = None
+    clientName: Optional[str] = None
 
     @validator('clientName', always=True)
     def clientName_default(cls, v, values):
@@ -247,9 +247,9 @@ class KeycloakSessionItem(BaseModel):
     expires: datetime
     browser: str
     current: bool = False
-    os: str = None
-    osVersion: str = None
-    device: str = None
+    os: Optional[str] = None
+    osVersion: Optional[str] = None
+    device: Optional[str] = None
     clients: List[KeycloakSessionClient] = list()
 
 #class KeycloakSessionInfo(BaseModel):

@@ -14,7 +14,7 @@ from phpcas_adaptor import FakePHPCASAdaptor, MySQLPHPCASAdaptor
 
 from authlib.integrations.starlette_client import OAuth
 from authlib.integrations.httpx_client import OAuthError, AsyncOAuth2Client
-from modauthlib import BITNPOAuthRemoteApp, BITNPSessions
+from modauthlib import BITNPOAuthRemoteApp, BITNPSessions, deps_requires_session, deps_requires_admin_session
 from aiocache import Cache
 
 from urllib.parse import urlencode
@@ -102,13 +102,13 @@ app.include_router(publicsvc.router)
 app.include_router(assistance.router)
 app.include_router(invitation.router)
 app.include_router(migrate_phpcas.router)
-app.include_router(sp.landing.router, prefix='/sp', dependencies=[Depends(BITNPSessions.deps_requires_session)])
-app.include_router(sp.profile.router, prefix='/sp/profile', dependencies=[Depends(BITNPSessions.deps_requires_session)])
-app.include_router(sp.credentials.router, prefix='/sp/credentials', dependencies=[Depends(BITNPSessions.deps_requires_session)])
-app.include_router(sp.sessions.router, prefix='/sp/sessions', dependencies=[Depends(BITNPSessions.deps_requires_session)])
-app.include_router(admin.landing.router, prefix='/admin', dependencies=[Depends(BITNPSessions.deps_requires_admin_session)])
-app.include_router(admin.groups.router, prefix='/admin', dependencies=[Depends(BITNPSessions.deps_requires_admin_session)])
-app.include_router(admin.users.router, prefix='/admin', dependencies=[Depends(BITNPSessions.deps_requires_admin_session)])
+app.include_router(sp.landing.router, prefix='/sp', dependencies=[Depends(deps_requires_session)])
+app.include_router(sp.profile.router, prefix='/sp/profile', dependencies=[Depends(deps_requires_session)])
+app.include_router(sp.credentials.router, prefix='/sp/credentials', dependencies=[Depends(deps_requires_session)])
+app.include_router(sp.sessions.router, prefix='/sp/sessions', dependencies=[Depends(deps_requires_session)])
+app.include_router(admin.landing.router, prefix='/admin', dependencies=[Depends(deps_requires_admin_session)])
+app.include_router(admin.groups.router, prefix='/admin', dependencies=[Depends(deps_requires_admin_session)])
+app.include_router(admin.users.router, prefix='/admin', dependencies=[Depends(deps_requires_admin_session)])
 
 
 if __name__ == "__main__":
