@@ -5,7 +5,7 @@ import datatypes
 from modauthlib import BITNPSessions, SessionData
 from .profile import sp_profile_json
 from .sessions import sp_sessions_json
-from ..admin.groups import admin_delegated_groups_list_json
+from ..admin.groups import admin_delegated_groups_list_json, guess_active_ns
 from utils import local_timestring
 
 router = APIRouter()
@@ -23,6 +23,7 @@ async def sp_landing(request: Request,
         "keycloak_admin_console_url": request.app.state.config.keycloak_admin_console_url,
         "permission": await sp_permission(request=request, session_data=session_data),
         "profile": await sp_profile_json(request=request, session_data=session_data, load_session_only=True),
+        "guessed_active_ns": guess_active_ns(session_data, request.app.state.config.group_config),
     }
 
     # Remote

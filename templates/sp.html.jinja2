@@ -4,6 +4,11 @@
     .badge{font-size:85%;}
     </style>
     <div class="content">
+        {% if is_master and not guessed_active_ns[0] %}
+        <div class="alert alert-danger" role="alert">
+            您的账户没有分配任何 active_ns，请<a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ profile.id }}/groups">把自己加入到当前年份的相应用户组</a>然后登出登录一次，以便正常使用本工具。
+        </div>
+        {% endif %}
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3">
             <div class="col mb-4"><div class="card h-100">
                 <div class="card-body position-relative border-bottom">
@@ -80,7 +85,7 @@
                                 <span class="badge badge-warning">非网协现任</span>
                                 {% endif %}
                                 {% for item in permission.active_groups %}
-                                <span class="badge badge-secondary">{{ item.name }}</span>
+                                <span class="badge {{ 'badge-primary' if item.path.find(guessed_active_ns[1]) > 0 else 'badge-light' }}">{{ item.name }}</span>
                                 {% endfor %}
                             </dd>
                         </dl>
