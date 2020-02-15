@@ -292,11 +292,11 @@ async def admin_user_ldapsetup_post(
         user_dn = 'uid='+user.username+','+config.ldap_base_dn_users
 
         for add in ldap_data["ldap_groups_add"]:
-            if not conn.modify(add, changes={"member", (ldap3.MODIFY_ADD, [user_dn])}):
+            if not conn.modify(add, changes={"member": [(ldap3.MODIFY_ADD, [user_dn])]}):
                 raise HTTPException(500, detail=conn.result)
 
         for removal in ldap_data["ldap_groups_remove"]:
-            if not conn.modify(removal, changes={"member", (ldap3.MODIFY_DELETE, [user_dn])}):
+            if not conn.modify(removal, changes={"member": [(ldap3.MODIFY_DELETE, [user_dn])]}):
                 raise HTTPException(500, detail=conn.result)
 
         updated = True
