@@ -34,10 +34,12 @@ app = FastAPI(
 
 router = APIRouter()
 
-app.state.config = datatypes.Settings() # from .env
+config: datatypes.LoadingSettings = datatypes.LoadingSettings() # from .env
 with open('group_config.json', 'r') as f:
     data = json.load(f)
-    app.state.config.group_config = datatypes.GroupConfig.from_dict(data, settings=app.state.config)
+    config.group_config = datatypes.GroupConfig.from_dict(data, settings=app.state.config)
+
+app.state.config = datatypes.Settings.parse_obj(config)
 
 app.state.oauth = OAuth()
 app.state.oauth.framework_client_cls = BITNPOAuthRemoteApp

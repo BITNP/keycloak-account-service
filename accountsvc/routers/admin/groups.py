@@ -132,7 +132,7 @@ async def _admin_delegated_groups_path_to_group(
             print(e)
             raise HTTPException(status_code=404, detail="Cannot get group information by path")
 
-    return current_group
+    return datatypes.KCGroupItem.parse_obj(current_group)
 
 async def admin_delegated_groups_detail_json(
         request: Request,
@@ -190,7 +190,7 @@ async def admin_delegated_groups_member_add(
 
 async def _delegated_groups_member_add_json(
         request: Request,
-        current_group: datatypes.GroupItem,
+        current_group: datatypes.KCGroupItem,
         username: str = None,
         user_id: str = None,
     ) -> datatypes.ProfileInfo:
@@ -203,7 +203,7 @@ async def _delegated_groups_member_add_json(
         raise HTTPException(status_code=422, detail="username or user_id required")
 
     parsed_user = None
-    if not user_id:
+    if not user_id and username:
         parsed_user = await _admin_search_users_by_username(request, username)
         if len(parsed_user) == 0:
             # Try again with search=username
@@ -262,7 +262,7 @@ async def admin_delegated_groups_update_invitation_link(
         request: Request,
         path: str = Form(...),
         days_from_now: int = Form(...),
-        expires: datetime = Form(None),
+        expires: Optional[datetime] = Form(None),
         session_data: SessionData = Depends(deps_requires_admin_session),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
     ):
@@ -288,7 +288,7 @@ async def admin_delegated_groups_update_invitation_link(
 
     if days_from_now > 0 or expires:
         if not expires:
-            expires : datetime = datetime.utcnow() + timedelta(days=days_from_now)
+            expires = datetime.utcnow() + timedelta(days=days_from_now)
         attributes['invitationExpires'] = [int(expires.replace(tzinfo=timezone.utc).timestamp())]
 
     async with request.app.state.app_session.get_service_account_oauth_client() as client:
@@ -304,7 +304,7 @@ async def admin_delegated_groups_update_invitation_link(
             raise HTTPException(resp.status_code, detail=resp.json())
 
 
-def guess_active_ns(session_data: SessionData, group_config: datatypes.GroupConfig) -> Tuple[str, str]:
+def guess_active_ns(session_data: SessionData, group_config: datatypes.GroupConfig) -> Tuple[Optional[str], Optional[str]]:
     """
     Guess active_ns by checking the last available year in status groups.
     Since session_data is usually admin, we assume that they have latest affiliation.
@@ -324,7 +324,7 @@ def guess_active_ns(session_data: SessionData, group_config: datatypes.GroupConf
     return (group_config.settings.group_status_prefix
         + year + '/', year)
 
-def guess_group_item(name: str, group_config: datatypes.GroupConfig) -> datatypes.GroupItem:
+def guess_group_item(name: str, group_config: datatypes.GroupConfig) -> Optional[datatypes.GroupItem]:
     """
     Guess group item from name, by comparing the suffix.
 
@@ -357,7 +357,7 @@ def admin_delegated_groups_list_json(
         for item in request.app.state.config.group_config.values():
             copied = item.copy(deep=True)
             if copied.path.startswith(datatypes.GroupConfig.active_ns_placeholder):
-                if active_ns:
+                if active_ns and year:
                     copied.path = copied.path.replace(
                         datatypes.GroupConfig.active_ns_placeholder, active_ns+year+'-')
                     copied.name = copied.name + ' ' + year
@@ -384,7 +384,7 @@ def loop_grouptree(grouptree: Optional[list], config: datatypes.GroupConfig) -> 
         for g in grouptree:
             item: datatypes.GroupItem = config.get(g['path'], None)
             if item:
-                item = item.copy()
+                item = item.copy(deep=True)
                 item.id = g['id']
             else:
                 item = datatypes.GroupItem.parse_obj(g)
@@ -423,7 +423,7 @@ async def admin_group_config(
     incorrect: Optional[str] = None
     active_role_groups: list = []
     managerof_roles: list = []
-    group_config: list = config.group_config.values()
+    group_config: list = list(config.group_config.values())
     try:
         active_role_groups_resp = await request.app.state.app_session.oauth_client.get(
             request.app.state.config.keycloak_adminapi_url+'roles/'+config.role_active_name+'/groups',

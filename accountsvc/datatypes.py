@@ -6,7 +6,7 @@ from enum import Enum
 from starlette.requests import Request
 
 
-class Settings(BaseSettings):
+class LoadingSettings(BaseSettings):
     class Config:
         env_prefix = 'acct_'
         env_file = '.env'
@@ -46,10 +46,13 @@ class Settings(BaseSettings):
 
     jira_user_search_url_f: str = 'https://jira.bitnp.net/secure/admin/user/UserBrowser.jspa?userSearchFilter={username}'
 
+class Settings(LoadingSettings):
+    group_config: 'GroupConfig'
+
 class GroupItem(BaseModel):
     id: Optional[str] = None
     path: str
-    name: Optional[str] = None
+    name: str = ''
     internal_note: Optional[str] = None
     attributes: Optional[dict] = None
     members: Optional[list] = None
@@ -58,12 +61,15 @@ class GroupItem(BaseModel):
 
     @validator('name', always=True)
     def default_name_as_path(cls, v, values):
-        if v is None:
-            return values.get('path', None)
+        if v == '':
+            return values['path']
         return v
 
     def set_status_name(self, year: str):
         self.name = year + ((' ' + self.name) if self.name else '')
+
+class KCGroupItem(GroupItem):
+    id: str
 
 class GroupConfig(UserDict):
     settings: Settings
