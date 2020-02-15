@@ -282,4 +282,4 @@ class BITNPResponseType(Enum):
             return BITNPResponseType.html
 
 
-Settings.update_forward_refs()
+LoadingSettings.update_forward_refs()

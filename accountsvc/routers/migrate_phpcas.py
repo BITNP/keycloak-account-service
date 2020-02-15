@@ -238,7 +238,7 @@ async def _phpcas_migrate_validate_cred(request: Request,
 
 
 @router.get("/migrate-phpcas/user-lookup", include_in_schema=False)
-async def phpcas_migrate_user_lookup(request: Request, username: str, email: str=None):
+async def phpcas_migrate_user_lookup(request: Request, username: str, email: Optional[str]=None):
     """
     This is an internal API; include_in_schema=False
 
@@ -250,6 +250,9 @@ async def phpcas_migrate_user_lookup(request: Request, username: str, email: str
     Additional check should be done during the actual migration (after verifying password) to see
     if Keycloak account exists or not.
     """
+    username = username.strip()
+    email = email.strip() if email else None
+
     if email is None and username.find('@') != -1:
         # Keycloak's pwreset will send username or email as username, regardless of actaul value
         email = username
@@ -266,4 +269,4 @@ async def phpcas_migrate_user_lookup(request: Request, username: str, email: str
     if user:
         return Response(content="yes", status_code=200)
     else:
-        return Response(status_code=200)
+        return Response(status_code=204)
