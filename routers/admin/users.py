@@ -1,5 +1,6 @@
-from fastapi import Depends, APIRouter, Path, HTTPException
+from fastapi import Depends, APIRouter, Path, HTTPException, Form
 from starlette.requests import Request
+from starlette.responses import RedirectResponse
 from typing import List, Optional
 from pydantic import constr
 import ldap3
@@ -199,6 +200,7 @@ async def admin_user_ldapsetup_landing(
         "signed_in": True,
         "ldap_kc_fedlink_id": config.ldap_kc_fedlink_id,
         "csrf_field": csrf_field,
+        "updated": bool(request.query_params.get("updated", False)),
     })
 
 
@@ -249,3 +251,69 @@ def admin_user_ldapsetup_generate(
         "ldap_groups_add": ldap_groups_add,
         "ldap_groups_remove": ldap_groups_remove,
     }
+
+@router.post("/users/{user_id}/ldapSetup", include_in_schema=False, responses={
+    200: {"content": {"text/html": {}}},
+})
+async def admin_user_ldapsetup_post(
+        request: Request,
+        user_id: constr(regex="^[A-Za-z0-9-_]+$"),
+        type: str = Form(...),
+        session_data: SessionData = Depends(BITNPSessions.deps_requires_master_session),
+        csrf_valid: bool = Depends(BITNPSessions.deps_requires_csrf_posttoken),
+    ):
+    updated: bool = False
+    config: datatypes.Settings = request.app.state.config
+    user = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)
+    ldap_data = admin_user_ldapsetup_generate(user=user, config=config)
+
+    if type == 'user':
+        conn = ldap3.Connection(ldap3.Server(config.ldap_host, get_info=ldap3.ALL),
+            config.ldap_user_dn, config.ldap_password, auto_bind=True)
+        dn = 'uid='+user.username+','+config.ldap_base_dn_users
+        if not user.ldapEntry:
+            if conn.add(dn, object_class=ldap_data["ldap_new_object_class"], attributes=ldap_data["ldap_new_attributes"], controls=None):
+                updated = True
+            else:
+                raise HTTPException(500, detail=conn.result)
+        else:
+            changes = {}
+            for key, value in ldap_data["ldap_new_attributes"].items():
+                changes[key] = [(ldap3.MODIFY_REPLACE, value)]
+
+            if conn.modify(dn, changes=changes):
+                updated = True
+            else:
+                raise HTTPException(500, detail=conn.result)
+
+    if type == 'groups':
+        conn = ldap3.Connection(ldap3.Server(config.ldap_host, get_info=ldap3.ALL),
+            config.ldap_user_dn, config.ldap_password, auto_bind=True)
+        user_dn = 'uid='+user.username+','+config.ldap_base_dn_users
+
+        for add in ldap_data["ldap_groups_add"]:
+            if not conn.modify(add, changes={"member", (ldap3.MODIFY_ADD, [user_dn])}):
+                raise HTTPException(500, detail=conn.result)
+
+        for removal in ldap_data["ldap_groups_remove"]:
+            if not conn.modify(removal, changes={"member", (ldap3.MODIFY_DELETE, [user_dn])}):
+                raise HTTPException(500, detail=conn.result)
+
+        updated = True
+
+    if type == 'kc':
+        client: AsyncOAuth2Client = request.app.state.app_session.oauth_client
+        resp = await client.put(
+            request.app.state.config.keycloak_adminapi_url+'users/'+quote(user.id),
+            headers={'Accept': 'application/json'},
+            token=session_data.to_tokens(),
+            json={"attributes": ldap_data["ldap_kc_attributes"]}
+        )
+        if resp.status_code != 204:
+            raise HTTPException(resp.status_code, detail=resp.json())
+        updated = True
+
+    if updated:
+        return RedirectResponse(request.url_for('admin_user_ldapsetup_landing')+"?updated=1", status=303)
+    else:
+        raise HTTPException(422, detail="type incorrect")

@@ -15,9 +15,13 @@
                 <div class="card-header">LDAP 用户数据生成</div>
                 <div class="card-body">
                     <p class="card-text">
-                        <code>{{ ldap_new_attributes }}</code>
+                        {% if user.ldapEntry %}<span class="text-success">新增</span>{% else %}<span class="text-warning">修改</span>{% endif %} <code>{{ ldap_new_attributes }}</code>
                     </p>
-                    <form method="POST"><button type="submit" class="btn btn-primary">同步到 LDAP</button></form>
+                    <form method="POST" enctype="application/x-www-form-urlencoded">
+                        <button type="submit" class="btn btn-primary">同步到 LDAP</button>
+                        <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">
+                        <input type="hidden" name="type" value="user">
+                    </form>
                 </div>
             </div>
             <div class="card mb-3">
@@ -30,7 +34,11 @@
                     <p class="card-text">
                         <span class="text-danger">-</span> <code>{{ ldap_groups_remove }}</code>
                     </p>
-                    <form method="POST"><button type="submit" class="btn btn-primary">同步到 LDAP</button></form>
+                    <form method="POST" enctype="application/x-www-form-urlencoded">
+                        <button type="submit" class="btn btn-primary">同步到 LDAP</button>
+                        <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">
+                        <input type="hidden" name="type" value="groups">
+                    </form>
                     {% else %}
                     <p class="card-text">
                         <span class="text-warning">无 LDAP 数据</span>
@@ -50,7 +58,11 @@
                         <p>
                             <code>{{ ldap_kc_attributes }}</code>
                         </p>
-                        <form method="POST"><button type="submit" class="btn btn-primary">关联到 Keycloak</button></form>
+                        <form method="POST" enctype="application/x-www-form-urlencoded">
+                            <button type="submit" class="btn btn-primary">关联到 Keycloak</button>
+                            <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">
+                            <input type="hidden" name="type" value="kc">
+                        </form>
                         {% else %}
                         <p>
                             <span class="text-warning">无 LDAP 数据</span>
