@@ -35,7 +35,7 @@ app = FastAPI(
 router = APIRouter()
 
 app.state.config = datatypes.Settings() # from .env
-with open('group_config.json', 'r') as f:
+with open('../group_config.json', 'r') as f:
     data = json.load(f)
     app.state.config.group_config = datatypes.GroupConfig.from_dict(data, settings=app.state.config)
 
@@ -57,9 +57,9 @@ app.state.app_session = BITNPSessions(
     csrf_token=app.state.config.session_secret,
     cache_type=Cache.MEMORY
 )
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="../static"), name="static")
 
-app.state.templates = Jinja2Templates(directory="templates")
+app.state.templates = Jinja2Templates(directory="../templates")
 app.state.templates.env.globals["app_title"] = app.title
 app.state.templates.env.filters["local_timestring"] = (
     lambda dt, format='%Y-%m-%d %H:%M': local_timestring(app.state.config.local_timezone, dt, format)
