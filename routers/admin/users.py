@@ -317,6 +317,6 @@ async def admin_user_ldapsetup_post(
         updated = True
 
     if updated:
-        return RedirectResponse(request.url_for('admin_user_ldapsetup_landing', user_id=user_id)+"?updated=1", status=303)
+        return RedirectResponse(request.url_for('admin_user_ldapsetup_landing', user_id=user_id)+"?updated=1", status_code=303)
     else:
         raise HTTPException(422, detail="type incorrect")
