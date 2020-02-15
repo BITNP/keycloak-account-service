@@ -307,7 +307,10 @@ async def admin_user_ldapsetup_post(
             request.app.state.config.keycloak_adminapi_url+'users/'+quote(user.id),
             headers={'Accept': 'application/json'},
             token=session_data.to_tokens(),
-            json={"attributes": ldap_data["ldap_kc_attributes"]}
+            json={
+                "attributes": ldap_data["ldap_kc_attributes"],
+                "federationLink": config.ldap_kc_fedlink_id,
+            }
         )
         if resp.status_code != 204:
             raise HTTPException(resp.status_code, detail=resp.json())
