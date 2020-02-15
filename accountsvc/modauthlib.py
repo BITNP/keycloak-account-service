@@ -11,7 +11,7 @@ from authlib.jose.rfc7519.jwt import decode_payload as decode_jwt_payload
 from aiocache import Cache
 from aiocache.base import BaseCache
 
-from datatypes import GroupConfig, GroupItem
+from .datatypes import GroupConfig, GroupItem
 from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel, validator
 from pydantic.utils import deep_update

@@ -1,9 +1,10 @@
 from fastapi import Depends, APIRouter, Query, HTTPException
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
-import datatypes
+from accountsvc import datatypes
 
-from modauthlib import BITNPSessions, SessionData
+from accountsvc.modauthlib import (BITNPSessions, SessionData,
+    deps_get_csrf_field, deps_requires_csrf_posttoken, deps_requires_session)
 
 
 router = APIRouter()
@@ -14,8 +15,8 @@ router = APIRouter()
     })
 async def sp_sessions(
         request: Request,
-        csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
-        session_data: SessionData = Depends(BITNPSessions.deps_requires_session),
+        csrf_field: tuple = Depends(deps_get_csrf_field),
+        session_data: SessionData = Depends(deps_requires_session),
         order_by: str = 'default',
     ):
     """
@@ -42,7 +43,7 @@ async def sp_sessions(
 
 async def sp_sessions_json(
         request: Request,
-        session_data: SessionData = Depends(BITNPSessions.deps_requires_session),
+        session_data: SessionData = Depends(deps_requires_session),
         order_by: str = 'default',
         timeout: int = 5,
     ) -> datatypes.KeycloakSessionInfo:
@@ -82,10 +83,10 @@ async def sp_sessions_json(
     })
 async def sp_sessions_logout(
         request: Request,
-        session_data: SessionData = Depends(BITNPSessions.deps_requires_session),
+        session_data: SessionData = Depends(deps_requires_session),
         id: str = Query(None, regex="^[A-Za-z0-9-_]+$"),
         current: bool = False,
-        csrf_valid: bool = Depends(BITNPSessions.deps_requires_csrf_posttoken)
+        csrf_valid: bool = Depends(deps_requires_csrf_posttoken)
     ) -> Response:
     result = await sp_sessions_logout_json(request=request, session_data=session_data, id=id, current=current)
     if result is not True:
@@ -99,7 +100,7 @@ async def sp_sessions_logout(
 
 async def sp_sessions_logout_json(
         request: Request,
-        session_data: SessionData = Depends(BITNPSessions.deps_requires_session),
+        session_data: SessionData = Depends(deps_requires_session),
         id: str = Query(None, regex="^[A-Za-z0-9-_]+$"),
         current: bool = False
     ):

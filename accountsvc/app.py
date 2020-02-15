@@ -6,19 +6,19 @@ from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.exception_handlers import http_exception_handler
-import datatypes
-from utils import TemplateService
-from routers import sp, admin
-from routers import publicsvc, assistance, invitation, migrate_phpcas
-from phpcas_adaptor import FakePHPCASAdaptor, MySQLPHPCASAdaptor
+from . import datatypes
+from .utils import TemplateService, local_timestring
+from .routers import sp, admin
+from .routers import publicsvc, assistance, invitation, migrate_phpcas
+from .phpcas_adaptor import FakePHPCASAdaptor, MySQLPHPCASAdaptor
 
 from authlib.integrations.starlette_client import OAuth
 from authlib.integrations.httpx_client import OAuthError, AsyncOAuth2Client
-from modauthlib import BITNPOAuthRemoteApp, BITNPSessions, deps_requires_session, deps_requires_admin_session
+from accountsvc.modauthlib import BITNPOAuthRemoteApp, BITNPSessions, deps_requires_session, deps_requires_admin_session
 from aiocache import Cache
 
 from urllib.parse import urlencode
-from utils import local_timestring
+import os
 import json
 import traceback
 
@@ -35,7 +35,7 @@ app = FastAPI(
 router = APIRouter()
 
 app.state.config = datatypes.Settings() # from .env
-with open('../group_config.json', 'r') as f:
+with open('group_config.json', 'r') as f:
     data = json.load(f)
     app.state.config.group_config = datatypes.GroupConfig.from_dict(data, settings=app.state.config)
 
@@ -57,9 +57,9 @@ app.state.app_session = BITNPSessions(
     csrf_token=app.state.config.session_secret,
     cache_type=Cache.MEMORY
 )
-app.mount("/static", StaticFiles(directory="../static"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-app.state.templates = Jinja2Templates(directory="../templates")
+app.state.templates = Jinja2Templates(directory="templates")
 app.state.templates.env.globals["app_title"] = app.title
 app.state.templates.env.filters["local_timestring"] = (
     lambda dt, format='%Y-%m-%d %H:%M': local_timestring(app.state.config.local_timezone, dt, format)

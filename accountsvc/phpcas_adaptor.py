@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-import datatypes
+from accountsvc import datatypes
 from abc import ABC, abstractmethod
 from typing import Optional
 

@@ -6,9 +6,10 @@ from pydantic import constr
 import ldap3
 import traceback
 
-import datatypes
-from modauthlib import BITNPSessions, SessionData
-from utils import TemplateService
+from accountsvc import datatypes
+from accountsvc.modauthlib import (BITNPSessions, SessionData,
+    deps_requires_master_session, deps_get_csrf_field, deps_requires_csrf_posttoken)
+from accountsvc.utils import TemplateService
 from urllib.parse import quote
 
 router = APIRouter()
@@ -19,7 +20,7 @@ router = APIRouter()
 })
 async def admin_users(
         request: Request,
-        session_data: SessionData = Depends(BITNPSessions.deps_requires_master_session),
+        session_data: SessionData = Depends(deps_requires_master_session),
         search: str = '',
         first: int = 0,
     ):
@@ -103,7 +104,7 @@ async def _admin_search_users_by_username(
 async def admin_user_detail(
         request: Request,
         user_id: constr(regex="^[A-Za-z0-9-_]+$"),
-        session_data: SessionData = Depends(BITNPSessions.deps_requires_master_session),
+        session_data: SessionData = Depends(deps_requires_master_session),
     ):
     config: datatypes.Settings = request.app.state.config
     user, warning = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)
@@ -189,8 +190,8 @@ async def admin_user_detail_json(
 async def admin_user_ldapsetup_landing(
         request: Request,
         user_id: constr(regex="^[A-Za-z0-9-_]+$"),
-        session_data: SessionData = Depends(BITNPSessions.deps_requires_master_session),
-        csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
+        session_data: SessionData = Depends(deps_requires_master_session),
+        csrf_field: tuple = Depends(deps_get_csrf_field),
     ):
     config: datatypes.Settings = request.app.state.config
     user, warning = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)
@@ -276,8 +277,8 @@ async def admin_user_ldapsetup_post(
         request: Request,
         user_id: constr(regex="^[A-Za-z0-9-_]+$"),
         type: str = Form(...),
-        session_data: SessionData = Depends(BITNPSessions.deps_requires_master_session),
-        csrf_valid: bool = Depends(BITNPSessions.deps_requires_csrf_posttoken),
+        session_data: SessionData = Depends(deps_requires_master_session),
+        csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
     ):
     updated: bool = False
     config: datatypes.Settings = request.app.state.config

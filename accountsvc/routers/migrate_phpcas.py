@@ -4,10 +4,10 @@ from starlette.responses import Response
 from pydantic import ValidationError
 import re
 
-import datatypes
-from phpcas_adaptor import PHPCASAdaptor, PHPCASUserInfo
-from modauthlib import BITNPSessions
-from utils import TemplateService
+from accountsvc import datatypes
+from accountsvc.phpcas_adaptor import PHPCASAdaptor, PHPCASUserInfo
+from accountsvc.modauthlib import BITNPSessions, deps_get_csrf_field, deps_requires_csrf_posttoken
+from accountsvc.utils import TemplateService
 
 router = APIRouter()
 EMAIL_SESSION_NAME = 'mpc_email'
@@ -15,7 +15,7 @@ EMAIL_SESSION_NAME = 'mpc_email'
 @router.get("/migrate-phpcas/", include_in_schema=False)
 async def phpcas_migrate_landing(
         request: Request,
-        csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
+        csrf_field: tuple = Depends(deps_get_csrf_field),
     ):
     return request.app.state.templates.TemplateResponse("migrate-phpcas-landing.html.jinja2", {
         "request": request,
@@ -31,8 +31,8 @@ async def phpcas_migrate_process(
         newPassword: str = Form(None),
         confirmation: str = Form(None),
         name: str = Form(...),
-        csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
-        csrf_valid: bool = Depends(BITNPSessions.deps_requires_csrf_posttoken),
+        csrf_field: tuple = Depends(deps_get_csrf_field),
+        csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
     ):
     session_email = request.session.get(EMAIL_SESSION_NAME)
     user: PHPCASUserInfo
