@@ -334,10 +334,14 @@ def admin_delegated_groups_list_json(
         item: datatypes.GroupItem
         for item in request.app.state.config.group_config.values():
             copied = item.copy(deep=True)
-            if active_ns and copied.path.startswith(datatypes.GroupConfig.active_ns_placeholder):
-                copied.path = copied.path.replace(
-                    datatypes.GroupConfig.active_ns_placeholder, active_ns+year+'-')
-                copied.name = copied.name + ' ' + year
+            if copied.path.startswith(datatypes.GroupConfig.active_ns_placeholder):
+                if active_ns:
+                    copied.path = copied.path.replace(
+                        datatypes.GroupConfig.active_ns_placeholder, active_ns+year+'-')
+                    copied.name = copied.name + ' ' + year
+                else:
+                    # we cannot guess any active_ns; ignore this to prevent error
+                    continue
             ret.append(copied)
         return ret
     else:
