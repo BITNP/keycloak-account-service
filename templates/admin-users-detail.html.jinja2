@@ -9,6 +9,7 @@
             </ol>
         </nav>
         {% if updated %}<div class="alert alert-success" role="alert">请求已完成。</div>{% endif %}
+        {% if warning %}<div class="alert alert-warning" role="alert">{{ warning }}</div>{% endif %}
         <div class="row"><div class="col-12 col-lg-8 offset-lg-2 mb-3">
             <div class="card mb-3">
                 <div class="card-header">基本信息</div>
@@ -70,7 +71,7 @@
                     <div class="card-text">
                         <dl class="row mb-0">
                             <dt class="col-4">Keycloak 侧关联状态</dt>
-                            <dd class="col">{% if user.federationLink == ldap_kc_fedlink_id %}<span class="text-success">已关联</span>{% else %}<span class="text-danger">{{ user.federationLink | default('未关联', true) }}</span>{% endif %} <a href="{{ url_for('admin_user_ldapsetup_landing', user_id=user.id) }}">LDAP 数据同步</a></dd>
+                            <dd class="col">{% if user.federationLink == ldap_kc_fedlink_id %}<span class="text-success">已关联</span>{% else %}<span class="text-danger">{{ user.federationLink | default('未关联', true) }}</span>{% endif %} <a href="{{ url_for('admin_user_ldapsetup_landing', user_id=user.id) }}">LDAP 数据同步面板</a></dd>
                         </dl>
                         {% if user.ldapEntry %}
                         <dl class="row mb-0">

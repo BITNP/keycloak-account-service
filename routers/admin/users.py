@@ -106,7 +106,7 @@ async def admin_user_detail(
         session_data: SessionData = Depends(BITNPSessions.deps_requires_master_session),
     ):
     config: datatypes.Settings = request.app.state.config
-    user = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)
+    user, warning = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)
     if request.state.response_type.is_json():
         return user
     else:
@@ -120,14 +120,16 @@ async def admin_user_detail(
                 "ldap_kc_fedlink_id": config.ldap_kc_fedlink_id,
                 "ldap_base_dn_groups": config.ldap_base_dn_groups,
                 "jira_user_search_url_f": request.app.state.config.jira_user_search_url_f,
+                "warning": "{}: {}".format(warning.__class__.__name__, str(warning)) if warning else None,
             })
 
 async def admin_user_detail_json(
         request: Request,
         user_id: constr(regex="^[A-Za-z0-9-_]+$"),
         session_data: SessionData,
-    ):
+    ) -> (datatypes.UserInfoMaster, Optional[Exception]):
     config: datatypes.Settings = request.app.state.config
+    warning: Optional[Exception]
 
     client: AsyncOAuth2Client = request.app.state.app_session.oauth_client
     resp = await client.get(
@@ -148,13 +150,14 @@ async def admin_user_detail_json(
     )
     if groups_resp.status_code == 200:
         user.memberof = [config.group_config.get(g['path']) for g in groups_resp.json()]
+    else:
+        warning = HTTPException(groups_resp.status_code, detail=groups_resp.text)
 
     # LDAP
+    ldape: Optional[datatypes.UserLdapEntry] = None
     try:
-        ldape = None
         conn = ldap3.Connection(ldap3.Server(config.ldap_host, get_info=ldap3.ALL),
             config.ldap_user_dn, config.ldap_password, auto_bind=True)
-        ldape: Optional[datatypes.UserLdapEntry]
         if conn.search('uid='+user.username+','+config.ldap_base_dn_users, '(objectclass=*)',
             attributes=(ldap3.ALL_ATTRIBUTES, ldap3.ALL_OPERATIONAL_ATTRIBUTES, )):
             ldape = datatypes.UserLdapEntry.parse_obj(conn.response[0])
@@ -175,9 +178,10 @@ async def admin_user_detail_json(
             pass
     except Exception as e:
         traceback.print_exc()
+        warning = e
 
     user.ldapEntry = ldape
-    return user
+    return user, warning
 
 @router.get("/users/{user_id}/ldapSetup", include_in_schema=False, responses={
     200: {"content": {"text/html": {}}},
@@ -189,7 +193,7 @@ async def admin_user_ldapsetup_landing(
         csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
     ):
     config: datatypes.Settings = request.app.state.config
-    user = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)
+    user, warning = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)
 
     ldap_data = admin_user_ldapsetup_generate(user=user, config=config)
 
@@ -207,6 +211,7 @@ async def admin_user_ldapsetup_landing(
         "ldap_kc_fedlink_id": config.ldap_kc_fedlink_id,
         "csrf_field": csrf_field,
         "updated": bool(request.query_params.get("updated", False)),
+        "warning": "{}: {}".format(warning.__class__.__name__, str(warning)) if warning else None,
     })
 
 
@@ -276,7 +281,10 @@ async def admin_user_ldapsetup_post(
     ):
     updated: bool = False
     config: datatypes.Settings = request.app.state.config
-    user = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)
+    user, warning = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)
+    if warning:
+        # we need to make sure there is no warning so that it won't start with errors
+        raise warning
     ldap_data = admin_user_ldapsetup_generate(user=user, config=config)
 
     if type == 'user':

@@ -10,6 +10,7 @@
             </ol>
         </nav>
         {% if updated %}<div class="alert alert-success" role="alert">请求已完成。</div>{% endif %}
+        {% if warning %}<div class="alert alert-warning" role="alert">{{ warning }}</div>{% endif %}
         <div class="row"><div class="col-12 col-lg-8 offset-lg-2 mb-3">
             <div class="card mb-3">
                 <div class="card-header">LDAP 用户生成</div>
