@@ -71,7 +71,7 @@
                         {% if user.ldapEntry %}
                         <dl class="row mb-0">
                             <dt class="col-4">LDAP 群组</dt>
-                            <dd class="col">{% if user.ldapMemberof is not sameas None %}{{ user.ldapMemberof }}{% if user.ldapMemberof|length != user.memberof|length %}<span class="badge badge-warning">同步不完整</span>{% endif %}{% else %}无{% endif %}</dd>
+                            <dd class="col">{% if user.ldapMemberof is not sameas None %}{{ user.ldapMemberof | replace(","+ldap_base_dn_groups, "") }}{% if user.ldapMemberof|length != user.memberof|length %}<span class="badge badge-warning">同步不完整</span>{% endif %}{% else %}无{% endif %}</dd>
                         </dl>
                         {% for key, values in user.ldapEntry.raw_attributes.items() %}
                         <dl class="row mb-0">

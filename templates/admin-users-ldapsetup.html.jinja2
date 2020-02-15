@@ -14,51 +14,28 @@
             <div class="card mb-3">
                 <div class="card-header">LDAP 用户数据生成</div>
                 <div class="card-body">
-                    <div class="card-text">
-                        <dl class="row mb-0">
-                            <dt class="col-4">用户名</dt>
-                            <dd class="col">{{ user.username | default('', true) }}</dd>
-                        </dl>
-                        <dl class="row mb-0">
-                            <dt class="col-4">启用</dt>
-                            <dd class="col">{{ user.enabled }}</dd>
-                        </dl>
-                        <dl class="row mb-0">
-                            <dt class="col-4">姓名</dt>
-                            <dd class="col">{{ user.name | default('', true) }} ({{ user.lastName }}, {{ user.firstName }})</dd>
-                        </dl>
-                        <dl class="row mb-0">
-                            <dt class="col-4">电邮</dt>
-                            <dd class="col"><a href="mailto:{{ user.email }}">{{ user.email }}</a> (emailVerified={{ user.emailVerified }})</dd>
-                        </dl>
-                        <dl class="row mb-0">
-                            <dt class="col-4">创建时间</dt>
-                            <dd class="col">{{ user.createdTimestamp | local_timestring }} ({{ user.createdTimestamp }})</dd>
-                        </dl>
-                        <dl class="row mb-0">
-                            <dt class="col-4">群组</dt>
-                            <dd class="col">{% for item in user.memberof %}
-                                <span class="badge badge-secondary" title="{{ item.path }}: {{ item.internal_note }}">{{ item.name }}</span>
-                                {% endfor %}</dd>
-                        </dl>
-                        <dl class="row mb-0">
-                            <dt class="col-4">操作</dt>
-                            <dd class="col"><a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}" target="_blank">Keycloak 管理</a> <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}/groups" target="_blank">Keycloak 群组</a> <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}/sessions" target="_blank">Keycloak 进程</a></dd>
-                        </dl>
-                    </div>
+                    <p class="card-text">
+                        <code>{{ ldap_new_attributes }}</code>
+                    </p>
+                    <form method="POST"><button type="submit" class="btn btn-primary">同步到 LDAP</button></form>
                 </div>
             </div>
             <div class="card mb-3">
                 <div class="card-header">LDAP 群组数据生成</div>
                 <div class="card-body">
-                    <div class="card-text">
-                        {% for key, values in user.attributes.items() %}
-                        <dl class="row mb-0">
-                            <dt class="col-4">{{ key }}</dt>
-                            <dd class="col">{{ values }}</dd>
-                        </dl>
-                        {% endfor %}
-                    </div>
+                    {% if ldap_groups_add is not sameas None or ldap_groups_remove is not sameas None %}
+                    <p class="card-text">
+                        <span class="text-success">+</span> <code>{{ ldap_groups_add }}</code>
+                    </p>
+                    <p class="card-text">
+                        <span class="text-danger">-</span> <code>{{ ldap_groups_remove }}</code>
+                    </p>
+                    <form method="POST"><button type="submit" class="btn btn-primary">同步到 LDAP</button></form>
+                    {% else %}
+                    <p class="card-text">
+                        <span class="text-warning">无 LDAP 数据</span>
+                    </p>
+                    {% endif %}
                 </div>
             </div>
             <div class="card mb-3">
@@ -69,13 +46,15 @@
                             <dt class="col-4">Keycloak 侧关联状态</dt>
                             <dd class="col">{% if user.federationLink == ldap_kc_fedlink_id %}<span class="text-success">已关联</span>{% else %}<span class="text-danger">{{ user.federationLink | default('未关联', true) }}</span>{% endif %}</dd>
                         </dl>
-                        {% if user.ldapEntry %}
-                        {% for key, values in user.ldapEntry.raw_attributes.items() %}
-                        <dl class="row mb-0">
-                            <dt class="col-4">{{ key }}</dt>
-                            <dd class="col">{{ values }}</dd>
-                        </dl>
-                        {% endfor %}
+                        {% if ldap_kc_attributes %}
+                        <p>
+                            <code>{{ ldap_kc_attributes }}</code>
+                        </p>
+                        <form method="POST"><button type="submit" class="btn btn-primary">关联到 Keycloak</button></form>
+                        {% else %}
+                        <p>
+                            <span class="text-warning">无 LDAP 数据</span>
+                        </p>
                         {% endif %}
                     </div>
                 </div>

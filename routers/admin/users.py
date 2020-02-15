@@ -115,6 +115,7 @@ async def admin_user_detail(
                 "is_master": session_data.is_master(),
                 "signed_in": True,
                 "ldap_kc_fedlink_id": config.ldap_kc_fedlink_id,
+                "ldap_base_dn_groups": config.ldap_base_dn_groups,
             })
 
 async def admin_user_detail_json(
@@ -161,7 +162,7 @@ async def admin_user_detail_json(
         # LDAP groups
         if conn.search(config.ldap_base_dn_groups, '(&(objectClass=groupOfNames)(member='+ldape.dn+'))',
             attributes=None):
-            user.ldapMemberof = [g['dn'].replace(','+config.ldap_base_dn_groups, '') for g in conn.response]
+            user.ldapMemberof = [g['dn'] for g in conn.response]
         else:
             user.ldapMemberof = []
     else:
@@ -183,12 +184,68 @@ async def admin_user_ldapsetup_landing(
     config: datatypes.Settings = request.app.state.config
     user = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)
 
+    ldap_data = admin_user_ldapsetup_generate(user=user, config=config)
+
     return request.app.state.templates.TemplateResponse("admin-users-ldapsetup.html.jinja2", {
         "request": request,
         "user": user,
+        "ldap_new_attributes": ldap_data['ldap_new_attributes'],
+        "ldap_kc_attributes": ldap_data['ldap_kc_attributes'],
+        "ldap_groups_add": ldap_data['ldap_groups_add'],
+        "ldap_groups_remove": ldap_data['ldap_groups_remove'],
         "name": session_data.username,
         "is_admin": session_data.is_admin(),
         "is_master": session_data.is_master(),
         "signed_in": True,
         "ldap_kc_fedlink_id": config.ldap_kc_fedlink_id,
+        "csrf_field": csrf_field,
     })
+
+
+def admin_user_ldapsetup_generate(
+        user: datatypes.UserInfoMaster,
+        config: datatypes.Settings,
+    ):
+    ldap_new_object_class = ['inetOrgPerson', 'organizationalPerson']
+    ldap_new_attributes = {
+        'uid': user.username,
+        # 'userPassword': '',
+        'mail': user.email,
+        'sn': user.lastName,
+        'cn': user.firstName,
+    }
+
+    if user.ldapEntry:
+        ldap_kc_attributes_new = {
+            'LDAP_ENTRY_DN': [user.ldapEntry.dn],
+            'LDAP_ID': user.ldapEntry.raw_attributes['entryUUID'],
+            'modifyTimestamp': user.ldapEntry.raw_attributes['modifyTimestamp'],
+            'createTimestamp': user.ldapEntry.raw_attributes['createTimestamp'],
+        }
+        ldap_kc_attributes = user.attributes.copy()
+        ldap_kc_attributes.update(**ldap_kc_attributes_new)
+
+        ldap_groups = ['cn='+g.path.split('/')[-1]+','+config.ldap_base_dn_groups for g in user.memberof]
+        current_ldap_groups = user.ldapMemberof
+        ldap_groups_add = []
+        ldap_groups_remove = []
+        for g in ldap_groups:
+            if g not in current_ldap_groups:
+                ldap_groups_add.append(g)
+        for g in current_ldap_groups:
+            if g not in ldap_groups:
+                ldap_groups_remove.append(g)
+    else:
+        ldap_kc_attributes = None
+        ldap_groups = None
+        ldap_groups_add = None
+        ldap_groups_remove = None
+
+
+    return {
+        "ldap_new_object_class": ldap_new_object_class,
+        "ldap_new_attributes": ldap_new_attributes,
+        "ldap_kc_attributes": ldap_kc_attributes,
+        "ldap_groups_add": ldap_groups_add,
+        "ldap_groups_remove": ldap_groups_remove,
+    }
