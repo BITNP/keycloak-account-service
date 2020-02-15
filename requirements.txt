@@ -1,4 +1,4 @@
-fastapi
+fastapi~=0.48.0
 pydantic[dotenv]
 uvicorn
 jinja2
