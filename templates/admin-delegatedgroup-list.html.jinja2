@@ -11,7 +11,7 @@
             <div class="col-12 col-lg-6 offset-lg-3 mb-3">
                 <div class="list-group">
                     {% if is_master %}
-                    <a href="{{ url_for('admin_delegated_groups_master_list') }}" class="list-group-item list-group-item-info list-group-item-action">超管群组列表</a>
+                    <a href="{{ url_for('admin_delegated_groups_master_list') }}" class="list-group-item list-group-item-info list-group-item-action">显示所有群组</a>
                     {% endif %}
                     {% for group in groups %}
                     <a href="{{ url_for('admin_delegated_groups_get')+'?path=' }}{{ group.path | urlencode }}" class="list-group-item list-group-item-action">{{ group.name }}{% if group.internal_note %} <small class="text-muted">{{ group.internal_note }}</small>{% endif %}</a>
