@@ -4,6 +4,7 @@ from starlette.responses import RedirectResponse
 from typing import List, Optional
 from pydantic import constr
 import ldap3
+import traceback
 
 import datatypes
 from modauthlib import BITNPSessions, SessionData
@@ -149,28 +150,31 @@ async def admin_user_detail_json(
         user.memberof = [config.group_config.get(g['path']) for g in groups_resp.json()]
 
     # LDAP
-    conn = ldap3.Connection(ldap3.Server(config.ldap_host, get_info=ldap3.ALL),
-        config.ldap_user_dn, config.ldap_password, auto_bind=True)
-    ldape: Optional[datatypes.UserLdapEntry]
-    if conn.search('uid='+user.username+','+config.ldap_base_dn_users, '(objectclass=*)',
-        attributes=(ldap3.ALL_ATTRIBUTES, ldap3.ALL_OPERATIONAL_ATTRIBUTES, )):
-        ldape = datatypes.UserLdapEntry.parse_obj(conn.response[0])
-
-        # mask userPassword if needed
-        if not ldape.attributes.get('userPassword', [b'{'])[0].decode().startswith('{'):
-            ldape.attributes['userPassword'] = ['{MASKED}']
-        if not ldape.raw_attributes.get('userPassword', ['{'])[0].startswith('{'):
-            ldape.raw_attributes['userPassword'] = ['{MASKED}']
-
-        # LDAP groups
-        if conn.search(config.ldap_base_dn_groups, '(&(objectClass=groupOfNames)(member='+ldape.dn+'))',
-            attributes=None):
-            user.ldapMemberof = [g['dn'] for g in conn.response]
-        else:
-            user.ldapMemberof = []
-    else:
-        # not found in ldap
+    try:
         ldape = None
+        conn = ldap3.Connection(ldap3.Server(config.ldap_host, get_info=ldap3.ALL),
+            config.ldap_user_dn, config.ldap_password, auto_bind=True)
+        ldape: Optional[datatypes.UserLdapEntry]
+        if conn.search('uid='+user.username+','+config.ldap_base_dn_users, '(objectclass=*)',
+            attributes=(ldap3.ALL_ATTRIBUTES, ldap3.ALL_OPERATIONAL_ATTRIBUTES, )):
+            ldape = datatypes.UserLdapEntry.parse_obj(conn.response[0])
+
+            # mask userPassword if needed
+            if not ldape.attributes.get('userPassword', [b'{'])[0].decode().startswith('{'):
+                ldape.attributes['userPassword'] = ['{MASKED}']
+            if not ldape.raw_attributes.get('userPassword', ['{'])[0].startswith('{'):
+                ldape.raw_attributes['userPassword'] = ['{MASKED}']
+
+            # LDAP groups
+            user.ldapMemberof = []
+            if conn.search(config.ldap_base_dn_groups, '(&(objectClass=groupOfNames)(member='+ldape.dn+'))',
+                attributes=None):
+                user.ldapMemberof = [g['dn'] for g in conn.response]
+        else:
+            # not found in ldap
+            pass
+    except Exception as e:
+        traceback.print_exc()
 
     user.ldapEntry = ldape
     return user
