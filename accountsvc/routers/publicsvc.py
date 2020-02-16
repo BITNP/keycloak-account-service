@@ -1,19 +1,19 @@
+from typing import Union, Optional
+from urllib.parse import urlencode
 from fastapi import Depends, APIRouter
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, Response
 
 from accountsvc import datatypes
-from accountsvc.modauthlib import (BITNPSessions, SessionData,
-    deps_get_session)
+from accountsvc.modauthlib import (SessionData, deps_get_session)
 from accountsvc.utils import TemplateService
-from urllib.parse import urlencode
 
 router = APIRouter()
 
 
 @router.get("/", include_in_schema=False)
 async def index(request: Request,
-    session_data: SessionData = Depends(deps_get_session)):
+                session_data: SessionData = Depends(deps_get_session)) -> Response:
     tdata: dict = {
         "request": request,
         "name": None,
@@ -29,19 +29,17 @@ async def index(request: Request,
 @router.get("/tos", response_model=datatypes.TOSData, responses={
         200: {"content": {"text/html": {}}}
     })
-async def tos(request: Request, templates: TemplateService = Depends()):
+async def tos(request: Request, templates: TemplateService = Depends()) -> Union[Response, datatypes.TOSData]:
     if request.state.response_type.is_json():
-        return datatypes.TOSData(html=
-            templates.TemplateResponse("tos-content.html.jinja2").body
-        )
+        return datatypes.TOSData(html=templates.TemplateResponse("tos-content.html.jinja2").body)
     else:
         return templates.TemplateResponse("tos.html.jinja2")
 
 @router.get("/register", include_in_schema=False)
 async def register_landing(
         request: Request,
-        redirect_uri: str = None,
-    ):
+        redirect_uri: Optional[str] = None,
+    ) -> Response:
     if redirect_uri:
         if not redirect_uri.startswith('/'):
             redirect_uri = None
@@ -54,7 +52,7 @@ async def register_landing(
     return await request.app.state.app_session.oauth_client.register_redirect(request, redirect_uri)
 
 @router.get("/logout", include_in_schema=False)
-async def logout(request: Request):
+async def logout(request: Request) -> Response:
     access_token = await request.app.state.app_session.end_session(request)
     if not access_token:
         access_token = ''
@@ -64,7 +62,7 @@ async def logout(request: Request):
         return RedirectResponse(request.url_for('index'))
     else:
         redirect_uri = request.url_for('index')
-        input_redirect_uri : str = request.query_params.get("redirect_uri", "")
+        input_redirect_uri: str = request.query_params.get("redirect_uri", "")
         if input_redirect_uri.startswith("/"):
             base_url = request.url.replace(path="", query="")
             redirect_uri = str(base_url) + input_redirect_uri

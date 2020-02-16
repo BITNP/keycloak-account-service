@@ -1,17 +1,17 @@
-from fastapi import Depends, APIRouter, Path, HTTPException, Form
+from typing import List, Optional, Tuple, Union
+import traceback
+from urllib.parse import quote
+
+from fastapi import Depends, APIRouter, HTTPException, Form
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
-from typing import List, Optional, Tuple
+from starlette.responses import RedirectResponse, Response
 from pydantic import constr
 import ldap3
-import traceback
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 from accountsvc import datatypes
-from accountsvc.modauthlib import (BITNPSessions, SessionData,
-    deps_requires_master_session, deps_get_csrf_field, deps_requires_csrf_posttoken)
-from accountsvc.utils import TemplateService
-from urllib.parse import quote
+from accountsvc.modauthlib import (SessionData, deps_requires_master_session,
+                                   deps_get_csrf_field, deps_requires_csrf_posttoken)
 
 router = APIRouter()
 
@@ -24,7 +24,7 @@ async def admin_users(
         session_data: SessionData = Depends(deps_requires_master_session),
         search: str = '',
         first: int = 0,
-    ):
+    ) -> Union[List[datatypes.ProfileInfo], Response]:
     users = await admin_users_json(
         request=request, session_data=session_data,
         search=search, first=first, sort_by='createdTimestamp',
@@ -32,7 +32,8 @@ async def admin_users(
     if request.state.response_type.is_json():
         return users
     else:
-        return request.app.state.templates.TemplateResponse("admin-users-list.html.jinja2", {
+        return request.app.state.templates.TemplateResponse(
+            "admin-users-list.html.jinja2", {
                 "request": request,
                 "users": users,
                 "name": session_data.username,
@@ -50,7 +51,7 @@ async def admin_users_json(
         search: str = '',
         first: int = 0,
         sort_by: str = 'createdTimestamp',
-    ):
+    ) -> List[datatypes.ProfileInfo]:
     client: AsyncOAuth2Client = request.app.state.app_session.oauth_client
     resp = await client.get(
         request.app.state.config.keycloak_adminapi_url+'users?briefRepresentation=true&max=100&first='+str(first)+'&search='+quote(search),
@@ -75,7 +76,8 @@ async def _admin_search_users(
     """
     client: AsyncOAuth2Client
     async with request.app.state.app_session.get_service_account_oauth_client() as client:
-        resp = await client.get(request.app.state.config.keycloak_adminapi_url+'users?briefRepresentation=true&search='+quote(search),
+        resp = await client.get(
+            request.app.state.config.keycloak_adminapi_url+'users?briefRepresentation=true&search='+quote(search),
             headers={'Accept': 'application/json'})
         if resp.status_code == 200:
             return list(datatypes.ProfileInfo.parse_obj(p) for p in resp.json())
@@ -106,13 +108,14 @@ async def admin_user_detail(
         request: Request,
         user_id: constr(regex="^[A-Za-z0-9-_]+$"), # type: ignore # constr
         session_data: SessionData = Depends(deps_requires_master_session),
-    ):
+    ) -> Union[datatypes.UserInfoMaster, Response]:
     config: datatypes.Settings = request.app.state.config
     user, warning = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)
     if request.state.response_type.is_json():
         return user
     else:
-        return request.app.state.templates.TemplateResponse("admin-users-detail.html.jinja2", {
+        return request.app.state.templates.TemplateResponse(
+            "admin-users-detail.html.jinja2", {
                 "request": request,
                 "user": user,
                 "name": session_data.username,
@@ -159,9 +162,9 @@ async def admin_user_detail_json(
     ldape: Optional[datatypes.UserLdapEntry] = None
     try:
         conn = ldap3.Connection(ldap3.Server(config.ldap_host, get_info=ldap3.ALL),
-            config.ldap_user_dn, config.ldap_password, auto_bind=True)
+                                config.ldap_user_dn, config.ldap_password, auto_bind=True)
         if conn.search('uid='+user.username+','+config.ldap_base_dn_users, '(objectclass=*)',
-            attributes=(ldap3.ALL_ATTRIBUTES, ldap3.ALL_OPERATIONAL_ATTRIBUTES, )):
+                       attributes=(ldap3.ALL_ATTRIBUTES, ldap3.ALL_OPERATIONAL_ATTRIBUTES, )):
             ldape = datatypes.UserLdapEntry.parse_obj(conn.response[0])
 
             # mask userPassword if needed
@@ -173,12 +176,12 @@ async def admin_user_detail_json(
             # LDAP groups
             user.ldapMemberof = []
             if conn.search(config.ldap_base_dn_groups, '(&(objectClass=groupOfNames)(member='+ldape.dn+'))',
-                attributes=None):
+                           attributes=None):
                 user.ldapMemberof = [g['dn'] for g in conn.response]
         else:
             # not found in ldap
             pass
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
         traceback.print_exc()
         warning = e
 
@@ -193,7 +196,7 @@ async def admin_user_ldapsetup_landing(
         user_id: constr(regex="^[A-Za-z0-9-_]+$"), # type: ignore # constr
         session_data: SessionData = Depends(deps_requires_master_session),
         csrf_field: tuple = Depends(deps_get_csrf_field),
-    ):
+    ) -> Response:
     config: datatypes.Settings = request.app.state.config
     user, warning = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)
 
@@ -220,7 +223,7 @@ async def admin_user_ldapsetup_landing(
 def admin_user_ldapsetup_generate(
         user: datatypes.UserInfoMaster,
         config: datatypes.Settings,
-    ):
+    ) -> dict:
     """
     This is where we manually do attribute mappings in accountsvc for a manual sync.
     If any rules change please change here accordingly.
@@ -277,10 +280,10 @@ def admin_user_ldapsetup_generate(
 async def admin_user_ldapsetup_post(
         request: Request,
         user_id: constr(regex="^[A-Za-z0-9-_]+$"), # type: ignore # constr
-        type: str = Form(...),
+        setup_type: str = Form(..., alias="type"),
         session_data: SessionData = Depends(deps_requires_master_session),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
-    ):
+    ) -> Response:
     updated: bool = False
     config: datatypes.Settings = request.app.state.config
     user, warning = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)
@@ -289,9 +292,9 @@ async def admin_user_ldapsetup_post(
         raise warning
     ldap_data = admin_user_ldapsetup_generate(user=user, config=config)
 
-    if type == 'user':
+    if setup_type == 'user':
         conn = ldap3.Connection(ldap3.Server(config.ldap_host, get_info=ldap3.ALL),
-            config.ldap_user_dn, config.ldap_password, auto_bind=True)
+                                config.ldap_user_dn, config.ldap_password, auto_bind=True)
         dn = 'uid='+user.username+','+config.ldap_base_dn_users
         if not user.ldapEntry:
             if conn.add(dn, object_class=ldap_data["ldap_new_object_class"], attributes=ldap_data["ldap_new_attributes"], controls=None):
@@ -308,9 +311,9 @@ async def admin_user_ldapsetup_post(
             else:
                 raise HTTPException(500, detail=conn.result)
 
-    if type == 'groups':
+    if setup_type == 'groups':
         conn = ldap3.Connection(ldap3.Server(config.ldap_host, get_info=ldap3.ALL),
-            config.ldap_user_dn, config.ldap_password, auto_bind=True)
+                                config.ldap_user_dn, config.ldap_password, auto_bind=True)
         user_dn = 'uid='+user.username+','+config.ldap_base_dn_users
 
         for add in ldap_data["ldap_groups_add"]:
@@ -323,7 +326,7 @@ async def admin_user_ldapsetup_post(
 
         updated = True
 
-    if type == 'kc':
+    if setup_type == 'kc':
         client: AsyncOAuth2Client = request.app.state.app_session.oauth_client
         resp = await client.put(
             request.app.state.config.keycloak_adminapi_url+'users/'+quote(user.id),

@@ -1,39 +1,38 @@
-from starlette.responses import RedirectResponse
-from starlette.middleware.base import BaseHTTPMiddleware
+from contextlib import asynccontextmanager
+from typing import AsyncIterator, List, Union, Optional, Tuple, Any, Dict
+from hashlib import sha1
+from datetime import datetime, timedelta, timezone
+import time
+
+from pydantic import BaseModel, validator
+from pydantic.utils import deep_update
+from starlette.responses import RedirectResponse, Response
 from starlette.requests import Request
 from starlette.datastructures import URL
 from fastapi import FastAPI, Depends, Form, HTTPException
-
 from authlib.integrations.starlette_client import StarletteRemoteApp
 from authlib.integrations.httpx_client import OAuthError, AsyncOAuth2Client
 from authlib.common.encoding import urlsafe_b64decode, to_bytes
+from authlib.common.security import generate_token
 from authlib.jose.rfc7519.jwt import decode_payload as decode_jwt_payload
 from aiocache import Cache
 from aiocache.base import BaseCache
 
 from .datatypes import GroupConfig, GroupItem
-from datetime import datetime, timedelta, timezone
-from pydantic import BaseModel, validator
-from pydantic.utils import deep_update
-from contextlib import asynccontextmanager
-from typing import AsyncIterator, List, Union, Optional, Tuple
-from hashlib import sha1
-from authlib.common.security import generate_token
-import time
 
 
 class RequiresTokenException(Exception):
     pass
 
 class UnauthorizedException(HTTPException):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(status_code=403, detail="You don't have the privilege to access this endpoint")
 
 class RemovesAuthParamsException(Exception):
     pass
 
 class CSRFTokenInvalidException(HTTPException):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(status_code=403, detail="post token invalid; this request may be unauthorized")
 
 
@@ -53,7 +52,7 @@ class SessionData(BaseModel):
     scope: List[str] = list()
     id_token: dict = {} # temp
 
-    def to_tokens(self):
+    def to_tokens(self) -> dict:
         return {
             'access_token': self.access_token,
             'token_type': self.token_type,
@@ -61,14 +60,14 @@ class SessionData(BaseModel):
             'expires_at': int(self.access_token_expires_at.replace(tzinfo=timezone.utc).timestamp()),
         }
 
-    def is_admin(self):
+    def is_admin(self) -> bool:
         return 'iam-admin' in self.scope
 
-    def is_master(self):
+    def is_master(self) -> bool:
         return 'admin' in self.realm_roles
 
     @validator('realm_roles', 'client_roles', pre=True, always=True)
-    def roles_default_list(cls, v):
+    def roles_default_list(cls, v: Optional[List[str]]) -> List[str]:
         return v or list()
 
 
@@ -92,9 +91,10 @@ class BITNPOAuthRemoteApp(StarletteRemoteApp):
     @staticmethod
     def get_cleaned_redirect_url_str(inferred: URL) -> str:
         return str(inferred.remove_query_params('code').remove_query_params('state')
-                .remove_query_params('session_state')) # Keycloak only
+                   .remove_query_params('session_state')) # Keycloak only
 
-    async def authorize_redirect(self, request: Request, redirect_uri:str=None, **kwargs) -> RedirectResponse:
+    async def authorize_redirect(self, request: Request,
+                                 redirect_uri: Optional[str] = None, **kwargs: Any) -> RedirectResponse:
         """Create a HTTP Redirect for Authorization Endpoint.
         :param request: Starlette Request instance.
         :param redirect_uri: Callback or redirect URI for authorization.
@@ -105,13 +105,13 @@ class BITNPOAuthRemoteApp(StarletteRemoteApp):
         if state is not None:
             # reuse state if multiple pages in the same session needs relogin
             # relaxing this CSRF token's enforcement
-            # TODO: is this safe in a CSRF context?
             kwargs['state'] = state
         rv = await self.create_authorization_url(redirect_uri, **kwargs)
         self.save_authorize_data(request, redirect_uri=redirect_uri, **rv)
         return RedirectResponse(rv['url'], status_code=303)
 
-    async def register_redirect(self, request: Request, redirect_uri:str=None, **kwargs) -> RedirectResponse:
+    async def register_redirect(self, request: Request,
+                                redirect_uri: Optional[str] = None, **kwargs: Any) -> RedirectResponse:
         """Create a HTTP Redirect for Registration Endpoint. Pribably Keycloak-only.
         :param request: Starlette Request instance.
         :param redirect_uri: Callback or redirect URI for registration completion.
@@ -122,14 +122,13 @@ class BITNPOAuthRemoteApp(StarletteRemoteApp):
         if state is not None:
             # reuse state if multiple pages in the same session needs relogin
             # relaxing this CSRF token's enforcement
-            # TODO: is this safe in a CSRF context?
             kwargs['state'] = state
         rv = await self.create_authorization_url(redirect_uri, **kwargs)
         rv['url'] = rv['url'].replace('/openid-connect/auth', '/openid-connect/registrations', 1)
         self.save_authorize_data(request, redirect_uri=redirect_uri, **rv)
         return RedirectResponse(rv['url'], status_code=303)
 
-    async def authorize_access_token(self, request: Request, **kwargs):
+    async def authorize_access_token(self, request: Request, **kwargs: Any) -> dict:
         """Fetch an access token.
         :param request: Starlette Request instance.
         :return: A token dict.
@@ -137,14 +136,13 @@ class BITNPOAuthRemoteApp(StarletteRemoteApp):
         params = self.retrieve_access_token_params(request)
         params.update(kwargs)
         # redirect_uri fallback
-        # TODO: OIDC validates this parameter at all?
         if not params.get('redirect_uri'):
             # how to generate redirect_uri is more app-specific
             # in starlette this should be the request that triggers this function
             params['redirect_uri'] = self.get_cleaned_redirect_url_str(request.url)
         return await self.fetch_access_token(**params)
 
-    async def parse_token_body(self, token: str, claims_options=None, claims_params=None):
+    async def parse_token_body(self, token: str) -> dict:
         """Return parsed (not-validated) JWT body from token."""
         s = to_bytes(token)
         try:
@@ -157,26 +155,26 @@ class BITNPOAuthRemoteApp(StarletteRemoteApp):
 
         return payload
 
-    async def get_token_endpoint(self):
+    async def get_token_endpoint(self) -> str:
         metadata = await self.load_server_metadata()
         token_endpoint = self.access_token_url
         if not token_endpoint and not self.request_token_url:
             token_endpoint = metadata.get('token_endpoint')
         return token_endpoint
 
-    async def refresh_token(self, token: SessionData):
+    async def refresh_token(self, token: SessionData) -> dict:
         token_endpoint = await self.get_token_endpoint()
         async with self._get_oauth_client() as client:
             return await client.refresh_token(token_endpoint, refresh_token=token.refresh_token)
 
-    async def get_metadata_value(self, key: str):
+    async def get_metadata_value(self, key: str) -> Any:
         try:
             return self.__getattribute__(key)
         except AttributeError:
             metadata = await self.load_server_metadata()
             return metadata.get(key)
 
-    async def get_service_account_config(self):
+    async def get_service_account_config(self) -> Dict[str, Optional[str]]:
         token_endpoint = await self.get_token_endpoint()
         return {
             'client_id': self.client_id,
@@ -192,18 +190,18 @@ class BITNPFastAPICSRFAddon:
     csrf_token: str
     csrf_field_name: str = 'post_token'
 
-    def get_csrf_session_id(self, request: Request):
+    def get_csrf_session_id(self, request: Request) -> str:
         # Do not use jti! It will change with refresh_token
         return request.session.setdefault(self.csrf_field_name, generate_token(20))
 
-    def get_csrf_token(self, request: Request):
+    def get_csrf_token(self, request: Request) -> str:
         session_id = self.get_csrf_session_id(request)
         string = session_id + '&' + self.csrf_token
         token = sha1(string.encode()).hexdigest()[:20]
         # print(token)
         return token
 
-    def check_csrf_token(self, token, request: Request):
+    def check_csrf_token(self, token: str, request: Request) -> bool:
         # print(token)
 
         # ignore CSRF token check if Accept header is correctly set
@@ -224,7 +222,7 @@ def deps_requires_csrf_posttoken(
         raise CSRFTokenInvalidException
     return True
 
-class BITNPSessions(BITNPFastAPICSRFAddon, object):
+class BITNPSessions(BITNPFastAPICSRFAddon, object): # pylint: disable=useless-object-inheritance
     group_config: GroupConfig
     oauth_client: StarletteRemoteApp
     session_cache: BaseCache
@@ -233,9 +231,9 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
     sa_tokens: Optional[dict] = None
 
     def __init__(self, app: FastAPI, oauth_client: StarletteRemoteApp, group_config: GroupConfig,
-        csrf_token: str,
-        bearer_grace_period: timedelta = timedelta(seconds=10),
-        cache_type: BaseCache = Cache.MEMORY, cache_kwargs: dict = dict()):
+                 csrf_token: str,
+                 bearer_grace_period: timedelta = timedelta(seconds=10),
+                 cache_type: BaseCache = Cache.MEMORY, cache_kwargs: Optional[dict] = None):
         """
         bearer_grace_period: when the old token will expire, after browser receives a new token
         there might be several requests sent by browser at the same time with the same old token
@@ -244,6 +242,8 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
 
         self.oauth_client = oauth_client
         oauth_client._update_token = self.refresh_token_callback
+        if cache_kwargs is None:
+            cache_kwargs = {}
         self.session_cache = Cache(cache_type, **cache_kwargs)
         self.bearer_grace_period = bearer_grace_period
         self.group_config = group_config
@@ -272,7 +272,8 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
             return data
         return None
 
-    async def new_session(self, tokens: dict, request: Request = None, old_session_data: SessionData = None):
+    async def new_session(self, tokens: dict, request: Optional[Request] = None,
+                          old_session_data: Optional[SessionData] = None) -> Tuple[str, SessionData]:
         access_body = await self.oauth_client.parse_token_body(tokens['access_token'])
         access_jti = access_body['jti']
         refresh_body = None
@@ -339,7 +340,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
 
         return access_jti, session_data
 
-    async def get_bearer_of_refresh_token(self, token: Optional[str]):
+    async def get_bearer_of_refresh_token(self, token: Optional[str]) -> Optional[str]:
         if not token:
             return None
 
@@ -354,8 +355,8 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
         else:
             return None
 
-    async def refresh_token_callback(self, token: dict, refresh_token: Optional[str]=None,
-        access_token: str=None):
+    async def refresh_token_callback(self, token: dict, refresh_token: Optional[str] = None,
+                                     access_token: Optional[str] = None) -> None:
         # get old access token jti before we update
         jti = await self.get_bearer_of_refresh_token(refresh_token)
         session_data = None
@@ -390,15 +391,16 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
                 await self.session_cache.set(jti, session_data)
         return session_data.access_token if (jti and session_data) else None
 
-    async def exception_handler(self, request: Request, exc: Exception):
+    async def exception_handler(self, request: Request, exc: Exception) -> Response:
         if isinstance(exc, RequiresTokenException):
             return await self.oauth_client.authorize_redirect(request, str(request.url))
         if isinstance(exc, RemovesAuthParamsException):
             clean_url = self.oauth_client.get_cleaned_redirect_url_str(request.url)
             return RedirectResponse(clean_url)
+        raise exc
 
-    async def sa_refresh_token_callback(self, token: dict, refresh_token: str=None,
-        access_token: str=None) -> None:
+    async def sa_refresh_token_callback(self, token: dict, refresh_token: Optional[str] = None,
+                                        access_token: Optional[str] = None) -> None:
         self.sa_tokens = token
 
     @asynccontextmanager
@@ -461,17 +463,17 @@ async def deps_get_session(request: Request) -> SessionData:
 
     return session_data
 
-def deps_requires_session(session_data: SessionData = Depends(deps_get_session)):
+def deps_requires_session(session_data: SessionData = Depends(deps_get_session)) -> SessionData:
     if session_data is None:
         raise RequiresTokenException
     return session_data
 
-def deps_requires_admin_session(session_data: SessionData = Depends(deps_requires_session)):
+def deps_requires_admin_session(session_data: SessionData = Depends(deps_requires_session)) -> SessionData:
     if not session_data.is_admin():
         raise UnauthorizedException
     return session_data
 
-def deps_requires_master_session(session_data: SessionData = Depends(deps_requires_session)):
+def deps_requires_master_session(session_data: SessionData = Depends(deps_requires_session)) -> SessionData:
     if not session_data.is_master():
         raise UnauthorizedException
     return session_data

@@ -1,8 +1,9 @@
-from pydantic import BaseModel, BaseSettings, IPvAnyAddress, validator, root_validator, conlist, constr, Field, MissingError
+from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, tzinfo, timezone, timedelta
-from typing import Union, List, Dict, Any, Optional, Tuple
 from collections import UserDict
 from enum import Enum
+
+from pydantic import BaseModel, BaseSettings, IPvAnyAddress, validator, root_validator, constr, Field, MissingError
 from starlette.requests import Request
 
 
@@ -60,34 +61,34 @@ class GroupItem(BaseModel):
     invitation_expires: Optional[datetime] = None
 
     @validator('name', always=True)
-    def default_name_as_path(cls, v, values):
+    def default_name_as_path(cls, v: str, values: Dict[str, Any]) -> str:
         if v == '':
             return values['path']
         return v
 
-    def set_status_name(self, year: str):
+    def set_status_name(self, year: str) -> None:
         self.name = year + ((' ' + self.name) if self.name != self.path else '')
 
 class KCGroupItem(GroupItem):
     id: str
 
-class GroupConfig(UserDict):
+class GroupConfig(UserDict): # pylint: disable=too-many-ancestors
     settings: LoadingSettings
     active_ns_placeholder: str = '@active/' # static
 
     @staticmethod
-    def from_dict(obj: Dict[str, dict], settings: LoadingSettings, **kwargs) -> 'GroupConfig':
+    def from_dict(obj: Dict[str, dict], settings: LoadingSettings, **kwargs: Any) -> 'GroupConfig':
         ret = GroupConfig(settings=settings, **kwargs)
         for path, item in obj.items():
             item['path'] = path
             ret[path] = GroupItem(**item)
         return ret
 
-    def __init__(self, settings: LoadingSettings, *args, **kwargs):
+    def __init__(self, settings: LoadingSettings, *args: Any, **kwargs: Any):
         self.settings = settings
         super().__init__(*args, **kwargs)
 
-    def __setitem__(self, key: str, item: GroupItem):
+    def __setitem__(self, key: Optional[str], item: GroupItem) -> None:
         if key is None:
             key = item.path
         super().__setitem__(key, item)
@@ -102,7 +103,7 @@ class GroupConfig(UserDict):
                 try:
                     year, specifics = cutted.split('/', 1)
                     parsed_key = self.active_ns_placeholder + specifics.replace(year+'-', '', 1)
-                    item : GroupItem = super().__getitem__(parsed_key)
+                    item: GroupItem = super().__getitem__(parsed_key)
                     ret = GroupItem(**item.dict())
                     ret.path = key
                 except ValueError:
@@ -148,7 +149,7 @@ class UserLdapEntry(BaseModel):
     raw_attributes: Dict[str, Any]
 
     @validator('raw_attributes')
-    def raw_attributes_decode(cls, v):
+    def raw_attributes_decode(cls, v: Dict[str, Any]) -> Dict[str, Any]:
         new_dict = dict()
         for key, values in v.items():
             new_dict[key] = [(value.decode() if isinstance(value, bytes) else value) for value in values]
@@ -167,7 +168,7 @@ class ProfileInfo(BaseModel):
     enabled: bool = True
 
     @validator('name', always=True)
-    def name_default(cls, v, values):
+    def name_default(cls, v: Optional[str], values: Dict[str, Any]) -> str:
         if not v:
             return (values.get('lastName') or '') + (values.get('firstName') or '')
         return v
@@ -186,7 +187,7 @@ class ProfileUpdateInfo(BaseModel):
     email: str
 
     @validator('firstName', always=True, pre=True)
-    def firstName_default(cls, v, values):
+    def firstName_default(cls, v: Optional[str], values: Dict[str, Any]) -> Optional[str]:
         if not v:
             if values.get('name') and not values.get('lastName'):
                 return values.get('name')
@@ -206,13 +207,13 @@ class UserCreationInfo(ProfileUpdateInfo):
         return self.json(exclude={"name", "newPassword", "confirmation"})
 
     @validator('newPassword')
-    def check_username_password_match(cls, v, values):
+    def check_username_password_match(cls, v: str, values: Dict[str, Any]) -> str:
         if values.get('username') == v:
             raise ValueError('Password cannot match username')
         return v
 
     @root_validator
-    def check_passwords_match_and_init_creds(cls, values):
+    def check_passwords_match_and_init_creds(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         pw1, pw2 = values.get('newPassword'), values.get('confirmation')
         if pw1 is not None and pw2 is not None and pw1 != pw2:
             raise ValueError('Passwords do not match')
@@ -232,7 +233,7 @@ class PasswordUpdateRequest(BaseModel):
     confirmation: str
 
     @root_validator
-    def check_passwords_match(cls, values):
+    def check_passwords_match(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         pw1, pw2 = values.get('newPassword'), values.get('confirmation')
         if pw1 is not None and pw2 is not None and pw1 != pw2:
             raise ValueError('Passwords do not match')
@@ -243,8 +244,8 @@ class KeycloakSessionClient(BaseModel):
     clientName: Optional[str] = None
 
     @validator('clientName', always=True)
-    def clientName_default(cls, v, values):
-        return v or values.get('clientId')
+    def clientName_default(cls, v: Optional[str], values: Dict[str, Any]) -> str:
+        return v or values['clientId']
 
 class KeycloakSessionItem(BaseModel):
     id: str

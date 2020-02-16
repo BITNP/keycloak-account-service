@@ -1,24 +1,24 @@
+from typing import Union, Optional
+from pydantic import ValidationError
 from fastapi import Depends, APIRouter, Form, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 from accountsvc import datatypes
-from pydantic import ValidationError
-
-from accountsvc.modauthlib import (BITNPSessions, SessionData,
-    deps_get_csrf_field, deps_requires_csrf_posttoken, deps_requires_session)
+from accountsvc.modauthlib import (SessionData, deps_requires_session,
+                                   deps_get_csrf_field, deps_requires_csrf_posttoken)
 
 router = APIRouter()
 
 @router.get("/", include_in_schema=True, response_model=datatypes.ProfileInfo,
-    responses={
-        200: {"content": {"text/html": {}}}
-    })
+            responses={
+                200: {"content": {"text/html": {}}}
+            })
 async def sp_profile(
         request: Request,
         csrf_field: tuple = Depends(deps_get_csrf_field),
         session_data: SessionData = Depends(deps_requires_session),
-    ):
+    ) -> Union[datatypes.ProfileInfo, Response]:
     # prefer_onename is used if user has firstName+lastName and they initiated oneName setup process
     prefer_onename = request.query_params.get('prefer_onename', False)
     updated = request.query_params.get('updated', False)
@@ -40,7 +40,7 @@ async def sp_profile(
 async def sp_profile_json(
         request: Request,
         session_data: SessionData = Depends(deps_requires_session),
-        load_session_only: bool= False
+        load_session_only: bool = False
     ) -> datatypes.ProfileInfo:
     if not load_session_only:
         resp = await request.app.state.app_session.oauth_client.get(
@@ -62,21 +62,21 @@ async def sp_profile_json(
     })
 async def sp_profile_update(
         request: Request,
-        profile: datatypes.ProfileUpdateInfo = None,
+        profile: Optional[datatypes.ProfileUpdateInfo] = None,
         name: str = Form(None),
         firstName: str = Form(None),
         lastName: str = Form(None),
         email: str = Form(None),
         session_data: SessionData = Depends(deps_requires_session),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
-    ):
+    ) -> Union[datatypes.ProfileUpdateInfo, Response]:
     if not profile:
         try:
             profile = datatypes.ProfileUpdateInfo(name=name, firstName=firstName, lastName=lastName, email=email)
         except ValidationError as e:
             raise RequestValidationError(errors=e.raw_errors)
 
-    result = await sp_profile_update_json(request=request, profile=profile, session_data=session_data)
+    _ = await sp_profile_update_json(request=request, profile=profile, session_data=session_data)
     if request.state.response_type.is_json():
         return profile
     else:
@@ -86,8 +86,8 @@ async def sp_profile_update_json(
         request: Request,
         profile: datatypes.ProfileUpdateInfo,
         session_data: SessionData
-    ):
-    data : str = profile.json(exclude={'name',})
+    ) -> bool:
+    data: str = profile.json(exclude={'name',})
     resp = await request.app.state.app_session.oauth_client.post(
         request.app.state.config.keycloak_accountapi_url,
         token=session_data.to_tokens(),
@@ -105,11 +105,10 @@ async def sp_profile_update_json(
         204: {"content": {"application/json": {}}},
         429: {"description": "Failed response (try again later to request a new verification)"},
     })
-async def sp_profile_emailverify(
-        request: Request,
-        session_data: SessionData,
-    ):
-    # Won't implement
+async def sp_profile_emailverify() -> Response:
+    """
+    Won't implement for now
+    """
     return Response(status_code=404)
     # /{realm}/users/{id}/send-verify-email?client_id=
-    #return Response(status_code=204)
+    # return Response(status_code=204)

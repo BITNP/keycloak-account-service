@@ -1,12 +1,14 @@
+from typing import Union, Optional
+from pydantic import ValidationError
+
 from fastapi import Depends, APIRouter, Form, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
-from accountsvc import datatypes
-from pydantic import ValidationError
 
-from accountsvc.modauthlib import (BITNPSessions, SessionData,
-    deps_requires_session, deps_get_csrf_field, deps_requires_csrf_posttoken)
+from accountsvc import datatypes
+from accountsvc.modauthlib import (SessionData, deps_requires_session,
+                                   deps_get_csrf_field, deps_requires_csrf_posttoken)
 
 router = APIRouter()
 
@@ -15,7 +17,7 @@ async def sp_password(
         request: Request,
         csrf_field: tuple = Depends(deps_get_csrf_field),
         session_data: SessionData = Depends(deps_requires_session),
-    ):
+    ) -> Union[datatypes.PasswordInfo, Response]:
     resp = await request.app.state.app_session.oauth_client.get(
         request.app.state.config.keycloak_accountapi_url+'credentials/password',
         token=session_data.to_tokens(),
@@ -39,7 +41,6 @@ async def sp_password(
             "updated": updated,
             "incorrect": incorrect,
         })
-    return
 
 @router.post("/password", include_in_schema=True, status_code=200, responses={
         303: {"description": "Successful response (for end users)", "content": {"text/html": {}}},
@@ -48,14 +49,14 @@ async def sp_password(
     })
 async def sp_password_update(
         request: Request,
-        pwupdate: datatypes.PasswordUpdateRequest = None,
+        pwupdate: Optional[datatypes.PasswordUpdateRequest] = None,
         currentPassword: str = Form(...),
         newPassword: str = Form(...),
         confirmation: str = Form(...),
         session_data: SessionData = Depends(deps_requires_session),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
         csrf_field: tuple = Depends(deps_get_csrf_field),
-    ):
+    ) -> Response:
     if not pwupdate:
         try:
             pwupdate = datatypes.PasswordUpdateRequest(
@@ -68,10 +69,10 @@ async def sp_password_update(
 
 
     try:
-        result = await sp_password_update_json(request=request, pwupdate=pwupdate, session_data=session_data)
+        _ = await sp_password_update_json(request=request, pwupdate=pwupdate, session_data=session_data)
     except HTTPException as e:
         if not request.state.response_type.is_json():
-            if isinstance(e.detail, dict) and e.detail.get('errorMessage') == 'invalidPasswordExistingMessage':
+            if e.detail.find('invalidPasswordExistingMessage') > 0:
                 incorrect = "旧密码错误，请重试，如忘记旧密码请点击下方重设密码。"
             else:
                 incorrect = "请重新选择新密码，错误信息："+str(e.detail)
@@ -94,7 +95,7 @@ async def sp_password_update_json(
         request: Request,
         pwupdate: datatypes.PasswordUpdateRequest,
         session_data: SessionData
-    ):
+    ) -> bool:
     resp = await request.app.state.app_session.oauth_client.post(
         request.app.state.config.keycloak_accountapi_url+'credentials/password',
         token=session_data.to_tokens(),
@@ -105,5 +106,4 @@ async def sp_password_update_json(
         # success
         return True
     else:
-        detail = resp.json()
-        raise HTTPException(status_code=resp.status_code, detail=detail)
+        raise HTTPException(status_code=resp.status_code, detail=resp.body)

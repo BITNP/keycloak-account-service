@@ -1,10 +1,10 @@
 from fastapi import Depends, APIRouter, HTTPException
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, Response
 
 from accountsvc import datatypes, invitation
-from accountsvc.modauthlib import (BITNPSessions, SessionData,
-    deps_get_session, deps_requires_session, deps_get_csrf_field, deps_requires_csrf_posttoken)
+from accountsvc.modauthlib import (SessionData, deps_get_session, deps_requires_session,
+                                   deps_get_csrf_field, deps_requires_csrf_posttoken)
 from accountsvc.utils import TemplateService
 from .admin.groups import _delegated_groups_member_add_json
 
@@ -14,7 +14,7 @@ router = APIRouter()
 @router.get("/i/completed", include_in_schema=False)
 async def invitation_completed(
         templates: TemplateService = Depends(),
-    ):
+    ) -> Response:
     return templates.TemplateResponse("invitation-completed.html.jinja2")
 
 async def validate_token(request: Request, token: str) -> datatypes.KCGroupItem:
@@ -25,7 +25,7 @@ async def validate_token(request: Request, token: str) -> datatypes.KCGroupItem:
 
     async with request.app.state.app_session.get_service_account_oauth_client() as client:
         resp = await client.get(request.app.state.config.keycloak_adminapi_url+'group-by-path/'+path,
-            headers={'Accept': 'application/json'})
+                                headers={'Accept': 'application/json'})
         if resp.status_code == 200:
             current_group = datatypes.KCGroupItem.parse_obj(resp.json())
         else:
@@ -49,7 +49,7 @@ async def invitation_landing(
         request: Request, token: str,
         session_data: SessionData = Depends(deps_get_session),
         csrf_field: tuple = Depends(deps_get_csrf_field),
-    ):
+    ) -> Response:
     current_group = await validate_token(request, token)
 
     in_group = False
@@ -58,16 +58,16 @@ async def invitation_landing(
             if g.path == current_group.path:
                 in_group = True
 
-    return request.app.state.templates.TemplateResponse("invitation-landing.html.jinja2", {
-                "request": request,
-                "group": current_group,
-                "in_group": in_group,
-                "session_data": session_data,
-                "csrf_field": csrf_field,
-                "register_url": request.url_for('register_landing')+'?redirect_uri=/i/'+token,
-                "token": token,
-            })
-    return current_group.name
+    return request.app.state.templates.TemplateResponse(
+                "invitation-landing.html.jinja2", {
+                    "request": request,
+                    "group": current_group,
+                    "in_group": in_group,
+                    "session_data": session_data,
+                    "csrf_field": csrf_field,
+                    "register_url": request.url_for('register_landing')+'?redirect_uri=/i/'+token,
+                    "token": token,
+                })
 
 @router.post("/i/{token}", include_in_schema=False)
 async def invitation_join(
@@ -75,16 +75,15 @@ async def invitation_join(
         session_data: SessionData = Depends(deps_requires_session),
         # deps_requires_session will redirect users as needed (and later convert POST to GET to show the confirmation page)
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
-    ):
+    ) -> Response:
     current_group = await validate_token(request, token)
 
     # do not enforce membership existance check
-    """
-    for g in session_data.memberof:
-        if g.path == current_group.path:
-            # in_group
-            raise HTTPException(status_code=403)
-    """
+    # for g in session_data.memberof:
+    #     if g.path == current_group.path:
+    #         # in_group
+    #         raise HTTPException(status_code=403)
+
     try:
         await _delegated_groups_member_add_json(request=request, current_group=current_group, user_id=session_data.id)
         # success

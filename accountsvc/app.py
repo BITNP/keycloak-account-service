@@ -1,29 +1,29 @@
-from fastapi import FastAPI, Depends, APIRouter, Query, Path
+from typing import Callable
+import json
+import traceback
+import sys
+
+from fastapi import FastAPI, Depends, APIRouter
+from fastapi.exception_handlers import http_exception_handler
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
-from starlette.responses import Response, PlainTextResponse, JSONResponse, RedirectResponse
+from starlette.responses import Response, PlainTextResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from fastapi.exception_handlers import http_exception_handler
-from . import datatypes
-from .utils import TemplateService, local_timestring
-from .routers import sp, admin
-from .routers import publicsvc, assistance, invitation, migrate_phpcas
-from .phpcas_adaptor import FakePHPCASAdaptor, MySQLPHPCASAdaptor
-
 from authlib.integrations.starlette_client import OAuth
-from authlib.integrations.httpx_client import OAuthError, AsyncOAuth2Client
-from accountsvc.modauthlib import BITNPOAuthRemoteApp, BITNPSessions, deps_requires_session, deps_requires_admin_session
+from authlib.integrations.httpx_client import OAuthError
 from aiocache import Cache
 
-from urllib.parse import urlencode
-import os
-import json
-import traceback
+from . import datatypes
+from .utils import local_timestring
+from .routers import sp, admin
+from .routers import publicsvc, assistance, invitation, migrate_phpcas
+from .phpcas_adaptor import FakePHPCASAdaptor, MySQLPHPCASAdaptor # pylint: disable=unused-import
+from .modauthlib import (BITNPOAuthRemoteApp, BITNPSessions,
+                         deps_requires_session, deps_requires_admin_session)
 
-import sys
-MIN_PYTHON = (3, 5)
+MIN_PYTHON = (3, 6)
 if sys.version_info < MIN_PYTHON:
     sys.exit("At least Python {}.{} or later is required.\n".format(*MIN_PYTHON))
 
@@ -48,7 +48,7 @@ app.state.oauth.register(
     client_id=app.state.config.client_id,
     client_secret=app.state.config.client_secret,
     server_metadata_url=app.state.config.server_metadata_url,
-    client_kwargs = {
+    client_kwargs={
         'scope': 'openid iam-admin'
     },
 )
@@ -64,15 +64,15 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.state.templates = Jinja2Templates(directory="templates")
 app.state.templates.env.globals["app_title"] = app.title
 app.state.templates.env.filters["local_timestring"] = (
-    lambda dt, format='%Y-%m-%d %H:%M': local_timestring(app.state.config.local_timezone, dt, format)
+    lambda dt, format='%Y-%m-%d %H:%M': local_timestring(config.local_timezone, dt, format)
 )
 
 @app.on_event("startup")
-async def init_phpcas_adaptor():
+async def init_phpcas_adaptor() -> None:
     app.state.phpcas_adaptor = await MySQLPHPCASAdaptor.create(app.state.config)
 
 @app.exception_handler(StarletteHTTPException)
-async def http_exception_accept_handler(request, exc):
+async def http_exception_accept_handler(request: Request, exc: StarletteHTTPException) -> Response:
     traceback.print_exc()
     if request.state.response_type.is_json():
         return await http_exception_handler(request, exc)
@@ -80,7 +80,7 @@ async def http_exception_accept_handler(request, exc):
         return PlainTextResponse(f"{exc.status_code} {exc.detail}", status_code=exc.status_code)
 
 @app.exception_handler(OAuthError)
-async def oauth_exception_handler(request, exc):
+async def oauth_exception_handler(request: Request, exc: OAuthError) -> Response:
     traceback.print_exc()
     if request.state.response_type.is_json():
         return JSONResponse(
@@ -94,7 +94,7 @@ async def oauth_exception_handler(request, exc):
         }, status_code=500)
 
 @app.middleware("http")
-async def add_response_type_hint(request: Request, call_next):
+async def add_response_type_hint(request: Request, call_next: Callable) -> Response:
     request.state.response_type = datatypes.BITNPResponseType.from_request(request)
     return await call_next(request)
 

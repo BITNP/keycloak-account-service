@@ -1,20 +1,20 @@
 from fastapi import Depends, APIRouter
 from starlette.requests import Request
+from starlette.responses import Response
 from accountsvc import datatypes
 
-from accountsvc.modauthlib import (BITNPSessions, SessionData,
-    deps_requires_session)
+from accountsvc.modauthlib import (SessionData, deps_requires_session)
+from accountsvc.utils import local_timestring
 from .profile import sp_profile_json
 from .sessions import sp_sessions_json
 from ..admin.groups import admin_delegated_groups_list_json, guess_active_ns
-from accountsvc.utils import local_timestring
 
 router = APIRouter()
 
 @router.get("/", include_in_schema=False)
 async def sp_landing(request: Request,
-        session_data: SessionData = Depends(deps_requires_session),
-    ):
+                     session_data: SessionData = Depends(deps_requires_session),
+                    ) -> Response:
     tdata = {
         "request": request,
         "name": session_data.username,
@@ -31,7 +31,8 @@ async def sp_landing(request: Request,
     try:
         tdata["sessions"] = (await sp_sessions_json(request=request, session_data=session_data, timeout=1))
         tdata['sessions_count'] = len(tdata['sessions'])
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
+        print("sp_landing: sp_sessions_json error "+str(e))
         tdata["sessions"] = None
         tdata['sessions_count'] = 0
 
@@ -56,10 +57,9 @@ async def sp_landing(request: Request,
     return request.app.state.templates.TemplateResponse("sp.html.jinja2", tdata)
 
 @router.get("/permission", include_in_schema=True, response_model=datatypes.PermissionInfo)
-async def sp_permission(
-    request: Request,
-    session_data: SessionData = Depends(deps_requires_session)
-    ) -> datatypes.PermissionInfo:
+async def sp_permission(request: Request,
+                        session_data: SessionData = Depends(deps_requires_session)
+                        ) -> datatypes.PermissionInfo:
     pub_memberof = list()
     for item in session_data.memberof:
         pub_memberof.append(item.copy(exclude={'internal_note'}, deep=True))

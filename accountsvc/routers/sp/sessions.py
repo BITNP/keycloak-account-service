@@ -1,24 +1,25 @@
+from typing import Union
 from fastapi import Depends, APIRouter, Query, HTTPException
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 from accountsvc import datatypes
 
-from accountsvc.modauthlib import (BITNPSessions, SessionData,
-    deps_get_csrf_field, deps_requires_csrf_posttoken, deps_requires_session)
+from accountsvc.modauthlib import (SessionData, deps_requires_session,
+                                   deps_get_csrf_field, deps_requires_csrf_posttoken)
 
 
 router = APIRouter()
 
 @router.get("/", include_in_schema=True, response_model=datatypes.KeycloakSessionInfo,
-    responses={
-        200: {"content": {"text/html": {}}}
-    })
+            responses={
+                200: {"content": {"text/html": {}}}
+            })
 async def sp_sessions(
         request: Request,
         csrf_field: tuple = Depends(deps_get_csrf_field),
         session_data: SessionData = Depends(deps_requires_session),
         order_by: str = 'default',
-    ):
+    ) -> Union[datatypes.KeycloakSessionInfo, Response]:
     """
     The order of KeycloakSessionItem will be:
     - Current session
@@ -84,11 +85,16 @@ async def sp_sessions_json(
 async def sp_sessions_logout(
         request: Request,
         session_data: SessionData = Depends(deps_requires_session),
-        id: str = Query(None, regex="^[A-Za-z0-9-_]+$"),
+        session_id: str = Query(None, alias="id", regex="^[A-Za-z0-9-_]+$"),
         current: bool = False,
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken)
     ) -> Response:
-    result = await sp_sessions_logout_json(request=request, session_data=session_data, id=id, current=current)
+    result = await sp_sessions_logout_json(
+        request=request,
+        session_data=session_data,
+        session_id=session_id,
+        current=current,
+    )
     if result is not True:
         raise HTTPException(status_code=500, detail=str(result))
     # success
@@ -100,12 +106,12 @@ async def sp_sessions_logout(
 
 async def sp_sessions_logout_json(
         request: Request,
-        session_data: SessionData = Depends(deps_requires_session),
-        id: str = Query(None, regex="^[A-Za-z0-9-_]+$"),
-        current: bool = False
-    ):
+        session_data: SessionData,
+        session_id: str,
+        current: bool = False,
+    ) -> Union[bool, str]:
     resp = await request.app.state.app_session.oauth_client.delete(
-        request.app.state.config.keycloak_accountapi_url+'sessions/'+(id if id else ''),
+        request.app.state.config.keycloak_accountapi_url+'sessions/'+(session_id if session_id else ''),
         token=session_data.to_tokens(),
         headers={'Accept': 'application/json'},
         params={'current': current}
