@@ -1,7 +1,7 @@
 version: "2.1"
 services:
   accountsvc:
-    image: docker.bitnp.net/bitnp/keycloak-account-service:master
+    image: docker.bitnp.net/bitnp/keycloak-account-service:latest
     env_file: .env
     environment: # more config in .env which starts with acct_
       VIRTUAL_HOST: accounts.bitnp.net, accounts.proxy.bitnp.net
