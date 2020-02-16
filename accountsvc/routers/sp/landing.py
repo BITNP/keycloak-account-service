@@ -32,7 +32,7 @@ async def sp_landing(request: Request,
         tdata["sessions"] = (await sp_sessions_json(request=request, session_data=session_data, timeout=1))
         tdata['sessions_count'] = len(tdata['sessions'])
     except Exception as e: # pylint: disable=broad-except
-        print("sp_landing: sp_sessions_json error "+str(e))
+        print("sp_landing: sp_sessions_json error {} {}".format(e.__class__.__name__, str(e)))
         tdata["sessions"] = None
         tdata['sessions_count'] = 0
 
