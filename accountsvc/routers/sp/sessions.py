@@ -2,6 +2,7 @@ from fastapi import Depends, APIRouter, Query, HTTPException
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 from accountsvc import datatypes
+from typing import Union
 
 from accountsvc.modauthlib import (BITNPSessions, SessionData,
     deps_get_csrf_field, deps_requires_csrf_posttoken, deps_requires_session)
@@ -18,7 +19,7 @@ async def sp_sessions(
         csrf_field: tuple = Depends(deps_get_csrf_field),
         session_data: SessionData = Depends(deps_requires_session),
         order_by: str = 'default',
-    ):
+    ) -> Union[datatypes.KeycloakSessionInfo, Response]:
     """
     The order of KeycloakSessionItem will be:
     - Current session
@@ -103,7 +104,7 @@ async def sp_sessions_logout_json(
         session_data: SessionData = Depends(deps_requires_session),
         id: str = Query(None, regex="^[A-Za-z0-9-_]+$"),
         current: bool = False
-    ):
+    ) -> Union[bool, str]:
     resp = await request.app.state.app_session.oauth_client.delete(
         request.app.state.config.keycloak_accountapi_url+'sessions/'+(id if id else ''),
         token=session_data.to_tokens(),

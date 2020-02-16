@@ -17,7 +17,7 @@ EMAIL_SESSION_NAME = 'mpc_email'
 async def phpcas_migrate_landing(
         request: Request,
         csrf_field: tuple = Depends(deps_get_csrf_field),
-    ):
+    ) -> Response:
     return request.app.state.templates.TemplateResponse("migrate-phpcas-landing.html.jinja2", {
         "request": request,
         "csrf_field": csrf_field,
@@ -34,7 +34,7 @@ async def phpcas_migrate_process(
         name: str = Form(...),
         csrf_field: tuple = Depends(deps_get_csrf_field),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
-    ):
+    ) -> Response:
     session_email = request.session.get(EMAIL_SESSION_NAME)
     user: Optional[PHPCASUserInfo]
     if session_email and password is None:
@@ -86,6 +86,7 @@ async def phpcas_migrate_process(
         )
 
         if not user:
+            assert resp is not None
             return resp
 
         user_uri, resp = await _phpcas_migrate_create_user(
@@ -100,6 +101,7 @@ async def phpcas_migrate_process(
         )
 
         if not user_uri:
+            assert resp is not None
             return resp
 
     # iam-master add
@@ -238,7 +240,7 @@ async def _phpcas_migrate_validate_cred(request: Request,
 
 
 @router.get("/migrate-phpcas/user-lookup", include_in_schema=False)
-async def phpcas_migrate_user_lookup(request: Request, username: str, email: Optional[str]=None):
+async def phpcas_migrate_user_lookup(request: Request, username: str, email: Optional[str]=None) -> Response:
     """
     This is an internal API; include_in_schema=False
 

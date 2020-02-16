@@ -22,7 +22,7 @@ class PHPCASUserInfo(BaseModel):
 
 class PHPCASAdaptor(ABC):
     @classmethod
-    async def create(cls, config) -> 'PHPCASAdaptor':
+    async def create(cls, config: datatypes.Settings) -> 'PHPCASAdaptor':
         pass
 
     def __init__(self, config: datatypes.Settings):
@@ -37,7 +37,7 @@ class PHPCASAdaptor(ABC):
 
 class FakePHPCASAdaptor(PHPCASAdaptor):
     @classmethod
-    async def create(cls, config) -> 'FakePHPCASAdaptor':
+    async def create(cls, config: datatypes.Settings) -> 'FakePHPCASAdaptor':
         return FakePHPCASAdaptor(config=config)
 
     def __init__(self, config: datatypes.Settings):
@@ -68,10 +68,10 @@ class FakePHPCASAdaptor(PHPCASAdaptor):
 
 class MySQLPHPCASAdaptor(PHPCASAdaptor):
     config: datatypes.Settings
-    pool: aiomysql.Pool
+    pool: Optional[aiomysql.Pool]
 
     @classmethod
-    async def create(cls, config) -> 'MySQLPHPCASAdaptor':
+    async def create(cls, config: datatypes.Settings) -> 'MySQLPHPCASAdaptor':
         self = MySQLPHPCASAdaptor(config)
         self.pool = await self.create_pool()
         return self
@@ -79,7 +79,7 @@ class MySQLPHPCASAdaptor(PHPCASAdaptor):
     def __init__(self, config: datatypes.Settings):
         self.config = config
 
-    async def create_pool(self):
+    async def create_pool(self) -> Optional[aiomysql.Pool]:
         if not self.config.phpcas_db:
             return None
         return await aiomysql.create_pool(host=self.config.phpcas_host,
@@ -91,6 +91,7 @@ class MySQLPHPCASAdaptor(PHPCASAdaptor):
             autocommit=True)
 
     async def get_user_by_email(self, email: str) -> Optional[PHPCASUserInfo]:
+        assert self.pool is not None
         async with self.pool.acquire() as connection:
             async with connection.cursor() as cursor:
                 sql = "SELECT * FROM `users` WHERE `email`=%s"
@@ -102,6 +103,7 @@ class MySQLPHPCASAdaptor(PHPCASAdaptor):
                     return None
 
     async def get_user_by_username(self, username: str) -> Optional[PHPCASUserInfo]:
+        assert self.pool is not None
         async with self.pool.acquire() as connection:
             async with connection.cursor() as cursor:
                 sql = "SELECT * FROM `users` WHERE `name`=%s"

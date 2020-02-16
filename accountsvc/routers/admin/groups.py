@@ -8,7 +8,7 @@ from accountsvc.modauthlib import (BITNPSessions, SessionData,
 from .users import _admin_search_users, _admin_search_users_by_username
 
 from accountsvc.utils import TemplateService
-from typing import List, Tuple, Optional, Generator
+from typing import List, Tuple, Optional, Generator, Union
 from operator import attrgetter
 from urllib.parse import quote
 from datetime import datetime, timedelta, timezone
@@ -19,11 +19,11 @@ router = APIRouter()
 @router.get("/delegated-groups/", include_in_schema=True, response_model=List[datatypes.GroupItem])
 async def admin_delegated_groups_get(
         request: Request,
-        path: str = None,
+        path: Optional[str] = None,
         session_data: SessionData = Depends(deps_requires_admin_session),
         first: int = 0,
         csrf_field: tuple = Depends(deps_get_csrf_field),
-    ):
+    ) -> Union[List[datatypes.GroupItem], Response]:
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
     if path is None:
         if request.state.response_type.is_json():
@@ -62,11 +62,8 @@ async def admin_delegated_groups_get(
 @router.get("/delegated-groups/all", include_in_schema=True, response_model=List[datatypes.GroupItem])
 async def admin_delegated_groups_master_list(
         request: Request,
-        path: str = None,
-        session_data: SessionData = Depends(deps_requires_admin_session),
-        first: int = 0,
-        csrf_field: tuple = Depends(deps_get_csrf_field),
-    ):
+        session_data: SessionData = Depends(deps_requires_master_session),
+    ) -> Union[List[datatypes.GroupItem], Response]:
     grouplist = await admin_delegated_groups_master_list_json(request=request, session_data=session_data)
 
     if request.state.response_type.is_json():
@@ -86,7 +83,7 @@ async def _admin_delegated_groups_path_to_group(
         session_data: SessionData,
         grouplist: List[datatypes.GroupItem],
         path: str,
-    ):
+    ) -> datatypes.KCGroupItem:
     # check if path is inside allowed grouplist - some ACL control
     current_groups = list(filter(lambda g: g.path == path, grouplist))
     if len(current_groups) != 1:
@@ -175,7 +172,7 @@ async def admin_delegated_groups_member_add(
         user_id: str = Form(None),
         session_data: SessionData = Depends(deps_requires_admin_session),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
-    ):
+    ) -> Union[datatypes.ProfileInfo, Response]:
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
     current_group = await _admin_delegated_groups_path_to_group(request, session_data, grouplist, path)
 
@@ -191,8 +188,8 @@ async def admin_delegated_groups_member_add(
 async def _delegated_groups_member_add_json(
         request: Request,
         current_group: datatypes.KCGroupItem,
-        username: str = None,
-        user_id: str = None,
+        username: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> datatypes.ProfileInfo:
     """
     This function is also used on client-faced invitation join i.e. no permission check against session_data.
@@ -231,7 +228,7 @@ async def admin_delegated_groups_member_remove(
         user_id: str = Form(...),
         session_data: SessionData = Depends(deps_requires_admin_session),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
-    ):
+    ) -> Response:
     await admin_delegated_groups_member_remove_json(request, path, user_id, session_data)
     # success
     if request.state.response_type.is_json():
@@ -265,7 +262,7 @@ async def admin_delegated_groups_update_invitation_link(
         expires: Optional[datetime] = Form(None),
         session_data: SessionData = Depends(deps_requires_admin_session),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
-    ):
+    ) -> Union[Response, dict]:
     """
     days_from_now < 0: nonce = None
     days_from_now == 0: nonce = new
@@ -274,7 +271,7 @@ async def admin_delegated_groups_update_invitation_link(
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
     current_group = await _admin_delegated_groups_path_to_group(request, session_data, grouplist, path)
 
-    attributes : dict = current_group.attributes
+    attributes: dict = current_group.attributes or {}
 
     if days_from_now > 0:
         if not attributes.get('invitationNonce'):
@@ -417,7 +414,7 @@ async def admin_group_config(
         request: Request,
         session_data: SessionData = Depends(deps_requires_master_session),
         templates: TemplateService = Depends(),
-    ):
+    ) -> Union[List[datatypes.GroupItem], Response]:
     config: datatypes.Settings = request.app.state.config
     guessed_ns = guess_active_ns(session_data, config.group_config)
     incorrect: Optional[str] = None

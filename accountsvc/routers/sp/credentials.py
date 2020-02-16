@@ -4,6 +4,7 @@ from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 from accountsvc import datatypes
 from pydantic import ValidationError
+from typing import Union, Optional
 
 from accountsvc.modauthlib import (BITNPSessions, SessionData,
     deps_requires_session, deps_get_csrf_field, deps_requires_csrf_posttoken)
@@ -15,7 +16,7 @@ async def sp_password(
         request: Request,
         csrf_field: tuple = Depends(deps_get_csrf_field),
         session_data: SessionData = Depends(deps_requires_session),
-    ):
+    ) -> Union[datatypes.PasswordInfo, Response]:
     resp = await request.app.state.app_session.oauth_client.get(
         request.app.state.config.keycloak_accountapi_url+'credentials/password',
         token=session_data.to_tokens(),
@@ -48,14 +49,14 @@ async def sp_password(
     })
 async def sp_password_update(
         request: Request,
-        pwupdate: datatypes.PasswordUpdateRequest = None,
+        pwupdate: Optional[datatypes.PasswordUpdateRequest] = None,
         currentPassword: str = Form(...),
         newPassword: str = Form(...),
         confirmation: str = Form(...),
         session_data: SessionData = Depends(deps_requires_session),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
         csrf_field: tuple = Depends(deps_get_csrf_field),
-    ):
+    ) -> Response:
     if not pwupdate:
         try:
             pwupdate = datatypes.PasswordUpdateRequest(
@@ -94,7 +95,7 @@ async def sp_password_update_json(
         request: Request,
         pwupdate: datatypes.PasswordUpdateRequest,
         session_data: SessionData
-    ):
+    ) -> bool:
     resp = await request.app.state.app_session.oauth_client.post(
         request.app.state.config.keycloak_accountapi_url+'credentials/password',
         token=session_data.to_tokens(),

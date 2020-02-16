@@ -1,6 +1,6 @@
 from fastapi import Depends, APIRouter, HTTPException
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, Response
 
 from accountsvc import datatypes, invitation
 from accountsvc.modauthlib import (BITNPSessions, SessionData,
@@ -14,7 +14,7 @@ router = APIRouter()
 @router.get("/i/completed", include_in_schema=False)
 async def invitation_completed(
         templates: TemplateService = Depends(),
-    ):
+    ) -> Response:
     return templates.TemplateResponse("invitation-completed.html.jinja2")
 
 async def validate_token(request: Request, token: str) -> datatypes.KCGroupItem:
@@ -49,7 +49,7 @@ async def invitation_landing(
         request: Request, token: str,
         session_data: SessionData = Depends(deps_get_session),
         csrf_field: tuple = Depends(deps_get_csrf_field),
-    ):
+    ) -> Response:
     current_group = await validate_token(request, token)
 
     in_group = False
@@ -67,7 +67,6 @@ async def invitation_landing(
                 "register_url": request.url_for('register_landing')+'?redirect_uri=/i/'+token,
                 "token": token,
             })
-    return current_group.name
 
 @router.post("/i/{token}", include_in_schema=False)
 async def invitation_join(
@@ -75,7 +74,7 @@ async def invitation_join(
         session_data: SessionData = Depends(deps_requires_session),
         # deps_requires_session will redirect users as needed (and later convert POST to GET to show the confirmation page)
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
-    ):
+    ) -> Response:
     current_group = await validate_token(request, token)
 
     # do not enforce membership existance check
