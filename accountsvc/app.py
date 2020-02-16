@@ -19,7 +19,7 @@ from . import datatypes
 from .utils import local_timestring
 from .routers import sp, admin
 from .routers import publicsvc, assistance, invitation, migrate_phpcas
-from .phpcas_adaptor import FakePHPCASAdaptor, MySQLPHPCASAdaptor
+from .phpcas_adaptor import FakePHPCASAdaptor, MySQLPHPCASAdaptor # pylint: disable=unused-import
 from .modauthlib import (BITNPOAuthRemoteApp, BITNPSessions,
                          deps_requires_session, deps_requires_admin_session)
 

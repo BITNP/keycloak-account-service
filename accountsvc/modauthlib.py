@@ -222,7 +222,7 @@ def deps_requires_csrf_posttoken(
         raise CSRFTokenInvalidException
     return True
 
-class BITNPSessions(BITNPFastAPICSRFAddon, object):
+class BITNPSessions(BITNPFastAPICSRFAddon, object): # pylint: disable=useless-object-inheritance
     group_config: GroupConfig
     oauth_client: StarletteRemoteApp
     session_cache: BaseCache
