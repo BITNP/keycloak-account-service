@@ -17,7 +17,8 @@
                     <input type="text" class="form-control mb-2 mb-sm-0 mx-sm-2" id="enroll-username" name="username" value="" required autocomplete="off">
                     <input type="hidden" name="path" value="{{ path }}">
                     <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">
-                    <button type="submit" class="btn btn-outline-primary mb-2 mb-sm-0">加入用户</button>
+                    <button type="submit" class="btn btn-outline-primary mb-2 mb-sm-0 mr-2">加入用户</button>
+                    <small class="text-muted">群组变更在用户侧需要重新登录应用才会生效</small>
                 </form>
             </div>
         </div>
@@ -66,7 +67,7 @@
             <tbody>
                 {% for user in group.members %}
                 <tr id="user-{{ user.id }}">
-                    <th scope="row"><a href="{{ console_prefix }}#/realms/master/users/{{ user.id }}/groups" target="_blank">{{ user.username }}</a></th><td>{{ user.enabled }}</td><td>{{ user.name }}</td><td><a href="mailto:{{ user.email }}">{{ user.email }}</a></td><td>{{ user.createdTimestamp | local_timestring }}</td>
+                    <th scope="row"><a href="{{ url_for('admin_user_detail', user_id=user.id) if is_master else '#user-'+user.id }}">{{ user.username }}</a></th><td>{{ user.enabled }}</td><td>{{ user.name }}</td><td><a href="mailto:{{ user.email }}">{{ user.email }}</a></td><td>{{ user.createdTimestamp | local_timestring }}</td>
                     <td><form action="{{ url_for('admin_delegated_groups_member_remove') }}" method="POST" enctype="application/x-www-form-urlencoded"><button type="submit" class="btn btn-outline-danger btn-sm">移出</button><input type="hidden" name="path" value="{{ path }}"><input type="hidden" name="user_id" value="{{ user.id }}"><input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}"></form></td>
                 </tr>
                 {% endfor %}
