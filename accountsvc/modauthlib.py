@@ -1,5 +1,4 @@
 from starlette.responses import RedirectResponse, Response
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.datastructures import URL
 from fastapi import FastAPI, Depends, Form, HTTPException
@@ -105,7 +104,6 @@ class BITNPOAuthRemoteApp(StarletteRemoteApp):
         if state is not None:
             # reuse state if multiple pages in the same session needs relogin
             # relaxing this CSRF token's enforcement
-            # TODO: is this safe in a CSRF context?
             kwargs['state'] = state
         rv = await self.create_authorization_url(redirect_uri, **kwargs)
         self.save_authorize_data(request, redirect_uri=redirect_uri, **rv)
@@ -122,7 +120,6 @@ class BITNPOAuthRemoteApp(StarletteRemoteApp):
         if state is not None:
             # reuse state if multiple pages in the same session needs relogin
             # relaxing this CSRF token's enforcement
-            # TODO: is this safe in a CSRF context?
             kwargs['state'] = state
         rv = await self.create_authorization_url(redirect_uri, **kwargs)
         rv['url'] = rv['url'].replace('/openid-connect/auth', '/openid-connect/registrations', 1)
@@ -137,7 +134,6 @@ class BITNPOAuthRemoteApp(StarletteRemoteApp):
         params = self.retrieve_access_token_params(request)
         params.update(kwargs)
         # redirect_uri fallback
-        # TODO: OIDC validates this parameter at all?
         if not params.get('redirect_uri'):
             # how to generate redirect_uri is more app-specific
             # in starlette this should be the request that triggers this function
@@ -235,7 +231,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
     def __init__(self, app: FastAPI, oauth_client: StarletteRemoteApp, group_config: GroupConfig,
         csrf_token: str,
         bearer_grace_period: timedelta = timedelta(seconds=10),
-        cache_type: BaseCache = Cache.MEMORY, cache_kwargs: dict = dict()):
+        cache_type: BaseCache = Cache.MEMORY, cache_kwargs: Optional[dict] = None):
         """
         bearer_grace_period: when the old token will expire, after browser receives a new token
         there might be several requests sent by browser at the same time with the same old token
@@ -244,6 +240,8 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
 
         self.oauth_client = oauth_client
         oauth_client._update_token = self.refresh_token_callback
+        if cache_kwargs is None:
+            cache_kwargs = {}
         self.session_cache = Cache(cache_type, **cache_kwargs)
         self.bearer_grace_period = bearer_grace_period
         self.group_config = group_config

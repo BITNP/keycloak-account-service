@@ -3,8 +3,8 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 
 from accountsvc import datatypes, invitation
-from accountsvc.modauthlib import (BITNPSessions, SessionData,
-    deps_get_session, deps_requires_session, deps_get_csrf_field, deps_requires_csrf_posttoken)
+from accountsvc.modauthlib import (SessionData, deps_get_session, deps_requires_session,
+                                   deps_get_csrf_field, deps_requires_csrf_posttoken)
 from accountsvc.utils import TemplateService
 from .admin.groups import _delegated_groups_member_add_json
 
@@ -78,12 +78,11 @@ async def invitation_join(
     current_group = await validate_token(request, token)
 
     # do not enforce membership existance check
-    """
-    for g in session_data.memberof:
-        if g.path == current_group.path:
-            # in_group
-            raise HTTPException(status_code=403)
-    """
+    # for g in session_data.memberof:
+    #     if g.path == current_group.path:
+    #         # in_group
+    #         raise HTTPException(status_code=403)
+
     try:
         await _delegated_groups_member_add_json(request=request, current_group=current_group, user_id=session_data.id)
         # success

@@ -2,13 +2,11 @@ from fastapi import Depends, APIRouter, Form, HTTPException
 from starlette.requests import Request
 from starlette.responses import Response
 from pydantic import ValidationError
-import re
 from typing import Tuple, Optional
 
 from accountsvc import datatypes
 from accountsvc.phpcas_adaptor import PHPCASAdaptor, PHPCASUserInfo
-from accountsvc.modauthlib import BITNPSessions, deps_get_csrf_field, deps_requires_csrf_posttoken
-from accountsvc.utils import TemplateService
+from accountsvc.modauthlib import deps_get_csrf_field, deps_requires_csrf_posttoken
 
 router = APIRouter()
 EMAIL_SESSION_NAME = 'mpc_email'
@@ -118,7 +116,7 @@ async def phpcas_migrate_process(
                     )
                     if resp_iam.status_code != 204:
                         raise HTTPException(status_code=resp_iam.status_code, detail=resp_iam.body)
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-except
                 print("phpcas-migrate: Failed upgrading to iam-master {}".format(e))
 
     return request.app.state.templates.TemplateResponse("migrate-phpcas-completed.html.jinja2", {
@@ -197,7 +195,7 @@ async def _phpcas_migrate_create_user(request: Request,
                 resp_json = resp.json()
                 if resp_json['errorMessage'].startswith('User exists with same '):
                     incorrect = "你的账户已被迁移，不能再迁移。如有疑问请联系管理员。"
-            except Exception:
+            except Exception: # pylint: disable=broad-except
                 pass
 
             return None, request.app.state.templates.TemplateResponse("migrate-phpcas-landing.html.jinja2", {

@@ -6,8 +6,8 @@ from accountsvc import datatypes
 from pydantic import ValidationError
 from typing import Union, Optional
 
-from accountsvc.modauthlib import (BITNPSessions, SessionData,
-    deps_requires_session, deps_get_csrf_field, deps_requires_csrf_posttoken)
+from accountsvc.modauthlib import (SessionData, deps_requires_session,
+                                   deps_get_csrf_field, deps_requires_csrf_posttoken)
 
 router = APIRouter()
 
@@ -68,7 +68,7 @@ async def sp_password_update(
 
 
     try:
-        result = await sp_password_update_json(request=request, pwupdate=pwupdate, session_data=session_data)
+        _ = await sp_password_update_json(request=request, pwupdate=pwupdate, session_data=session_data)
     except HTTPException as e:
         if not request.state.response_type.is_json():
             if e.detail.find('invalidPasswordExistingMessage') > 0:

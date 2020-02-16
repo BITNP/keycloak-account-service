@@ -1,10 +1,10 @@
-from fastapi import Depends, APIRouter, Path, HTTPException, Form
+from fastapi import Depends, APIRouter, HTTPException, Form
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 
 from accountsvc import datatypes, invitation
-from accountsvc.modauthlib import (BITNPSessions, SessionData,
-    deps_requires_admin_session, deps_requires_master_session, deps_get_csrf_field, deps_requires_csrf_posttoken)
+from accountsvc.modauthlib import (SessionData, deps_requires_admin_session, deps_requires_master_session,
+                                   deps_get_csrf_field, deps_requires_csrf_posttoken)
 from .users import _admin_search_users, _admin_search_users_by_username
 
 from accountsvc.utils import TemplateService
@@ -153,14 +153,20 @@ async def admin_delegated_groups_detail_json(
 
 async def _admin_groups_members_json(
         request: Request,
-        id: str,
+        group_id: str,
         first: int = 0,
         briefRepresentation: bool = True
     ) -> List[datatypes.ProfileInfo]:
     # This method DOES NOT authenticate at all; use with caution
     async with request.app.state.app_session.get_service_account_oauth_client() as client:
-        resp = await client.get(request.app.state.config.keycloak_adminapi_url+'groups/'+id+'/members',
-            headers={'Accept': 'application/json'}, params={'briefRepresentation':True, 'first': first})
+        resp = await client.get(
+            request.app.state.config.keycloak_adminapi_url+'groups/'+group_id+'/members',
+            headers={'Accept': 'application/json'},
+            params={
+                'briefRepresentation': briefRepresentation,
+                'first': first,
+            },
+        )
         ret = resp.json()
         return list(datatypes.ProfileInfo.parse_obj(u) for u in ret)
 
@@ -429,7 +435,7 @@ async def admin_group_config(
         )
         active_role_groups = active_role_groups_resp.json()
         managerof_roles = await admin_group_config_get_managerof(request, session_data, config)
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
         print(e)
         incorrect = '{}: {}'.format(e.__class__.__name__,str(e))
 

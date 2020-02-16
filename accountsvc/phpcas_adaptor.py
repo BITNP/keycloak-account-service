@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from accountsvc import datatypes
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Optional
 
 import aiomysql
@@ -40,9 +40,6 @@ class FakePHPCASAdaptor(PHPCASAdaptor):
     async def create(cls, config: datatypes.Settings) -> 'FakePHPCASAdaptor':
         return FakePHPCASAdaptor(config=config)
 
-    def __init__(self, config: datatypes.Settings):
-        pass
-
     async def get_user_by_email(self, email: str) -> Optional[PHPCASUserInfo]:
         if email == 'testph@bitnp.net':
             # pw: testphp
@@ -77,6 +74,7 @@ class MySQLPHPCASAdaptor(PHPCASAdaptor):
         return self
 
     def __init__(self, config: datatypes.Settings):
+        super().__init__(config)
         self.config = config
 
     async def create_pool(self) -> Optional[aiomysql.Pool]:

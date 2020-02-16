@@ -1,30 +1,29 @@
-from fastapi import FastAPI, Depends, APIRouter, Query, Path
+from typing import Callable
+import json
+import traceback
+import sys
+
+from fastapi import FastAPI, Depends, APIRouter
+from fastapi.exception_handlers import http_exception_handler
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
-from starlette.responses import Response, PlainTextResponse, JSONResponse, RedirectResponse
+from starlette.responses import Response, PlainTextResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from fastapi.exception_handlers import http_exception_handler
+from authlib.integrations.starlette_client import OAuth
+from authlib.integrations.httpx_client import OAuthError
+from aiocache import Cache
+
 from . import datatypes
-from .utils import TemplateService, local_timestring
+from .utils import local_timestring
 from .routers import sp, admin
 from .routers import publicsvc, assistance, invitation, migrate_phpcas
 from .phpcas_adaptor import FakePHPCASAdaptor, MySQLPHPCASAdaptor
+from .modauthlib import (BITNPOAuthRemoteApp, BITNPSessions,
+                         deps_requires_session, deps_requires_admin_session)
 
-from authlib.integrations.starlette_client import OAuth
-from authlib.integrations.httpx_client import OAuthError, AsyncOAuth2Client
-from accountsvc.modauthlib import BITNPOAuthRemoteApp, BITNPSessions, deps_requires_session, deps_requires_admin_session
-from aiocache import Cache
-from typing import Callable
-
-from urllib.parse import urlencode
-import os
-import json
-import traceback
-
-import sys
-MIN_PYTHON = (3, 5)
+MIN_PYTHON = (3, 6)
 if sys.version_info < MIN_PYTHON:
     sys.exit("At least Python {}.{} or later is required.\n".format(*MIN_PYTHON))
 
@@ -49,7 +48,7 @@ app.state.oauth.register(
     client_id=app.state.config.client_id,
     client_secret=app.state.config.client_secret,
     server_metadata_url=app.state.config.server_metadata_url,
-    client_kwargs = {
+    client_kwargs={
         'scope': 'openid iam-admin'
     },
 )
@@ -65,7 +64,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.state.templates = Jinja2Templates(directory="templates")
 app.state.templates.env.globals["app_title"] = app.title
 app.state.templates.env.filters["local_timestring"] = (
-    lambda dt, format='%Y-%m-%d %H:%M': local_timestring(app.state.config.local_timezone, dt, format)
+    lambda dt, format='%Y-%m-%d %H:%M': local_timestring(config.local_timezone, dt, format)
 )
 
 @app.on_event("startup")

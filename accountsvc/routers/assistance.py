@@ -2,7 +2,6 @@ from fastapi import Depends, APIRouter
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 
-from accountsvc import datatypes
 from accountsvc.utils import TemplateService
 
 router = APIRouter()

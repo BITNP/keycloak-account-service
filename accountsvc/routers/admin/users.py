@@ -1,4 +1,4 @@
-from fastapi import Depends, APIRouter, Path, HTTPException, Form
+from fastapi import Depends, APIRouter, HTTPException, Form
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 from typing import List, Optional, Tuple, Union
@@ -8,9 +8,8 @@ import traceback
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 from accountsvc import datatypes
-from accountsvc.modauthlib import (BITNPSessions, SessionData,
-    deps_requires_master_session, deps_get_csrf_field, deps_requires_csrf_posttoken)
-from accountsvc.utils import TemplateService
+from accountsvc.modauthlib import (SessionData, deps_requires_master_session,
+                                   deps_get_csrf_field, deps_requires_csrf_posttoken)
 from urllib.parse import quote
 
 router = APIRouter()
@@ -178,7 +177,7 @@ async def admin_user_detail_json(
         else:
             # not found in ldap
             pass
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
         traceback.print_exc()
         warning = e
 
@@ -277,7 +276,7 @@ def admin_user_ldapsetup_generate(
 async def admin_user_ldapsetup_post(
         request: Request,
         user_id: constr(regex="^[A-Za-z0-9-_]+$"), # type: ignore # constr
-        type: str = Form(...),
+        setup_type: str = Form(..., alias="type"),
         session_data: SessionData = Depends(deps_requires_master_session),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
     ) -> Response:
@@ -289,7 +288,7 @@ async def admin_user_ldapsetup_post(
         raise warning
     ldap_data = admin_user_ldapsetup_generate(user=user, config=config)
 
-    if type == 'user':
+    if setup_type == 'user':
         conn = ldap3.Connection(ldap3.Server(config.ldap_host, get_info=ldap3.ALL),
             config.ldap_user_dn, config.ldap_password, auto_bind=True)
         dn = 'uid='+user.username+','+config.ldap_base_dn_users
@@ -308,7 +307,7 @@ async def admin_user_ldapsetup_post(
             else:
                 raise HTTPException(500, detail=conn.result)
 
-    if type == 'groups':
+    if setup_type == 'groups':
         conn = ldap3.Connection(ldap3.Server(config.ldap_host, get_info=ldap3.ALL),
             config.ldap_user_dn, config.ldap_password, auto_bind=True)
         user_dn = 'uid='+user.username+','+config.ldap_base_dn_users
@@ -323,7 +322,7 @@ async def admin_user_ldapsetup_post(
 
         updated = True
 
-    if type == 'kc':
+    if setup_type == 'kc':
         client: AsyncOAuth2Client = request.app.state.app_session.oauth_client
         resp = await client.put(
             request.app.state.config.keycloak_adminapi_url+'users/'+quote(user.id),

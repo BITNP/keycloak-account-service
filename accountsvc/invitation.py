@@ -4,7 +4,6 @@ import itsdangerous
 import base64
 import time
 from typing import Tuple, Optional
-from datetime import datetime, timezone
 from authlib.common.security import generate_token as _generate_token
 
 SEPARATOR = "@"
@@ -65,7 +64,7 @@ def parse_invitation_token(token: str, config: datatypes.Settings) -> Tuple[Opti
         signer = itsdangerous.Signer(secret_key=config.invitation_secret, sep=SEPARATOR)
         path, nonce = signer.unsign(text).decode().split(SEPARATOR, 1)
         return path, nonce
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
         print(e)
         return None, None
 

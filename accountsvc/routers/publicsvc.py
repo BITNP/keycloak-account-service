@@ -4,8 +4,7 @@ from starlette.responses import RedirectResponse, Response
 from typing import Union, Optional
 
 from accountsvc import datatypes
-from accountsvc.modauthlib import (BITNPSessions, SessionData,
-    deps_get_session)
+from accountsvc.modauthlib import (SessionData, deps_get_session)
 from accountsvc.utils import TemplateService
 from urllib.parse import urlencode
 

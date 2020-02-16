@@ -6,8 +6,8 @@ from accountsvc import datatypes
 from pydantic import ValidationError
 from typing import Union, Optional
 
-from accountsvc.modauthlib import (BITNPSessions, SessionData,
-    deps_get_csrf_field, deps_requires_csrf_posttoken, deps_requires_session)
+from accountsvc.modauthlib import (SessionData, deps_requires_session,
+                                   deps_get_csrf_field, deps_requires_csrf_posttoken)
 
 router = APIRouter()
 
@@ -77,7 +77,7 @@ async def sp_profile_update(
         except ValidationError as e:
             raise RequestValidationError(errors=e.raw_errors)
 
-    result = await sp_profile_update_json(request=request, profile=profile, session_data=session_data)
+    _ = await sp_profile_update_json(request=request, profile=profile, session_data=session_data)
     if request.state.response_type.is_json():
         return profile
     else:
@@ -106,11 +106,10 @@ async def sp_profile_update_json(
         204: {"content": {"application/json": {}}},
         429: {"description": "Failed response (try again later to request a new verification)"},
     })
-async def sp_profile_emailverify(
-        request: Request,
-        session_data: SessionData,
-    ) -> Response:
-    # Won't implement
+async def sp_profile_emailverify() -> Response:
+    """
+    Won't implement for now
+    """
     return Response(status_code=404)
     # /{realm}/users/{id}/send-verify-email?client_id=
-    #return Response(status_code=204)
+    # return Response(status_code=204)

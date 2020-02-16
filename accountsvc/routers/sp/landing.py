@@ -3,8 +3,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from accountsvc import datatypes
 
-from accountsvc.modauthlib import (BITNPSessions, SessionData,
-    deps_requires_session)
+from accountsvc.modauthlib import (SessionData, deps_requires_session)
 from .profile import sp_profile_json
 from .sessions import sp_sessions_json
 from ..admin.groups import admin_delegated_groups_list_json, guess_active_ns
@@ -32,7 +31,8 @@ async def sp_landing(request: Request,
     try:
         tdata["sessions"] = (await sp_sessions_json(request=request, session_data=session_data, timeout=1))
         tdata['sessions_count'] = len(tdata['sessions'])
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
+        print("sp_landing: sp_sessions_json error "+str(e))
         tdata["sessions"] = None
         tdata['sessions_count'] = 0
 
