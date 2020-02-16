@@ -66,7 +66,7 @@ class GroupItem(BaseModel):
         return v
 
     def set_status_name(self, year: str):
-        self.name = year + ((' ' + self.name) if self.name else '')
+        self.name = year + ((' ' + self.name) if self.name != self.path else '')
 
 class KCGroupItem(GroupItem):
     id: str
