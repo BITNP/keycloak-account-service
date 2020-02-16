@@ -65,7 +65,7 @@ class GroupItem(BaseModel):
             return values['path']
         return v
 
-    def set_status_name(self, year: str):
+    def set_status_name(self, year: str) -> None:
         self.name = year + ((' ' + self.name) if self.name != self.path else '')
 
 class KCGroupItem(GroupItem):
@@ -76,18 +76,18 @@ class GroupConfig(UserDict):
     active_ns_placeholder: str = '@active/' # static
 
     @staticmethod
-    def from_dict(obj: Dict[str, dict], settings: LoadingSettings, **kwargs) -> 'GroupConfig':
+    def from_dict(obj: Dict[str, dict], settings: LoadingSettings, **kwargs: Any) -> 'GroupConfig':
         ret = GroupConfig(settings=settings, **kwargs)
         for path, item in obj.items():
             item['path'] = path
             ret[path] = GroupItem(**item)
         return ret
 
-    def __init__(self, settings: LoadingSettings, *args, **kwargs):
+    def __init__(self, settings: LoadingSettings, *args: Any, **kwargs: Any):
         self.settings = settings
         super().__init__(*args, **kwargs)
 
-    def __setitem__(self, key: str, item: GroupItem):
+    def __setitem__(self, key: str, item: GroupItem) -> None:
         if key is None:
             key = item.path
         super().__setitem__(key, item)

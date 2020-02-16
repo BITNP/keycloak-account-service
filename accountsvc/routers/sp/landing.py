@@ -1,5 +1,6 @@
 from fastapi import Depends, APIRouter
 from starlette.requests import Request
+from starlette.responses import Response
 from accountsvc import datatypes
 
 from accountsvc.modauthlib import (BITNPSessions, SessionData,
@@ -14,7 +15,7 @@ router = APIRouter()
 @router.get("/", include_in_schema=False)
 async def sp_landing(request: Request,
         session_data: SessionData = Depends(deps_requires_session),
-    ):
+    ) -> Response:
     tdata = {
         "request": request,
         "name": session_data.username,

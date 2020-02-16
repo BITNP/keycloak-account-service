@@ -4,6 +4,7 @@ from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 from accountsvc import datatypes
 from pydantic import ValidationError
+from typing import Union, Optional
 
 from accountsvc.modauthlib import (BITNPSessions, SessionData,
     deps_get_csrf_field, deps_requires_csrf_posttoken, deps_requires_session)
@@ -18,7 +19,7 @@ async def sp_profile(
         request: Request,
         csrf_field: tuple = Depends(deps_get_csrf_field),
         session_data: SessionData = Depends(deps_requires_session),
-    ):
+    ) -> Union[datatypes.ProfileInfo, Response]:
     # prefer_onename is used if user has firstName+lastName and they initiated oneName setup process
     prefer_onename = request.query_params.get('prefer_onename', False)
     updated = request.query_params.get('updated', False)
@@ -62,14 +63,14 @@ async def sp_profile_json(
     })
 async def sp_profile_update(
         request: Request,
-        profile: datatypes.ProfileUpdateInfo = None,
+        profile: Optional[datatypes.ProfileUpdateInfo] = None,
         name: str = Form(None),
         firstName: str = Form(None),
         lastName: str = Form(None),
         email: str = Form(None),
         session_data: SessionData = Depends(deps_requires_session),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
-    ):
+    ) -> Union[datatypes.ProfileUpdateInfo, Response]:
     if not profile:
         try:
             profile = datatypes.ProfileUpdateInfo(name=name, firstName=firstName, lastName=lastName, email=email)
@@ -86,7 +87,7 @@ async def sp_profile_update_json(
         request: Request,
         profile: datatypes.ProfileUpdateInfo,
         session_data: SessionData
-    ):
+    ) -> bool:
     data : str = profile.json(exclude={'name',})
     resp = await request.app.state.app_session.oauth_client.post(
         request.app.state.config.keycloak_accountapi_url,
@@ -108,7 +109,7 @@ async def sp_profile_update_json(
 async def sp_profile_emailverify(
         request: Request,
         session_data: SessionData,
-    ):
+    ) -> Response:
     # Won't implement
     return Response(status_code=404)
     # /{realm}/users/{id}/send-verify-email?client_id=

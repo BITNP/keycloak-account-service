@@ -16,6 +16,7 @@ from authlib.integrations.starlette_client import OAuth
 from authlib.integrations.httpx_client import OAuthError, AsyncOAuth2Client
 from accountsvc.modauthlib import BITNPOAuthRemoteApp, BITNPSessions, deps_requires_session, deps_requires_admin_session
 from aiocache import Cache
+from typing import Callable
 
 from urllib.parse import urlencode
 import os
@@ -68,11 +69,11 @@ app.state.templates.env.filters["local_timestring"] = (
 )
 
 @app.on_event("startup")
-async def init_phpcas_adaptor():
+async def init_phpcas_adaptor() -> None:
     app.state.phpcas_adaptor = await MySQLPHPCASAdaptor.create(app.state.config)
 
 @app.exception_handler(StarletteHTTPException)
-async def http_exception_accept_handler(request, exc):
+async def http_exception_accept_handler(request: Request, exc: StarletteHTTPException) -> Response:
     traceback.print_exc()
     if request.state.response_type.is_json():
         return await http_exception_handler(request, exc)
@@ -80,7 +81,7 @@ async def http_exception_accept_handler(request, exc):
         return PlainTextResponse(f"{exc.status_code} {exc.detail}", status_code=exc.status_code)
 
 @app.exception_handler(OAuthError)
-async def oauth_exception_handler(request, exc):
+async def oauth_exception_handler(request: Request, exc: OAuthError) -> Response:
     traceback.print_exc()
     if request.state.response_type.is_json():
         return JSONResponse(
@@ -94,7 +95,7 @@ async def oauth_exception_handler(request, exc):
         }, status_code=500)
 
 @app.middleware("http")
-async def add_response_type_hint(request: Request, call_next):
+async def add_response_type_hint(request: Request, call_next: Callable) -> Response:
     request.state.response_type = datatypes.BITNPResponseType.from_request(request)
     return await call_next(request)
 
