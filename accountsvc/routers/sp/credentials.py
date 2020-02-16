@@ -1,11 +1,12 @@
+from typing import Union, Optional
+from pydantic import ValidationError
+
 from fastapi import Depends, APIRouter, Form, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
-from accountsvc import datatypes
-from pydantic import ValidationError
-from typing import Union, Optional
 
+from accountsvc import datatypes
 from accountsvc.modauthlib import (SessionData, deps_requires_session,
                                    deps_get_csrf_field, deps_requires_csrf_posttoken)
 

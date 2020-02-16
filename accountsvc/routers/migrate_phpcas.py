@@ -1,8 +1,8 @@
+from typing import Tuple, Optional
 from fastapi import Depends, APIRouter, Form, HTTPException
 from starlette.requests import Request
 from starlette.responses import Response
 from pydantic import ValidationError
-from typing import Tuple, Optional
 
 from accountsvc import datatypes
 from accountsvc.phpcas_adaptor import PHPCASAdaptor, PHPCASUserInfo
@@ -68,13 +68,16 @@ async def phpcas_migrate_process(
         del request.session[EMAIL_SESSION_NAME]
     else:
         if not password:
-            return request.app.state.templates.TemplateResponse("migrate-phpcas-landing.html.jinja2", {
+            return request.app.state.templates.TemplateResponse(
+                "migrate-phpcas-landing.html.jinja2",
+                {
                     "request": request,
                     "csrf_field": csrf_field,
                     "input_name": name,
                     "input_email": email,
                     "incorrect": "请输入密码。",
-                })
+                },
+            )
 
         user, resp = await _phpcas_migrate_validate_cred(
             request=request,
@@ -126,14 +129,14 @@ async def phpcas_migrate_process(
 
 
 async def _phpcas_migrate_create_user(request: Request,
-        user_id: int,
-        email: str,
-        password: str,
-        confirmation: str,
-        name: str,
-        username: str,
-        csrf_field: tuple,
-    ) -> Tuple[Optional[str], Optional[Response]]:
+                                      user_id: int,
+                                      email: str,
+                                      password: str,
+                                      confirmation: str,
+                                      name: str,
+                                      username: str,
+                                      csrf_field: tuple,
+                                     ) -> Tuple[Optional[str], Optional[Response]]:
     """
     temp auth - use (signed) session
     # email - use as is
@@ -158,7 +161,7 @@ async def _phpcas_migrate_create_user(request: Request,
 
         for field_error in e.errors():
             if field_error['loc'][0] == 'username':
-                incorrect= "你创建旧版账户时使用的用户名包含了中文，无法自动迁移，请访问此网址提交用户名修改请求，由人工处理： "+request.app.state.config.assistance_url
+                incorrect = "你创建旧版账户时使用的用户名包含了中文，无法自动迁移，请访问此网址提交用户名修改请求，由人工处理： "+request.app.state.config.assistance_url
                 break
 
             if field_error['loc'][0] == 'newPassword':
@@ -172,17 +175,20 @@ async def _phpcas_migrate_create_user(request: Request,
                     "incorrect": incorrect,
                 })
 
-        return None, request.app.state.templates.TemplateResponse("migrate-phpcas-landing.html.jinja2", {
-                    "request": request,
-                    "csrf_field": csrf_field,
-                    "input_name": name,
-                    "input_email": email,
-                    "incorrect": incorrect,
-                })
+        return None, request.app.state.templates.TemplateResponse(
+            "migrate-phpcas-landing.html.jinja2",
+            {
+                "request": request,
+                "csrf_field": csrf_field,
+                "input_name": name,
+                "input_email": email,
+                "incorrect": incorrect,
+            })
 
     # when creating user, make sure we don't create duplicates
     async with request.app.state.app_session.get_service_account_oauth_client() as client:
-        resp = await client.post(request.app.state.config.keycloak_adminapi_url+'users',
+        resp = await client.post(
+            request.app.state.config.keycloak_adminapi_url+'users',
             data=new_user.request_json(),
             headers={'Accept': 'application/json', 'Content-Type': 'application/json'}
         )
@@ -208,11 +214,11 @@ async def _phpcas_migrate_create_user(request: Request,
 
 
 async def _phpcas_migrate_validate_cred(request: Request,
-        email: str,
-        password: Optional[str],
-        name: str,
-        csrf_field: tuple,
-    ) -> Tuple[Optional[PHPCASUserInfo], Optional[Response]]:
+                                        email: str,
+                                        password: Optional[str],
+                                        name: str,
+                                        csrf_field: tuple,
+                                       ) -> Tuple[Optional[PHPCASUserInfo], Optional[Response]]:
     phpcas_adaptor: PHPCASAdaptor = request.app.state.phpcas_adaptor
     user = await phpcas_adaptor.get_user_by_email(email)
     if not user or (password and not user.check_password(password)):
@@ -238,7 +244,7 @@ async def _phpcas_migrate_validate_cred(request: Request,
 
 
 @router.get("/migrate-phpcas/user-lookup", include_in_schema=False)
-async def phpcas_migrate_user_lookup(request: Request, username: str, email: Optional[str]=None) -> Response:
+async def phpcas_migrate_user_lookup(request: Request, username: str, email: Optional[str] = None) -> Response:
     """
     This is an internal API; include_in_schema=False
 

@@ -1,20 +1,19 @@
+from typing import Union, Optional
+from pydantic import ValidationError
 from fastapi import Depends, APIRouter, Form, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 from accountsvc import datatypes
-from pydantic import ValidationError
-from typing import Union, Optional
-
 from accountsvc.modauthlib import (SessionData, deps_requires_session,
                                    deps_get_csrf_field, deps_requires_csrf_posttoken)
 
 router = APIRouter()
 
 @router.get("/", include_in_schema=True, response_model=datatypes.ProfileInfo,
-    responses={
-        200: {"content": {"text/html": {}}}
-    })
+            responses={
+                200: {"content": {"text/html": {}}}
+            })
 async def sp_profile(
         request: Request,
         csrf_field: tuple = Depends(deps_get_csrf_field),
@@ -41,7 +40,7 @@ async def sp_profile(
 async def sp_profile_json(
         request: Request,
         session_data: SessionData = Depends(deps_requires_session),
-        load_session_only: bool= False
+        load_session_only: bool = False
     ) -> datatypes.ProfileInfo:
     if not load_session_only:
         resp = await request.app.state.app_session.oauth_client.get(
@@ -88,7 +87,7 @@ async def sp_profile_update_json(
         profile: datatypes.ProfileUpdateInfo,
         session_data: SessionData
     ) -> bool:
-    data : str = profile.json(exclude={'name',})
+    data: str = profile.json(exclude={'name',})
     resp = await request.app.state.app_session.oauth_client.post(
         request.app.state.config.keycloak_accountapi_url,
         token=session_data.to_tokens(),

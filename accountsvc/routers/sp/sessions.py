@@ -1,8 +1,8 @@
+from typing import Union
 from fastapi import Depends, APIRouter, Query, HTTPException
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 from accountsvc import datatypes
-from typing import Union
 
 from accountsvc.modauthlib import (SessionData, deps_requires_session,
                                    deps_get_csrf_field, deps_requires_csrf_posttoken)
@@ -11,9 +11,9 @@ from accountsvc.modauthlib import (SessionData, deps_requires_session,
 router = APIRouter()
 
 @router.get("/", include_in_schema=True, response_model=datatypes.KeycloakSessionInfo,
-    responses={
-        200: {"content": {"text/html": {}}}
-    })
+            responses={
+                200: {"content": {"text/html": {}}}
+            })
 async def sp_sessions(
         request: Request,
         csrf_field: tuple = Depends(deps_get_csrf_field),

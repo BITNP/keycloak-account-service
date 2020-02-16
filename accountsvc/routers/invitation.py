@@ -25,7 +25,7 @@ async def validate_token(request: Request, token: str) -> datatypes.KCGroupItem:
 
     async with request.app.state.app_session.get_service_account_oauth_client() as client:
         resp = await client.get(request.app.state.config.keycloak_adminapi_url+'group-by-path/'+path,
-            headers={'Accept': 'application/json'})
+                                headers={'Accept': 'application/json'})
         if resp.status_code == 200:
             current_group = datatypes.KCGroupItem.parse_obj(resp.json())
         else:
@@ -58,15 +58,16 @@ async def invitation_landing(
             if g.path == current_group.path:
                 in_group = True
 
-    return request.app.state.templates.TemplateResponse("invitation-landing.html.jinja2", {
-                "request": request,
-                "group": current_group,
-                "in_group": in_group,
-                "session_data": session_data,
-                "csrf_field": csrf_field,
-                "register_url": request.url_for('register_landing')+'?redirect_uri=/i/'+token,
-                "token": token,
-            })
+    return request.app.state.templates.TemplateResponse(
+                "invitation-landing.html.jinja2", {
+                    "request": request,
+                    "group": current_group,
+                    "in_group": in_group,
+                    "session_data": session_data,
+                    "csrf_field": csrf_field,
+                    "register_url": request.url_for('register_landing')+'?redirect_uri=/i/'+token,
+                    "token": token,
+                })
 
 @router.post("/i/{token}", include_in_schema=False)
 async def invitation_join(

@@ -1,24 +1,24 @@
+from contextlib import asynccontextmanager
+from typing import AsyncIterator, List, Union, Optional, Tuple, Any, Dict
+from hashlib import sha1
+from datetime import datetime, timedelta, timezone
+import time
+
+from pydantic import BaseModel, validator
+from pydantic.utils import deep_update
 from starlette.responses import RedirectResponse, Response
 from starlette.requests import Request
 from starlette.datastructures import URL
 from fastapi import FastAPI, Depends, Form, HTTPException
-
 from authlib.integrations.starlette_client import StarletteRemoteApp
 from authlib.integrations.httpx_client import OAuthError, AsyncOAuth2Client
 from authlib.common.encoding import urlsafe_b64decode, to_bytes
+from authlib.common.security import generate_token
 from authlib.jose.rfc7519.jwt import decode_payload as decode_jwt_payload
 from aiocache import Cache
 from aiocache.base import BaseCache
 
 from .datatypes import GroupConfig, GroupItem
-from datetime import datetime, timedelta, timezone
-from pydantic import BaseModel, validator
-from pydantic.utils import deep_update
-from contextlib import asynccontextmanager
-from typing import AsyncIterator, List, Union, Optional, Tuple, Any, Dict
-from hashlib import sha1
-from authlib.common.security import generate_token
-import time
 
 
 class RequiresTokenException(Exception):
@@ -91,9 +91,10 @@ class BITNPOAuthRemoteApp(StarletteRemoteApp):
     @staticmethod
     def get_cleaned_redirect_url_str(inferred: URL) -> str:
         return str(inferred.remove_query_params('code').remove_query_params('state')
-                .remove_query_params('session_state')) # Keycloak only
+                   .remove_query_params('session_state')) # Keycloak only
 
-    async def authorize_redirect(self, request: Request, redirect_uri: Optional[str]=None, **kwargs: Any) -> RedirectResponse:
+    async def authorize_redirect(self, request: Request,
+                                 redirect_uri: Optional[str] = None, **kwargs: Any) -> RedirectResponse:
         """Create a HTTP Redirect for Authorization Endpoint.
         :param request: Starlette Request instance.
         :param redirect_uri: Callback or redirect URI for authorization.
@@ -109,7 +110,8 @@ class BITNPOAuthRemoteApp(StarletteRemoteApp):
         self.save_authorize_data(request, redirect_uri=redirect_uri, **rv)
         return RedirectResponse(rv['url'], status_code=303)
 
-    async def register_redirect(self, request: Request, redirect_uri: Optional[str] = None, **kwargs: Any) -> RedirectResponse:
+    async def register_redirect(self, request: Request,
+                                redirect_uri: Optional[str] = None, **kwargs: Any) -> RedirectResponse:
         """Create a HTTP Redirect for Registration Endpoint. Pribably Keycloak-only.
         :param request: Starlette Request instance.
         :param redirect_uri: Callback or redirect URI for registration completion.
@@ -229,9 +231,9 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
     sa_tokens: Optional[dict] = None
 
     def __init__(self, app: FastAPI, oauth_client: StarletteRemoteApp, group_config: GroupConfig,
-        csrf_token: str,
-        bearer_grace_period: timedelta = timedelta(seconds=10),
-        cache_type: BaseCache = Cache.MEMORY, cache_kwargs: Optional[dict] = None):
+                 csrf_token: str,
+                 bearer_grace_period: timedelta = timedelta(seconds=10),
+                 cache_type: BaseCache = Cache.MEMORY, cache_kwargs: Optional[dict] = None):
         """
         bearer_grace_period: when the old token will expire, after browser receives a new token
         there might be several requests sent by browser at the same time with the same old token
@@ -270,8 +272,8 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
             return data
         return None
 
-    async def new_session(self, tokens: dict,
-        request: Optional[Request] = None, old_session_data: Optional[SessionData] = None) -> Tuple[str, SessionData]:
+    async def new_session(self, tokens: dict, request: Optional[Request] = None,
+                          old_session_data: Optional[SessionData] = None) -> Tuple[str, SessionData]:
         access_body = await self.oauth_client.parse_token_body(tokens['access_token'])
         access_jti = access_body['jti']
         refresh_body = None
@@ -353,8 +355,8 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
         else:
             return None
 
-    async def refresh_token_callback(self, token: dict, refresh_token: Optional[str]=None,
-        access_token: Optional[str]=None) -> None:
+    async def refresh_token_callback(self, token: dict, refresh_token: Optional[str] = None,
+                                     access_token: Optional[str] = None) -> None:
         # get old access token jti before we update
         jti = await self.get_bearer_of_refresh_token(refresh_token)
         session_data = None
@@ -398,7 +400,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object):
         raise exc
 
     async def sa_refresh_token_callback(self, token: dict, refresh_token: Optional[str] = None,
-        access_token: Optional[str] = None) -> None:
+                                        access_token: Optional[str] = None) -> None:
         self.sa_tokens = token
 
     @asynccontextmanager

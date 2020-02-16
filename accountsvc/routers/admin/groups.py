@@ -1,3 +1,8 @@
+from typing import List, Tuple, Optional, Generator, Union
+from operator import attrgetter
+from urllib.parse import quote
+from datetime import datetime, timedelta, timezone
+
 from fastapi import Depends, APIRouter, HTTPException, Form
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
@@ -5,13 +10,8 @@ from starlette.responses import Response, RedirectResponse
 from accountsvc import datatypes, invitation
 from accountsvc.modauthlib import (SessionData, deps_requires_admin_session, deps_requires_master_session,
                                    deps_get_csrf_field, deps_requires_csrf_posttoken)
-from .users import _admin_search_users, _admin_search_users_by_username
-
 from accountsvc.utils import TemplateService
-from typing import List, Tuple, Optional, Generator, Union
-from operator import attrgetter
-from urllib.parse import quote
-from datetime import datetime, timedelta, timezone
+from .users import _admin_search_users, _admin_search_users_by_username
 
 router = APIRouter()
 
@@ -89,9 +89,8 @@ async def _admin_delegated_groups_path_to_group(
     if len(current_groups) != 1:
         if not session_data.is_master():
             raise HTTPException(status_code=403, detail="The path is not in the group list that you are allowed to access")
-        else:
-            # master exception
-            current_group = datatypes.GroupItem(path=path)
+        # master exception
+        current_group = datatypes.GroupItem(path=path)
     else:
         current_group = current_groups[0]
 
@@ -100,7 +99,9 @@ async def _admin_delegated_groups_path_to_group(
         role_name = current_group.path[1:]
         try:
             async with request.app.state.app_session.get_service_account_oauth_client() as client:
-                resp = await client.get(request.app.state.config.keycloak_adminapi_url+'clients/'+request.app.state.config.keycloak_client_uuid+'/roles/'+role_name,
+                resp = await client.get(
+                    (request.app.state.config.keycloak_adminapi_url+'clients/'+
+                     request.app.state.config.keycloak_client_uuid+'/roles/'+role_name),
                     headers={'Accept': 'application/json'})
                 groupNS = resp.json().get('attributes').get('groupNS')[0]
             # Merge from group_config
@@ -120,7 +121,8 @@ async def _admin_delegated_groups_path_to_group(
     if not current_group.id or current_group.attributes is None:
         try:
             async with request.app.state.app_session.get_service_account_oauth_client() as client:
-                resp = await client.get(request.app.state.config.keycloak_adminapi_url+'group-by-path/'+current_group.path,
+                resp = await client.get(
+                    request.app.state.config.keycloak_adminapi_url+'group-by-path/'+current_group.path,
                     headers={'Accept': 'application/json'})
                 group_info = resp.json()
                 current_group.id = group_info['id']
@@ -324,8 +326,7 @@ def guess_active_ns(session_data: SessionData, group_config: datatypes.GroupConf
         return (None, None)
     path = active_groups[0].path
     year = path[len(group_config.settings.group_status_prefix):].split('/', 1)[0]
-    return (group_config.settings.group_status_prefix
-        + year + '/', year)
+    return (group_config.settings.group_status_prefix + year + '/', year)
 
 def guess_group_item(name: str, group_config: datatypes.GroupConfig) -> Optional[datatypes.GroupItem]:
     """
@@ -437,7 +438,7 @@ async def admin_group_config(
         managerof_roles = await admin_group_config_get_managerof(request, session_data, config)
     except Exception as e: # pylint: disable=broad-except
         print(e)
-        incorrect = '{}: {}'.format(e.__class__.__name__,str(e))
+        incorrect = '{}: {}'.format(e.__class__.__name__, str(e))
 
     return templates.TemplateResponse('admin-group-config.html.jinja2', {
         'client_uuid': config.keycloak_client_uuid,

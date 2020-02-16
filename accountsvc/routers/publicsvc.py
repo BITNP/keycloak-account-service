@@ -1,19 +1,19 @@
+from typing import Union, Optional
+from urllib.parse import urlencode
 from fastapi import Depends, APIRouter
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
-from typing import Union, Optional
 
 from accountsvc import datatypes
 from accountsvc.modauthlib import (SessionData, deps_get_session)
 from accountsvc.utils import TemplateService
-from urllib.parse import urlencode
 
 router = APIRouter()
 
 
 @router.get("/", include_in_schema=False)
 async def index(request: Request,
-    session_data: SessionData = Depends(deps_get_session)) -> Response:
+                session_data: SessionData = Depends(deps_get_session)) -> Response:
     tdata: dict = {
         "request": request,
         "name": None,
@@ -31,9 +31,7 @@ async def index(request: Request,
     })
 async def tos(request: Request, templates: TemplateService = Depends()) -> Union[Response, datatypes.TOSData]:
     if request.state.response_type.is_json():
-        return datatypes.TOSData(html=
-            templates.TemplateResponse("tos-content.html.jinja2").body
-        )
+        return datatypes.TOSData(html=templates.TemplateResponse("tos-content.html.jinja2").body)
     else:
         return templates.TemplateResponse("tos.html.jinja2")
 
@@ -64,7 +62,7 @@ async def logout(request: Request) -> Response:
         return RedirectResponse(request.url_for('index'))
     else:
         redirect_uri = request.url_for('index')
-        input_redirect_uri : str = request.query_params.get("redirect_uri", "")
+        input_redirect_uri: str = request.query_params.get("redirect_uri", "")
         if input_redirect_uri.startswith("/"):
             base_url = request.url.replace(path="", query="")
             redirect_uri = str(base_url) + input_redirect_uri

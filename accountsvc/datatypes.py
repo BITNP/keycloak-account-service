@@ -1,8 +1,9 @@
-from pydantic import BaseModel, BaseSettings, IPvAnyAddress, validator, root_validator, constr, Field, MissingError
-from datetime import datetime, tzinfo, timezone, timedelta
 from typing import List, Dict, Any, Optional, Tuple
+from datetime import datetime, tzinfo, timezone, timedelta
 from collections import UserDict
 from enum import Enum
+
+from pydantic import BaseModel, BaseSettings, IPvAnyAddress, validator, root_validator, constr, Field, MissingError
 from starlette.requests import Request
 
 
@@ -71,7 +72,7 @@ class GroupItem(BaseModel):
 class KCGroupItem(GroupItem):
     id: str
 
-class GroupConfig(UserDict):
+class GroupConfig(UserDict): # pylint: disable=too-many-ancestors
     settings: LoadingSettings
     active_ns_placeholder: str = '@active/' # static
 
@@ -102,7 +103,7 @@ class GroupConfig(UserDict):
                 try:
                     year, specifics = cutted.split('/', 1)
                     parsed_key = self.active_ns_placeholder + specifics.replace(year+'-', '', 1)
-                    item : GroupItem = super().__getitem__(parsed_key)
+                    item: GroupItem = super().__getitem__(parsed_key)
                     ret = GroupItem(**item.dict())
                     ret.path = key
                 except ValueError:

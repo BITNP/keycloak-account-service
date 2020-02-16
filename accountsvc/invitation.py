@@ -1,10 +1,11 @@
-from starlette.requests import Request
-from accountsvc import datatypes
-import itsdangerous
+from typing import Tuple, Optional
 import base64
 import time
-from typing import Tuple, Optional
+
+from starlette.requests import Request
+import itsdangerous
 from authlib.common.security import generate_token as _generate_token
+from accountsvc import datatypes
 
 SEPARATOR = "@"
 

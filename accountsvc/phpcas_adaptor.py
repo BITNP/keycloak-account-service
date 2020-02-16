@@ -1,10 +1,11 @@
-from pydantic import BaseModel
-from accountsvc import datatypes
-from abc import ABC
 from typing import Optional
-
-import aiomysql
+from abc import ABC
 import bcrypt
+
+from pydantic import BaseModel
+import aiomysql
+
+from accountsvc import datatypes
 
 
 class PHPCASUserInfo(BaseModel):
@@ -81,12 +82,12 @@ class MySQLPHPCASAdaptor(PHPCASAdaptor):
         if not self.config.phpcas_db:
             return None
         return await aiomysql.create_pool(host=self.config.phpcas_host,
-            user=self.config.phpcas_user,
-            password=self.config.phpcas_password,
-            db=self.config.phpcas_db,
-            charset='utf8mb4',
-            cursorclass=aiomysql.cursors.DictCursor,
-            autocommit=True)
+                                          user=self.config.phpcas_user,
+                                          password=self.config.phpcas_password,
+                                          db=self.config.phpcas_db,
+                                          charset='utf8mb4',
+                                          cursorclass=aiomysql.cursors.DictCursor,
+                                          autocommit=True)
 
     async def get_user_by_email(self, email: str) -> Optional[PHPCASUserInfo]:
         assert self.pool is not None
