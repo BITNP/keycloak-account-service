@@ -46,6 +46,18 @@ test-docker-compose-config:
     - touch .env
     - docker-compose config
 
+test-mypy:
+  stage: test
+  allow_failure: true
+  services:
+    - docker:dind
+  before_script:
+    - docker info
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+  script:
+    - docker pull $IMAGE_TAG
+    - docker run --rm -e acct_client_id="bitnp-accounts" -e acct_client_secret="client_secret" -e acct_session_secret="session_secret" -e acct_invitation_secret="invitation_secret" $IMAGE_TAG mypy -p accountsvc
+
 release-image:
   stage: release
   services:

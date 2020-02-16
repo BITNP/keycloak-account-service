@@ -2,10 +2,10 @@ from fastapi import Depends, APIRouter, HTTPException
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
-import datatypes
-import invitation
-from modauthlib import BITNPSessions, SessionData
-from utils import TemplateService
+from accountsvc import datatypes, invitation
+from accountsvc.modauthlib import (BITNPSessions, SessionData,
+    deps_get_session, deps_requires_session, deps_get_csrf_field, deps_requires_csrf_posttoken)
+from accountsvc.utils import TemplateService
 from .admin.groups import _delegated_groups_member_add_json
 
 router = APIRouter()
@@ -17,7 +17,7 @@ async def invitation_completed(
     ):
     return templates.TemplateResponse("invitation-completed.html.jinja2")
 
-async def validate_token(request: Request, token: str) -> datatypes.GroupItem:
+async def validate_token(request: Request, token: str) -> datatypes.KCGroupItem:
     path, nonce = invitation.parse_invitation_token(token=token, config=request.app.state.config)
     if not path:
         raise HTTPException(404)
@@ -27,7 +27,7 @@ async def validate_token(request: Request, token: str) -> datatypes.GroupItem:
         resp = await client.get(request.app.state.config.keycloak_adminapi_url+'group-by-path/'+path,
             headers={'Accept': 'application/json'})
         if resp.status_code == 200:
-            current_group : datatypes.GroupItem = datatypes.GroupItem.parse_obj(resp.json())
+            current_group = datatypes.KCGroupItem.parse_obj(resp.json())
         else:
             print(resp.text)
             raise HTTPException(500)
@@ -47,8 +47,8 @@ async def validate_token(request: Request, token: str) -> datatypes.GroupItem:
 @router.get("/i/{token}", include_in_schema=False)
 async def invitation_landing(
         request: Request, token: str,
-        session_data: SessionData = Depends(BITNPSessions.deps_get_session),
-        csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
+        session_data: SessionData = Depends(deps_get_session),
+        csrf_field: tuple = Depends(deps_get_csrf_field),
     ):
     current_group = await validate_token(request, token)
 
@@ -72,9 +72,9 @@ async def invitation_landing(
 @router.post("/i/{token}", include_in_schema=False)
 async def invitation_join(
         request: Request, token: str,
-        session_data: SessionData = Depends(BITNPSessions.deps_requires_session),
+        session_data: SessionData = Depends(deps_requires_session),
         # deps_requires_session will redirect users as needed (and later convert POST to GET to show the confirmation page)
-        csrf_valid: bool = Depends(BITNPSessions.deps_requires_csrf_posttoken),
+        csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
     ):
     current_group = await validate_token(request, token)
 

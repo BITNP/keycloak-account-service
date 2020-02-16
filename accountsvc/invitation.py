@@ -1,15 +1,18 @@
 from starlette.requests import Request
-import datatypes
+from accountsvc import datatypes
 import itsdangerous
 import base64
 import time
-from typing import Tuple
+from typing import Tuple, Optional
 from datetime import datetime, timezone
 from authlib.common.security import generate_token as _generate_token
 
 SEPARATOR = "@"
 
-def get_invitation_expires(group: datatypes.GroupItem) -> int:
+def get_invitation_expires(group: datatypes.GroupItem) -> Optional[int]:
+    if not group.attributes:
+        return None
+
     expires = group.attributes.get('invitationExpires')
     if isinstance(expires, list):
         if len(expires) > 0:
@@ -18,7 +21,7 @@ def get_invitation_expires(group: datatypes.GroupItem) -> int:
             return None
     return int(expires) if expires else None
 
-def get_invitation_token(group: datatypes.GroupItem, config: datatypes.Settings) -> str:
+def get_invitation_token(group: datatypes.GroupItem, config: datatypes.Settings) -> Optional[str]:
     """
     This token should be consistent during different execution as long as:
     - secret did not change
@@ -29,6 +32,8 @@ def get_invitation_token(group: datatypes.GroupItem, config: datatypes.Settings)
     sign process but consistent validation logic
     """
     assert group.path.find(SEPARATOR) == -1, "Group path should not include separator: "+group.path
+    if not group.attributes:
+        return None
 
     nonce = group.attributes.get('invitationNonce')
     # we actually allow separator in nonce due to how this works
@@ -47,14 +52,14 @@ def get_invitation_token(group: datatypes.GroupItem, config: datatypes.Settings)
     signer = itsdangerous.Signer(secret_key=config.invitation_secret, sep=SEPARATOR)
     return base64.urlsafe_b64encode(signer.sign(text)).decode()
 
-def get_invitation_link(group: datatypes.GroupItem, request: Request) -> str:
+def get_invitation_link(group: datatypes.GroupItem, request: Request) -> Optional[str]:
     token = get_invitation_token(group=group, config=request.app.state.config)
     if token:
         return request.url_for('invitation_landing', token=token)
     else:
         return None
 
-def parse_invitation_token(token: str, config: datatypes.Settings) -> Tuple[str, str]:
+def parse_invitation_token(token: str, config: datatypes.Settings) -> Tuple[Optional[str], Optional[str]]:
     try:
         text = base64.urlsafe_b64decode(token)
         signer = itsdangerous.Signer(secret_key=config.invitation_secret, sep=SEPARATOR)

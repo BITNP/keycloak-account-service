@@ -2,18 +2,19 @@ from fastapi import Depends, APIRouter, Form, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
-import datatypes
+from accountsvc import datatypes
 from pydantic import ValidationError
 
-from modauthlib import BITNPSessions, SessionData
+from accountsvc.modauthlib import (BITNPSessions, SessionData,
+    deps_requires_session, deps_get_csrf_field, deps_requires_csrf_posttoken)
 
 router = APIRouter()
 
 @router.get("/password", include_in_schema=True, response_model=datatypes.PasswordInfo)
 async def sp_password(
         request: Request,
-        csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
-        session_data: SessionData = Depends(BITNPSessions.deps_requires_session),
+        csrf_field: tuple = Depends(deps_get_csrf_field),
+        session_data: SessionData = Depends(deps_requires_session),
     ):
     resp = await request.app.state.app_session.oauth_client.get(
         request.app.state.config.keycloak_accountapi_url+'credentials/password',
@@ -51,9 +52,9 @@ async def sp_password_update(
         currentPassword: str = Form(...),
         newPassword: str = Form(...),
         confirmation: str = Form(...),
-        session_data: SessionData = Depends(BITNPSessions.deps_requires_session),
-        csrf_valid: bool = Depends(BITNPSessions.deps_requires_csrf_posttoken),
-        csrf_field: tuple = Depends(BITNPSessions.deps_get_csrf_field),
+        session_data: SessionData = Depends(deps_requires_session),
+        csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
+        csrf_field: tuple = Depends(deps_get_csrf_field),
     ):
     if not pwupdate:
         try:
@@ -70,7 +71,7 @@ async def sp_password_update(
         result = await sp_password_update_json(request=request, pwupdate=pwupdate, session_data=session_data)
     except HTTPException as e:
         if not request.state.response_type.is_json():
-            if e.detail.get('errorMessage') == 'invalidPasswordExistingMessage':
+            if isinstance(e.detail, dict) and e.detail.get('errorMessage') == 'invalidPasswordExistingMessage':
                 incorrect = "旧密码错误，请重试，如忘记旧密码请点击下方重设密码。"
             else:
                 incorrect = "请重新选择新密码，错误信息："+str(e.detail)

@@ -1,18 +1,19 @@
 from fastapi import Depends, APIRouter
 from starlette.requests import Request
-import datatypes
+from accountsvc import datatypes
 
-from modauthlib import BITNPSessions, SessionData
+from accountsvc.modauthlib import (BITNPSessions, SessionData,
+    deps_requires_session)
 from .profile import sp_profile_json
 from .sessions import sp_sessions_json
 from ..admin.groups import admin_delegated_groups_list_json, guess_active_ns
-from utils import local_timestring
+from accountsvc.utils import local_timestring
 
 router = APIRouter()
 
 @router.get("/", include_in_schema=False)
 async def sp_landing(request: Request,
-        session_data: SessionData = Depends(BITNPSessions.deps_requires_session),
+        session_data: SessionData = Depends(deps_requires_session),
     ):
     tdata = {
         "request": request,
@@ -36,7 +37,7 @@ async def sp_landing(request: Request,
 
     if tdata['sessions_count'] > 1:
         latest_session: datatypes.KeycloakSessionItem = tdata['sessions'][1]
-        device: str = latest_session.os + ' ' + latest_session.browser
+        device: str = (latest_session.os or '') + ' ' + (latest_session.browser or '')
         if latest_session.device:
             device = latest_session.device + ' ' + latest_session.browser
         tdata['sessions_desc'] = '其它位置最后一次登录于 {time} ({browser})。如有需要可远程下线。'.format(
@@ -57,7 +58,7 @@ async def sp_landing(request: Request,
 @router.get("/permission", include_in_schema=True, response_model=datatypes.PermissionInfo)
 async def sp_permission(
     request: Request,
-    session_data: SessionData = Depends(BITNPSessions.deps_requires_session)
+    session_data: SessionData = Depends(deps_requires_session)
     ) -> datatypes.PermissionInfo:
     pub_memberof = list()
     for item in session_data.memberof:

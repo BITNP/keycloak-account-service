@@ -13,3 +13,4 @@ python-multipart #fastapi.Form
 aiomysql # phpCAS
 bcrypt # PHP hash
 ldap3
+mypy # linting

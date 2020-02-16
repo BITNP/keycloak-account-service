@@ -17,4 +17,4 @@ RUN sed -i 's/deb.debian.org/mirror.bit.edu.cn/g' /etc/apt/sources.list && \
 COPY . .
 
 EXPOSE 80
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uvicorn", "accountsvc.app:app", "--host", "0.0.0.0", "--port", "80"]

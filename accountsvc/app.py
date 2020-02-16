@@ -6,19 +6,19 @@ from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.exception_handlers import http_exception_handler
-import datatypes
-from utils import TemplateService
-from routers import sp, admin
-from routers import publicsvc, assistance, invitation, migrate_phpcas
-from phpcas_adaptor import FakePHPCASAdaptor, MySQLPHPCASAdaptor
+from . import datatypes
+from .utils import TemplateService, local_timestring
+from .routers import sp, admin
+from .routers import publicsvc, assistance, invitation, migrate_phpcas
+from .phpcas_adaptor import FakePHPCASAdaptor, MySQLPHPCASAdaptor
 
 from authlib.integrations.starlette_client import OAuth
 from authlib.integrations.httpx_client import OAuthError, AsyncOAuth2Client
-from modauthlib import BITNPOAuthRemoteApp, BITNPSessions
+from accountsvc.modauthlib import BITNPOAuthRemoteApp, BITNPSessions, deps_requires_session, deps_requires_admin_session
 from aiocache import Cache
 
 from urllib.parse import urlencode
-from utils import local_timestring
+import os
 import json
 import traceback
 
@@ -34,10 +34,12 @@ app = FastAPI(
 
 router = APIRouter()
 
-app.state.config = datatypes.Settings() # from .env
+config: datatypes.LoadingSettings = datatypes.LoadingSettings() # from .env
 with open('group_config.json', 'r') as f:
     data = json.load(f)
-    app.state.config.group_config = datatypes.GroupConfig.from_dict(data, settings=app.state.config)
+    config.group_config = datatypes.GroupConfig.from_dict(data, settings=config)
+
+app.state.config = datatypes.Settings.parse_obj(config)
 
 app.state.oauth = OAuth()
 app.state.oauth.framework_client_cls = BITNPOAuthRemoteApp
@@ -102,15 +104,10 @@ app.include_router(publicsvc.router)
 app.include_router(assistance.router)
 app.include_router(invitation.router)
 app.include_router(migrate_phpcas.router)
-app.include_router(sp.landing.router, prefix='/sp', dependencies=[Depends(BITNPSessions.deps_requires_session)])
-app.include_router(sp.profile.router, prefix='/sp/profile', dependencies=[Depends(BITNPSessions.deps_requires_session)])
-app.include_router(sp.credentials.router, prefix='/sp/credentials', dependencies=[Depends(BITNPSessions.deps_requires_session)])
-app.include_router(sp.sessions.router, prefix='/sp/sessions', dependencies=[Depends(BITNPSessions.deps_requires_session)])
-app.include_router(admin.landing.router, prefix='/admin', dependencies=[Depends(BITNPSessions.deps_requires_admin_session)])
-app.include_router(admin.groups.router, prefix='/admin', dependencies=[Depends(BITNPSessions.deps_requires_admin_session)])
-app.include_router(admin.users.router, prefix='/admin', dependencies=[Depends(BITNPSessions.deps_requires_admin_session)])
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app:app", host="127.0.0.1", port=80, log_level="info", reload=True)
+app.include_router(sp.landing.router, prefix='/sp', dependencies=[Depends(deps_requires_session)])
+app.include_router(sp.profile.router, prefix='/sp/profile', dependencies=[Depends(deps_requires_session)])
+app.include_router(sp.credentials.router, prefix='/sp/credentials', dependencies=[Depends(deps_requires_session)])
+app.include_router(sp.sessions.router, prefix='/sp/sessions', dependencies=[Depends(deps_requires_session)])
+app.include_router(admin.landing.router, prefix='/admin', dependencies=[Depends(deps_requires_admin_session)])
+app.include_router(admin.groups.router, prefix='/admin', dependencies=[Depends(deps_requires_admin_session)])
+app.include_router(admin.users.router, prefix='/admin', dependencies=[Depends(deps_requires_admin_session)])
