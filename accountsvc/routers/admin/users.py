@@ -134,7 +134,7 @@ async def admin_user_detail_json(
         session_data: SessionData,
     ) -> Tuple[datatypes.UserInfoMaster, Optional[Exception]]:
     config: datatypes.Settings = request.app.state.config
-    warning: Optional[Exception]
+    warning: Optional[Exception] = None
 
     client: AsyncOAuth2Client = request.app.state.app_session.oauth_client
     resp = await client.get(
