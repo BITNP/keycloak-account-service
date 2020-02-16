@@ -72,18 +72,18 @@ class KCGroupItem(GroupItem):
     id: str
 
 class GroupConfig(UserDict):
-    settings: Settings
+    settings: LoadingSettings
     active_ns_placeholder: str = '@active/' # static
 
     @staticmethod
-    def from_dict(obj: Dict[str, dict], settings: Settings, **kwargs) -> 'GroupConfig':
+    def from_dict(obj: Dict[str, dict], settings: LoadingSettings, **kwargs) -> 'GroupConfig':
         ret = GroupConfig(settings=settings, **kwargs)
         for path, item in obj.items():
             item['path'] = path
             ret[path] = GroupItem(**item)
         return ret
 
-    def __init__(self, settings: Settings, *args, **kwargs):
+    def __init__(self, settings: LoadingSettings, *args, **kwargs):
         self.settings = settings
         super().__init__(*args, **kwargs)
 
@@ -283,3 +283,4 @@ class BITNPResponseType(Enum):
 
 
 LoadingSettings.update_forward_refs()
+Settings.update_forward_refs()

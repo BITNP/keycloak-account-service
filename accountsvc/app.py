@@ -37,7 +37,7 @@ router = APIRouter()
 config: datatypes.LoadingSettings = datatypes.LoadingSettings() # from .env
 with open('group_config.json', 'r') as f:
     data = json.load(f)
-    config.group_config = datatypes.GroupConfig.from_dict(data, settings=app.state.config)
+    config.group_config = datatypes.GroupConfig.from_dict(data, settings=config)
 
 app.state.config = datatypes.Settings.parse_obj(config)
 
@@ -111,8 +111,3 @@ app.include_router(sp.sessions.router, prefix='/sp/sessions', dependencies=[Depe
 app.include_router(admin.landing.router, prefix='/admin', dependencies=[Depends(deps_requires_admin_session)])
 app.include_router(admin.groups.router, prefix='/admin', dependencies=[Depends(deps_requires_admin_session)])
 app.include_router(admin.users.router, prefix='/admin', dependencies=[Depends(deps_requires_admin_session)])
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app:app", host="127.0.0.1", port=80, log_level="info", reload=True)
