@@ -28,16 +28,16 @@ async def phpcas_migrate_landing(
 async def phpcas_migrate_process(
         request: Request,
         email: str = Form(...),
-        password: str = Form(None),
-        newPassword: str = Form(None),
-        confirmation: str = Form(None),
+        password: Optional[str] = Form(None),
+        newPassword: Optional[str] = Form(None),
+        confirmation: Optional[str] = Form(None),
         name: str = Form(...),
         csrf_field: tuple = Depends(deps_get_csrf_field),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
     ) -> Response:
     session_email = request.session.get(EMAIL_SESSION_NAME)
     user: Optional[PHPCASUserInfo]
-    if session_email and password is None:
+    if session_email and password is None and (newPassword and confirmation):
         # we assume that their previous password has been validated
         # and they are authorized to set up a new password
         print("phpcas-migrate: Restoring session for "+session_email)
@@ -49,7 +49,8 @@ async def phpcas_migrate_process(
             csrf_field=csrf_field,
         )
 
-        if resp:
+        if not user:
+            assert resp is not None
             return resp
 
         user_uri, resp = await _phpcas_migrate_create_user(
@@ -105,19 +106,20 @@ async def phpcas_migrate_process(
             return resp
 
     # iam-master add
-    IAM_MASTER_GROUP_ID = request.app.state.config.iam_master_group_id
-    if user.admin is True and IAM_MASTER_GROUP_ID:
-        try:
-            print("phpcas-migrate: Upgrading {} to iam-master".format(user.name))
-            async with request.app.state.app_session.get_service_account_oauth_client() as client:
-                resp_iam = await client.put(
-                    user_uri+'/groups/'+IAM_MASTER_GROUP_ID,
-                    headers={'Accept': 'application/json'}
-                )
-                if resp_iam.status_code != 204:
-                    raise HTTPException(status_code=resp_iam.status_code, detail=resp_iam.body)
-        except Exception as e:
-            print("phpcas-migrate: Failed upgrading to iam-master {}".format(e))
+    if user_uri:
+        IAM_MASTER_GROUP_ID = request.app.state.config.iam_master_group_id
+        if user.admin is True and IAM_MASTER_GROUP_ID:
+            try:
+                print("phpcas-migrate: Upgrading {} to iam-master".format(user.name))
+                async with request.app.state.app_session.get_service_account_oauth_client() as client:
+                    resp_iam = await client.put(
+                        user_uri+'/groups/'+IAM_MASTER_GROUP_ID,
+                        headers={'Accept': 'application/json'}
+                    )
+                    if resp_iam.status_code != 204:
+                        raise HTTPException(status_code=resp_iam.status_code, detail=resp_iam.body)
+            except Exception as e:
+                print("phpcas-migrate: Failed upgrading to iam-master {}".format(e))
 
     return request.app.state.templates.TemplateResponse("migrate-phpcas-completed.html.jinja2", {
         "request": request,
@@ -206,12 +208,10 @@ async def _phpcas_migrate_create_user(request: Request,
                 "incorrect": incorrect,
             })
 
-    return None, None
-
 
 async def _phpcas_migrate_validate_cred(request: Request,
         email: str,
-        password: str,
+        password: Optional[str],
         name: str,
         csrf_field: tuple,
     ) -> Tuple[Optional[PHPCASUserInfo], Optional[Response]]:

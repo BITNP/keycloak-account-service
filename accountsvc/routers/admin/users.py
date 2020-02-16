@@ -1,7 +1,7 @@
 from fastapi import Depends, APIRouter, Path, HTTPException, Form
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
-from typing import List, Optional, Tuple
+from starlette.responses import RedirectResponse, Response
+from typing import List, Optional, Tuple, Union
 from pydantic import constr
 import ldap3
 import traceback
@@ -24,7 +24,7 @@ async def admin_users(
         session_data: SessionData = Depends(deps_requires_master_session),
         search: str = '',
         first: int = 0,
-    ):
+    ) -> Union[List[datatypes.ProfileInfo], Response]:
     users = await admin_users_json(
         request=request, session_data=session_data,
         search=search, first=first, sort_by='createdTimestamp',
@@ -50,7 +50,7 @@ async def admin_users_json(
         search: str = '',
         first: int = 0,
         sort_by: str = 'createdTimestamp',
-    ):
+    ) -> List[datatypes.ProfileInfo]:
     client: AsyncOAuth2Client = request.app.state.app_session.oauth_client
     resp = await client.get(
         request.app.state.config.keycloak_adminapi_url+'users?briefRepresentation=true&max=100&first='+str(first)+'&search='+quote(search),
@@ -106,7 +106,7 @@ async def admin_user_detail(
         request: Request,
         user_id: constr(regex="^[A-Za-z0-9-_]+$"), # type: ignore # constr
         session_data: SessionData = Depends(deps_requires_master_session),
-    ):
+    ) -> Union[datatypes.UserInfoMaster, Response]:
     config: datatypes.Settings = request.app.state.config
     user, warning = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)
     if request.state.response_type.is_json():
@@ -193,7 +193,7 @@ async def admin_user_ldapsetup_landing(
         user_id: constr(regex="^[A-Za-z0-9-_]+$"), # type: ignore # constr
         session_data: SessionData = Depends(deps_requires_master_session),
         csrf_field: tuple = Depends(deps_get_csrf_field),
-    ):
+    ) -> Response:
     config: datatypes.Settings = request.app.state.config
     user, warning = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)
 
@@ -220,7 +220,7 @@ async def admin_user_ldapsetup_landing(
 def admin_user_ldapsetup_generate(
         user: datatypes.UserInfoMaster,
         config: datatypes.Settings,
-    ):
+    ) -> dict:
     """
     This is where we manually do attribute mappings in accountsvc for a manual sync.
     If any rules change please change here accordingly.
@@ -280,7 +280,7 @@ async def admin_user_ldapsetup_post(
         type: str = Form(...),
         session_data: SessionData = Depends(deps_requires_master_session),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
-    ):
+    ) -> Response:
     updated: bool = False
     config: datatypes.Settings = request.app.state.config
     user, warning = await admin_user_detail_json(request=request, user_id=user_id, session_data=session_data)

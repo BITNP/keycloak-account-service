@@ -87,7 +87,7 @@ class GroupConfig(UserDict):
         self.settings = settings
         super().__init__(*args, **kwargs)
 
-    def __setitem__(self, key: str, item: GroupItem) -> None:
+    def __setitem__(self, key: Optional[str], item: GroupItem) -> None:
         if key is None:
             key = item.path
         super().__setitem__(key, item)
