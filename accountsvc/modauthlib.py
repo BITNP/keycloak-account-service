@@ -283,7 +283,15 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object): # pylint: disable=useless-ob
             'access_token': tokens['access_token'],
             'token_type': tokens['token_type'],
             'access_token_issued_at': datetime.utcfromtimestamp(access_body['iat']),
-            'access_token_expires_at': datetime.utcfromtimestamp(tokens['expires_at'])
+            'access_token_expires_at': datetime.utcfromtimestamp(tokens['expires_at']),
+            # below is user metadata
+            'id': access_body.get('sub'),
+            'username': access_body.get('preferred_username'),
+            'name': access_body.get('name'),
+            'email': access_body.get('email'),
+            'realm_roles': access_body.get('realm_access', {}).get('roles'),
+            'client_roles': access_body.get('resource_access', {}).get(self.oauth_client.client_id, {}).get('roles'),
+            'scope': access_body.get('scope', '').split(' ')
         }
 
         if tokens.get('id_token'):
@@ -295,13 +303,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object): # pylint: disable=useless-ob
 
             if id_body:
                 session_dict['memberof'] = self.group_config.list_path_to_items(id_body.get('memberof', list()))
-                session_dict['realm_roles'] = id_body.get('realm_access', {}).get('roles')
-                session_dict['client_roles'] = id_body.get('roles')
-                session_dict['id'] = id_body.get('sub')
-                session_dict['username'] = id_body.get('preferred_username')
-                session_dict['name'] = id_body.get('name')
-                session_dict['email'] = id_body.get('email')
-                session_dict['scope'] = access_body.get('scope', '').split(' ')
+                # memberof is id_token only
 
         if tokens.get('refresh_token'):
             session_dict['refresh_token'] = tokens['refresh_token']
@@ -367,7 +369,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object): # pylint: disable=useless-ob
             session_data = await self.session_cache.get(jti)
 
             if isinstance(session_data, SessionData) and session_data.access_token == token:
-                jti = None # Do not replace "old" token below because this is not the old one
+                jti = None # Do not replace "old" token below because it has been replaced
 
         # update_token
         new_jti, new_session_data = await self.new_session(token, old_session_data=session_data)

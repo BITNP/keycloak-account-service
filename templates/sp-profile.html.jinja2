@@ -7,7 +7,7 @@
                 <li class="breadcrumb-item active" aria-current="page">个人资料</li>
             </ol>
         </nav>
-        {% if updated %}<div class="alert alert-success" role="alert">资料已保存。</div>{% endif %}
+        {% if updated %}<div class="alert alert-success" role="alert">资料已保存。稍等几分钟或重新登录，信息就会完全更新。</div>{% endif %}
         <div class="row">
             <div class="col-12 col-lg-6 offset-lg-3 mb-3">
                 <form action="{{ url_for('sp_profile') }}" method="POST" enctype="application/x-www-form-urlencoded">
