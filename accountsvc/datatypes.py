@@ -60,7 +60,7 @@ class GroupItem(BaseModel):
     invitation_expires: Optional[datetime] = None
 
     @validator('name', always=True)
-    def default_name_as_path(cls, v, values):
+    def default_name_as_path(cls, v: str, values: Dict[str, Any]) -> str:
         if v == '':
             return values['path']
         return v
@@ -148,7 +148,7 @@ class UserLdapEntry(BaseModel):
     raw_attributes: Dict[str, Any]
 
     @validator('raw_attributes')
-    def raw_attributes_decode(cls, v):
+    def raw_attributes_decode(cls, v: Dict[str, Any]) -> Dict[str, Any]:
         new_dict = dict()
         for key, values in v.items():
             new_dict[key] = [(value.decode() if isinstance(value, bytes) else value) for value in values]
@@ -167,7 +167,7 @@ class ProfileInfo(BaseModel):
     enabled: bool = True
 
     @validator('name', always=True)
-    def name_default(cls, v, values):
+    def name_default(cls, v: Optional[str], values: Dict[str, Any]) -> str:
         if not v:
             return (values.get('lastName') or '') + (values.get('firstName') or '')
         return v
@@ -186,7 +186,7 @@ class ProfileUpdateInfo(BaseModel):
     email: str
 
     @validator('firstName', always=True, pre=True)
-    def firstName_default(cls, v, values):
+    def firstName_default(cls, v: Optional[str], values: Dict[str, Any]) -> Optional[str]:
         if not v:
             if values.get('name') and not values.get('lastName'):
                 return values.get('name')
@@ -206,13 +206,13 @@ class UserCreationInfo(ProfileUpdateInfo):
         return self.json(exclude={"name", "newPassword", "confirmation"})
 
     @validator('newPassword')
-    def check_username_password_match(cls, v, values):
+    def check_username_password_match(cls, v: str, values: Dict[str, Any]) -> str:
         if values.get('username') == v:
             raise ValueError('Password cannot match username')
         return v
 
     @root_validator
-    def check_passwords_match_and_init_creds(cls, values):
+    def check_passwords_match_and_init_creds(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         pw1, pw2 = values.get('newPassword'), values.get('confirmation')
         if pw1 is not None and pw2 is not None and pw1 != pw2:
             raise ValueError('Passwords do not match')
@@ -232,7 +232,7 @@ class PasswordUpdateRequest(BaseModel):
     confirmation: str
 
     @root_validator
-    def check_passwords_match(cls, values):
+    def check_passwords_match(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         pw1, pw2 = values.get('newPassword'), values.get('confirmation')
         if pw1 is not None and pw2 is not None and pw1 != pw2:
             raise ValueError('Passwords do not match')
@@ -243,8 +243,8 @@ class KeycloakSessionClient(BaseModel):
     clientName: Optional[str] = None
 
     @validator('clientName', always=True)
-    def clientName_default(cls, v, values):
-        return v or values.get('clientId')
+    def clientName_default(cls, v: Optional[str], values: Dict[str, Any]) -> str:
+        return v or values['clientId']
 
 class KeycloakSessionItem(BaseModel):
     id: str

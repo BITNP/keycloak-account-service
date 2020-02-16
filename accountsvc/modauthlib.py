@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel, validator
 from pydantic.utils import deep_update
 from contextlib import asynccontextmanager
-from typing import AsyncIterator, List, Union, Optional, Tuple, Any
+from typing import AsyncIterator, List, Union, Optional, Tuple, Any, Dict
 from hashlib import sha1
 from authlib.common.security import generate_token
 import time
@@ -26,14 +26,14 @@ class RequiresTokenException(Exception):
     pass
 
 class UnauthorizedException(HTTPException):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(status_code=403, detail="You don't have the privilege to access this endpoint")
 
 class RemovesAuthParamsException(Exception):
     pass
 
 class CSRFTokenInvalidException(HTTPException):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(status_code=403, detail="post token invalid; this request may be unauthorized")
 
 
@@ -68,7 +68,7 @@ class SessionData(BaseModel):
         return 'admin' in self.realm_roles
 
     @validator('realm_roles', 'client_roles', pre=True, always=True)
-    def roles_default_list(cls, v):
+    def roles_default_list(cls, v: Optional[List[str]]) -> List[str]:
         return v or list()
 
 
@@ -176,7 +176,7 @@ class BITNPOAuthRemoteApp(StarletteRemoteApp):
             metadata = await self.load_server_metadata()
             return metadata.get(key)
 
-    async def get_service_account_config(self):
+    async def get_service_account_config(self) -> Dict[str, Optional[str]]:
         token_endpoint = await self.get_token_endpoint()
         return {
             'client_id': self.client_id,
