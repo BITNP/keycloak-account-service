@@ -13,7 +13,7 @@ from accountsvc.modauthlib import (SessionData, deps_requires_admin_session, dep
 from accountsvc.utils import TemplateService
 from .users import _admin_search_users, _admin_search_users_by_username
 
-router = APIRouter()
+router: APIRouter = APIRouter()
 
 
 @router.get("/delegated-groups/", include_in_schema=True, response_model=List[datatypes.GroupItem])

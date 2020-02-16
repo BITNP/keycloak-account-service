@@ -9,7 +9,7 @@ from .profile import sp_profile_json
 from .sessions import sp_sessions_json
 from ..admin.groups import admin_delegated_groups_list_json, guess_active_ns
 
-router = APIRouter()
+router: APIRouter = APIRouter()
 
 @router.get("/", include_in_schema=False)
 async def sp_landing(request: Request,

@@ -8,7 +8,7 @@ from accountsvc.modauthlib import (SessionData, deps_get_session, deps_requires_
 from accountsvc.utils import TemplateService
 from .admin.groups import _delegated_groups_member_add_json
 
-router = APIRouter()
+router: APIRouter = APIRouter()
 
 # static page
 @router.get("/i/completed", include_in_schema=False)

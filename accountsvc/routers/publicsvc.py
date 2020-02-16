@@ -8,7 +8,7 @@ from accountsvc import datatypes
 from accountsvc.modauthlib import (SessionData, deps_get_session)
 from accountsvc.utils import TemplateService
 
-router = APIRouter()
+router: APIRouter = APIRouter()
 
 
 @router.get("/", include_in_schema=False)

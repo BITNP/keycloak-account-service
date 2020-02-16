@@ -10,7 +10,7 @@ from accountsvc import datatypes
 from accountsvc.modauthlib import (SessionData, deps_requires_session,
                                    deps_get_csrf_field, deps_requires_csrf_posttoken)
 
-router = APIRouter()
+router: APIRouter = APIRouter()
 
 @router.get("/password", include_in_schema=True, response_model=datatypes.PasswordInfo)
 async def sp_password(

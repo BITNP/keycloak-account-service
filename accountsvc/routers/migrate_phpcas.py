@@ -8,7 +8,7 @@ from accountsvc import datatypes
 from accountsvc.phpcas_adaptor import PHPCASAdaptor, PHPCASUserInfo
 from accountsvc.modauthlib import deps_get_csrf_field, deps_requires_csrf_posttoken
 
-router = APIRouter()
+router: APIRouter = APIRouter()
 EMAIL_SESSION_NAME = 'mpc_email'
 
 @router.get("/migrate-phpcas/", include_in_schema=False)

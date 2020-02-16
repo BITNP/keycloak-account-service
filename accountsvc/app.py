@@ -5,6 +5,7 @@ import sys
 
 from fastapi import FastAPI, Depends, APIRouter
 from fastapi.exception_handlers import http_exception_handler
+from fastapi.security import OAuth2AuthorizationCodeBearer
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
 from starlette.responses import Response, PlainTextResponse, JSONResponse
@@ -17,22 +18,17 @@ from aiocache import Cache
 
 from . import datatypes
 from .utils import local_timestring
-from .routers import sp, admin
-from .routers import publicsvc, assistance, invitation, migrate_phpcas
 from .phpcas_adaptor import FakePHPCASAdaptor, MySQLPHPCASAdaptor # pylint: disable=unused-import
-from .modauthlib import (BITNPOAuthRemoteApp, BITNPSessions,
-                         deps_requires_session, deps_requires_admin_session)
+from .auth import BITNPOAuthRemoteApp, BITNPSessions
 
 MIN_PYTHON = (3, 6)
 if sys.version_info < MIN_PYTHON:
     sys.exit("At least Python {}.{} or later is required.\n".format(*MIN_PYTHON))
 
-app = FastAPI(
+app: FastAPI = FastAPI(
     title="网协通行证账户服务",
     version="0.1"
 )
-
-router = APIRouter()
 
 config: datatypes.LoadingSettings = datatypes.LoadingSettings() # from .env
 with open('group_config.json', 'r') as f:
@@ -58,6 +54,22 @@ app.state.app_session = BITNPSessions(
     app=app, oauth_client=app.state.oauth.bitnp, group_config=app.state.config.group_config,
     csrf_token=app.state.config.session_secret,
     cache_type=Cache.MEMORY
+)
+"""
+fastapi needs this class to be initialized during startup, to provide
+OpenAPI data, not during request, so oauth2_scheme will be the only instance
+that gets directly passed from app to request handler function signature,
+instead of reading from a request.
+
+This will make multiple oauth source a little harder.
+"""
+app.state.oauth2_scheme = OAuth2AuthorizationCodeBearer(
+    authorizationUrl=config.oauth_auth_endpoint,
+    tokenUrl=config.oauth_token_endpoint,
+    refreshUrl=config.oauth_token_endpoint,
+    scheme_name='bitnp',
+    scopes={'openid':'Basic login information', 'iam-admin':'Manages user, groups and more'},
+    auto_error=False,
 )
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -99,7 +111,11 @@ async def add_response_type_hint(request: Request, call_next: Callable) -> Respo
     return await call_next(request)
 
 
-app.include_router(router)
+from .modauthlib import deps_requires_session, deps_requires_admin_session
+from .routers import sp, admin
+from .routers import publicsvc, assistance, invitation, migrate_phpcas
+
+
 app.include_router(publicsvc.router)
 app.include_router(assistance.router)
 app.include_router(invitation.router)

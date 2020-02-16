@@ -13,7 +13,7 @@ from accountsvc import datatypes
 from accountsvc.modauthlib import (SessionData, deps_requires_master_session,
                                    deps_get_csrf_field, deps_requires_csrf_posttoken)
 
-router = APIRouter()
+router: APIRouter = APIRouter()
 
 
 @router.get("/users/", include_in_schema=True, response_model=List[datatypes.ProfileInfo], responses={

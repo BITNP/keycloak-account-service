@@ -4,7 +4,7 @@ from starlette.responses import RedirectResponse, Response
 
 from accountsvc.utils import TemplateService
 
-router = APIRouter()
+router: APIRouter = APIRouter()
 
 
 @router.get("/assistance/", include_in_schema=False)
