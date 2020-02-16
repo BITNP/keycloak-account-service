@@ -26,6 +26,12 @@ build-image:
     - docker build -t $IMAGE_TAG .
     - docker push $IMAGE_TAG
 
+test-docker-compose-config:
+  stage: build
+  script:
+    - touch .env
+    - docker-compose config
+
 test-image:
   stage: test
   needs: ["build-image"]
@@ -43,12 +49,6 @@ test-image:
     - docker ps
   after_script:
     - docker rm -f bitnp-accounts
-
-test-docker-compose-config:
-  stage: test
-  script:
-    - touch .env
-    - docker-compose config
 
 test-mypy:
   stage: test
