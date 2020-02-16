@@ -12,6 +12,9 @@ default:
   image: docker/compose
   before_script:
     - docker info
+  retry:
+    max: 2
+    when: runner_system_failure
 
 build-image:
   stage: build
@@ -25,6 +28,7 @@ build-image:
 
 test-image:
   stage: test
+  needs: ["build-image"]
   services:
     - docker:dind
   before_script:
@@ -48,6 +52,7 @@ test-docker-compose-config:
 
 test-mypy:
   stage: test
+  needs: ["build-image"]
   allow_failure: true
   services:
     - docker:dind
@@ -60,6 +65,7 @@ test-mypy:
 
 release-image:
   stage: release
+  needs: ["test-image"]
   services:
     - docker:dind
   before_script:
