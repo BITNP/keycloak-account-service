@@ -5,7 +5,7 @@ import sys
 
 from fastapi import FastAPI, Depends, APIRouter
 from fastapi.exception_handlers import http_exception_handler
-from fastapi.security import OAuth2AuthorizationCodeBearer
+from fastapi.security.open_id_connect_url import OpenIdConnect
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
 from starlette.responses import Response, PlainTextResponse, JSONResponse
@@ -63,12 +63,9 @@ instead of reading from a request.
 
 This will make multiple oauth source a little harder.
 """
-app.state.oauth2_scheme = OAuth2AuthorizationCodeBearer(
-    authorizationUrl=config.oauth_auth_endpoint,
-    tokenUrl=config.oauth_token_endpoint,
-    refreshUrl=config.oauth_token_endpoint,
-    scheme_name='bitnp',
-    scopes={'openid':'Basic login information', 'iam-admin':'Manages user, groups and more'},
+app.state.oauth2_scheme = OpenIdConnect(
+    openIdConnectUrl=config.server_metadata_url,
+    scheme_name='BITNP OpenID Connect',
     auto_error=False,
 )
 app.mount("/static", StaticFiles(directory="static"), name="static")

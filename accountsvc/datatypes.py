@@ -26,8 +26,6 @@ class LoadingSettings(BaseSettings):
     session_secret: str = Field(..., description="Used for session and CSRF")
     invitation_secret: str
     server_metadata_url: str = 'https://login.bitnp.net/auth/realms/master/.well-known/openid-configuration'
-    oauth_auth_endpoint: str = 'https://login.bitnp.net/auth/realms/master/protocol/openid-connect/auth'
-    oauth_token_endpoint: str = 'https://login.bitnp.net/auth/realms/master/protocol/openid-connect/token'
     group_status_prefix: str = '/bitnp/active-'
     group_config_path: str = '/bitnp' # Pending removal?
     role_active_name: str = 'bitnp-active'
