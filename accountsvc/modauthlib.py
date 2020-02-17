@@ -21,12 +21,19 @@ from authlib.jose.rfc7519.jwt import decode_payload as decode_jwt_payload
 from aiocache import Cache
 from aiocache.base import BaseCache
 
-from .app import OAUTH2_SCHEME, OIDC_SCHEME  # See app.state.oauth2_scheme
+from .config import OAUTH2_SCHEME, OIDC_SCHEME
 from .datatypes import GroupConfig, GroupItem
 from .auth import (BITNPFastAPICSRFAddon, CSRFTokenInvalidException, BITNPSessions,
                    SessionData, RemovesAuthParamsException, RequiresTokenException, UnauthorizedException)
 
+"""
+fastapi needs this class to be initialized during startup, to provide
+OpenAPI data, not during request, so oauth2_scheme will be the only instance
+that gets directly passed from app to request handler function signature,
+instead of reading from a request.
 
+This will make multiple oauth source a little harder.
+"""
 # Usage: Depends(deps_get_session)
 async def deps_get_session(request: Request,
                            oauth_bearer_token: str = Depends(OAUTH2_SCHEME),
