@@ -1,4 +1,5 @@
-from fastapi import Depends, APIRouter
+from typing import List
+from fastapi import Depends, APIRouter, HTTPException
 from starlette.requests import Request
 from starlette.responses import Response
 from accountsvc import datatypes

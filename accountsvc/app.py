@@ -66,13 +66,13 @@ This will make multiple oauth source a little harder.
 """
 app.state.oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl=config.oauth_token_endpoint,
-    scheme_name="Compatabile BITNP OAuth Password",
+    scheme_name="Compatabile BITNP OAuth Password (client_id: bitnp-accounts-public)",
     scopes={"openid": "Get your basic information", "iam-admin": "Manage users and groups"},
     auto_error=False,
 )
 app.state.oidc_scheme = OpenIdConnect(
     openIdConnectUrl=config.server_metadata_url,
-    scheme_name='BITNP OpenID Connect',
+    scheme_name='BITNP OpenID Connect (client_id: bitnp-accounts-public)',
     auto_error=False,
 )
 app.mount("/static", StaticFiles(directory="static"), name="static")

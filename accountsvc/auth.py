@@ -4,7 +4,7 @@ from hashlib import sha1
 from datetime import datetime, timedelta, timezone
 import time
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, constr
 from pydantic.utils import deep_update
 from starlette.responses import RedirectResponse, Response
 from starlette.requests import Request
@@ -42,18 +42,19 @@ class CSRFTokenInvalidException(HTTPException):
 class SessionData(BaseModel):
     access_token_issued_at: datetime
     access_token_expires_at: datetime
+    id_token_expires_at: Optional[datetime] = None
     access_token: str
     refresh_token: str = ''
     token_type: str = ''
     memberof: List[GroupItem] = list()
     realm_roles: List[str] = list()
     client_roles: List[str] = list()
-    id: str # Keycloak UUID
+    id: constr(regex="^[A-Za-z0-9-_]+$") # type: ignore # Keycloak UUID
     username: str = ''
     name: Optional[str] = None
     email: str = ''
     scope: List[str] = list()
-    id_token: dict = {} # temp
+    origin: str
 
     def to_tokens(self) -> dict:
         return {
@@ -291,7 +292,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object): # pylint: disable=useless-ob
         app.exception_handler(RequiresTokenException)(self.exception_handler)
         app.exception_handler(RemovesAuthParamsException)(self.exception_handler)
 
-    async def get_session(self, jti: str) -> Optional[SessionData]:
+    async def get_session(self, jti: Optional[str]) -> Optional[SessionData]:
         if not jti:
             return None
         data = await self.session_cache.get(jti)
@@ -329,17 +330,20 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object): # pylint: disable=useless-ob
             'email': access_body.get('email'),
             'realm_roles': access_body.get('realm_access', {}).get('roles'),
             'client_roles': access_body.get('resource_access', {}).get(self.oauth_client.client_id, {}).get('roles'),
-            'scope': access_body.get('scope', '').split(' ')
+            'scope': access_body.get('scope', '').split(' '),
+            'origin': access_body['azp'],
         }
 
         if tokens.get('id_token'):
-            id_body = None
+            """Bearer token cannot have this information and thus they fetch it in modauthlib.py"""
+            id_body = tokens.get('id_token_body')
             if request:
                 id_body = await self.oauth_client.parse_id_token(request, tokens)
-            elif old_session_data:
-                id_body = await self.oauth_client.parse_token_body(tokens['id_token'])
 
-            if id_body:
+            if isinstance(id_body, dict):
+                session_dict['id_token_expires_at'] = id_body.get('exp')
+                # usually id_token will expire at the same time as access_token
+                # here it is more used by Bearer header validation
                 session_dict['memberof'] = self.group_config.list_path_to_items(id_body.get('memberof', list()))
                 # memberof is id_token only
 
@@ -383,8 +387,9 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object): # pylint: disable=useless-ob
         await self.session_cache.set(access_jti, session_data)
 
         # bearer = access_token
-        # this is the actual sign_in process
-        if request:
+        # this is the actual sign_in process where cookie is set
+        # the origin check is for Header-based login
+        if request and session_data.origin == self.oauth_client.client_id:
             request.session['bearer_jti'] = access_jti
 
         # update latest not-before-policy

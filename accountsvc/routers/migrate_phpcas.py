@@ -118,7 +118,7 @@ async def phpcas_migrate_process(
                         headers={'Accept': 'application/json'}
                     )
                     if resp_iam.status_code != 204:
-                        raise HTTPException(status_code=resp_iam.status_code, detail=resp_iam.body)
+                        raise HTTPException(status_code=resp_iam.status_code, detail=resp_iam.text)
             except Exception as e: # pylint: disable=broad-except
                 print("phpcas-migrate: Failed upgrading to iam-master {}".format(e))
 

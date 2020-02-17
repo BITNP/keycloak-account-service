@@ -106,4 +106,4 @@ async def sp_password_update_json(
         # success
         return True
     else:
-        raise HTTPException(status_code=resp.status_code, detail=resp.body)
+        raise HTTPException(status_code=resp.status_code, detail=resp.text)
