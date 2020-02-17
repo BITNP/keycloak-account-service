@@ -3,7 +3,7 @@ import json
 import traceback
 import sys
 
-from fastapi import FastAPI, Depends, APIRouter
+from fastapi import FastAPI, Depends
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.security.open_id_connect_url import OpenIdConnect
@@ -64,13 +64,13 @@ instead of reading from a request.
 
 This will make multiple oauth source a little harder.
 """
-app.state.oauth2_scheme = OAuth2PasswordBearer(
+OAUTH2_SCHEME = OAuth2PasswordBearer(
     tokenUrl=config.oauth_token_endpoint,
     scheme_name="Compatabile BITNP OAuth Password (client_id: bitnp-accounts-public)",
     scopes={"iam-admin": "Manage users and groups"},
     auto_error=False,
 )
-app.state.oidc_scheme = OpenIdConnect(
+OIDC_SCHEME = OpenIdConnect(
     openIdConnectUrl=config.server_metadata_url,
     scheme_name='BITNP OpenID Connect (client_id: bitnp-accounts-public)',
     auto_error=False,

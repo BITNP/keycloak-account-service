@@ -21,7 +21,7 @@ from authlib.jose.rfc7519.jwt import decode_payload as decode_jwt_payload
 from aiocache import Cache
 from aiocache.base import BaseCache
 
-from .app import app  # See app.state.oauth2_scheme
+from .app import OAUTH2_SCHEME, OIDC_SCHEME  # See app.state.oauth2_scheme
 from .datatypes import GroupConfig, GroupItem
 from .auth import (BITNPFastAPICSRFAddon, CSRFTokenInvalidException, BITNPSessions,
                    SessionData, RemovesAuthParamsException, RequiresTokenException, UnauthorizedException)
@@ -29,8 +29,8 @@ from .auth import (BITNPFastAPICSRFAddon, CSRFTokenInvalidException, BITNPSessio
 
 # Usage: Depends(deps_get_session)
 async def deps_get_session(request: Request,
-                           oauth_bearer_token: str = Depends(app.state.oauth2_scheme),
-                           _oidc_bearer_token: str = Depends(app.state.oidc_scheme),
+                           oauth_bearer_token: str = Depends(OAUTH2_SCHEME),
+                           _oidc_bearer_token: str = Depends(OIDC_SCHEME),
                            ) -> Optional[SessionData]:
     """
     :param _oidc_bearer_token This dependency shows a correct OIDC entry in openapi.json
