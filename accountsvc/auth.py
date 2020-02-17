@@ -16,6 +16,7 @@ from authlib.integrations.starlette_client import StarletteRemoteApp
 from authlib.integrations.httpx_client import OAuthError, AsyncOAuth2Client
 from authlib.common.encoding import urlsafe_b64decode, to_bytes
 from authlib.common.security import generate_token
+from authlib.jose import JsonWebToken, JWTClaims
 from authlib.jose.rfc7519.jwt import decode_payload as decode_jwt_payload
 from aiocache import Cache
 from aiocache.base import BaseCache
@@ -144,6 +145,45 @@ class BITNPOAuthRemoteApp(StarletteRemoteApp):
             params['redirect_uri'] = self.get_cleaned_redirect_url_str(request.url)
         return await self.fetch_access_token(**params)
 
+    async def parse_validate_token(self, token: str, claims_options: Optional[dict]=None) -> JWTClaims:
+        """Vaidate JWT and return dict"""
+        claims_params: dict = dict()
+        claims_cls = None
+
+        metadata = await self.load_server_metadata()
+        if claims_options is None and 'issuer' in metadata:
+            claims_options = {
+                'iss': {'values': [metadata['issuer']]},
+                'aud': {'value': self.client_id},
+            }
+
+        alg_values = metadata.get('token_endpoint_auth_signing_alg_values_supported')
+        if not alg_values:
+            alg_values = ['RS256']
+
+        jwt = JsonWebToken(alg_values)
+
+        jwk_set = await self._fetch_jwk_set()
+        try:
+            claims = jwt.decode(
+                token, key=jwk_set,
+                claims_cls=claims_cls,
+                claims_options=claims_options,
+                claims_params=claims_params,
+            )
+        except ValueError:
+            # retry with new cert
+            jwk_set = await self._fetch_jwk_set(force=True)
+            claims = jwt.decode(
+                token, key=jwk_set,
+                claims_cls=claims_cls,
+                claims_options=claims_options,
+                claims_params=claims_params,
+            )
+
+        claims.validate(leeway=120)
+        return claims
+
     async def parse_token_body(self, token: str) -> dict:
         """Return parsed (not-validated) JWT body from token."""
         s = to_bytes(token)
@@ -270,9 +310,9 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object): # pylint: disable=useless-ob
             return data
         return None
 
-    async def new_session(self, tokens: dict, request: Optional[Request] = None,
-                          old_session_data: Optional[SessionData] = None) -> Tuple[str, SessionData]:
-        access_body = await self.oauth_client.parse_token_body(tokens['access_token'])
+    async def generate_new_session(self, tokens: dict, request: Optional[Request] = None,
+                             old_session_data: Optional[SessionData] = None) -> SessionData:
+        access_body = await self.oauth_client.parse_validate_token(tokens['access_token'])
         access_jti = access_body['jti']
         refresh_body = None
         refresh_jti = None
@@ -281,7 +321,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object): # pylint: disable=useless-ob
             'access_token': tokens['access_token'],
             'token_type': tokens['token_type'],
             'access_token_issued_at': datetime.utcfromtimestamp(access_body['iat']),
-            'access_token_expires_at': datetime.utcfromtimestamp(tokens['expires_at']),
+            'access_token_expires_at': datetime.utcfromtimestamp(access_body['exp']),
             # below is user metadata
             'id': access_body.get('sub'),
             'username': access_body.get('preferred_username'),
@@ -306,6 +346,21 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object): # pylint: disable=useless-ob
         if tokens.get('refresh_token'):
             session_dict['refresh_token'] = tokens['refresh_token']
 
+        if old_session_data:
+            # session_dict can have a default now
+            session_dict = deep_update(old_session_data.dict(exclude_defaults=True), session_dict)
+
+        return SessionData(**session_dict)
+
+    async def new_session(self, tokens: dict, request: Optional[Request] = None,
+                          old_session_data: Optional[SessionData] = None) -> Tuple[str, SessionData]:
+        access_body = await self.oauth_client.parse_validate_token(tokens['access_token'])
+        access_jti = access_body['jti']
+        refresh_body = None
+        refresh_jti = None
+
+        if tokens.get('refresh_token'):
+            # Save this refresh token with a link to access_token
             refresh_body = await self.oauth_client.parse_token_body(tokens['refresh_token'])
             refresh_jti = refresh_body['jti']
             refresh_data = SessionRefreshData(
@@ -324,10 +379,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object): # pylint: disable=useless-ob
                 )
                 await self.session_cache.set(refresh_jti, refresh_data)
 
-        if old_session_data:
-            session_dict = deep_update(old_session_data.dict(exclude_defaults=True), session_dict)
-
-        session_data = SessionData(**session_dict)
+        session_data = await self.generate_new_session(tokens=tokens, request=request, old_session_data=old_session_data)
         await self.session_cache.set(access_jti, session_data)
 
         # bearer = access_token
@@ -336,7 +388,8 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object): # pylint: disable=useless-ob
             request.session['bearer_jti'] = access_jti
 
         # update latest not-before-policy
-        self.not_before_policy = datetime.utcfromtimestamp(tokens['not-before-policy'])
+        if tokens.get('not-before-policy'):
+            self.not_before_policy = datetime.utcfromtimestamp(tokens['not-before-policy'])
 
         return access_jti, session_data
 

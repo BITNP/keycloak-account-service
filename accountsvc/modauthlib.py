@@ -28,7 +28,13 @@ from .auth import (BITNPFastAPICSRFAddon, CSRFTokenInvalidException,
 
 # Usage: Depends(deps_get_session)
 async def deps_get_session(request: Request,
-                           oauth_bearer_token: str = Depends(app.state.oauth2_scheme)) -> SessionData:
+                           oauth_bearer_token: str = Depends(app.state.oauth2_scheme),
+                           _oidc_bearer_token: str = Depends(app.state.oidc_scheme),
+                           ) -> Optional[SessionData]:
+    """
+    :param _oidc_bearer_token This dependency shows a correct OIDC entry in openapi.json
+    :param oauth_bearer_token compatible OAuth2 Bearer entry
+    """
     _self = request.app.state.app_session
     # check code, state in query to complete auth
     if request.query_params.get('code') and request.query_params.get('state'):
@@ -37,6 +43,13 @@ async def deps_get_session(request: Request,
         # if GET, redirect to remove code and state
         if request.method == 'GET':
             raise RemovesAuthParamsException
+
+    # Bearer token flow
+    # We will never have refersh_token, but we can still cache it in session_cache (for id_token purpose)
+    if oauth_bearer_token:
+        # {'access_token': oauth_bearer_token, 'token_type': 'bearer', 'id_token': _self.oauth_client.userinfo()}
+        access_body = await _self.oauth_client.parse_validate_token(oauth_bearer_token)
+        return None
 
     # login check
     # TODO: direct Bearer token support
@@ -70,7 +83,7 @@ async def deps_get_session(request: Request,
 
     return session_data
 
-def deps_requires_session(session_data: SessionData = Depends(deps_get_session)) -> SessionData:
+def deps_requires_session(session_data: Optional[SessionData] = Depends(deps_get_session)) -> SessionData:
     if session_data is None:
         raise RequiresTokenException
     return session_data

@@ -5,6 +5,7 @@ import sys
 
 from fastapi import FastAPI, Depends, APIRouter
 from fastapi.exception_handlers import http_exception_handler
+from fastapi.security import OAuth2PasswordBearer
 from fastapi.security.open_id_connect_url import OpenIdConnect
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
@@ -63,7 +64,13 @@ instead of reading from a request.
 
 This will make multiple oauth source a little harder.
 """
-app.state.oauth2_scheme = OpenIdConnect(
+app.state.oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl=config.oauth_token_endpoint,
+    scheme_name="Compatabile BITNP OAuth Password",
+    scopes={"openid": "Get your basic information", "iam-admin": "Manage users and groups"},
+    auto_error=False,
+)
+app.state.oidc_scheme = OpenIdConnect(
     openIdConnectUrl=config.server_metadata_url,
     scheme_name='BITNP OpenID Connect',
     auto_error=False,
@@ -93,7 +100,7 @@ async def oauth_exception_handler(request: Request, exc: OAuthError) -> Response
     traceback.print_exc()
     if request.state.response_type.is_json():
         return JSONResponse(
-            {"detail": exc.description}, status_code=500
+            {"error": exc.error, "detail": exc.description}, status_code=403
         )
     else:
         return request.app.state.templates.TemplateResponse("oauth-error.html.jinja2", {
