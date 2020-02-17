@@ -65,7 +65,7 @@ test-mypy:
 
 release-image:
   stage: release
-  needs: ["test-image"]
+  needs: ["build-image", "test-image"]
   services:
     - docker:dind
   before_script:
