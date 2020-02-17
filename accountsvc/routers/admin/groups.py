@@ -3,7 +3,7 @@ from operator import attrgetter
 from urllib.parse import quote
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends, APIRouter, HTTPException, Form
+from fastapi import Depends, APIRouter, HTTPException, Form, Query
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 
@@ -19,9 +19,9 @@ router: APIRouter = APIRouter()
 @router.get("/delegated-groups/", include_in_schema=True, response_model=List[datatypes.GroupItem])
 async def admin_delegated_groups_get(
         request: Request,
-        path: Optional[str] = None,
+        path: Optional[str] = Query(None, example="/bitnp/active"),
         session_data: SessionData = Depends(deps_requires_admin_session),
-        first: int = 0,
+        first: int = Query(0, example="0"),
         csrf_field: tuple = Depends(deps_get_csrf_field),
     ) -> Union[List[datatypes.GroupItem], Response]:
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
@@ -261,19 +261,23 @@ async def admin_delegated_groups_member_remove_json(
         else:
             raise HTTPException(resp.status_code, detail=resp.json())
 
-@router.post("/delegated-groups/update-invitation-link", include_in_schema=True)
+@router.post("/delegated-groups/update-invitation-link", include_in_schema=True,
+    responses={
+        200: {"content": {"application/json": {"example": {"invitationNonce": ["rAnD"], "invitationExpires": [123456789]}}}},
+        303: {"description": "Successful response (for end users)", "content": {"text/html": {}}},
+    })
 async def admin_delegated_groups_update_invitation_link(
         request: Request,
-        path: str = Form(...),
+        path: str = Form(..., example="/bitnp/active"),
         days_from_now: int = Form(...),
         expires: Optional[datetime] = Form(None),
         session_data: SessionData = Depends(deps_requires_admin_session),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
     ) -> Union[Response, dict]:
     """
-    days_from_now < 0: nonce = None
-    days_from_now == 0: nonce = new
-    days_from_now > 0: expires = now + days_from_now, nonce = new if not nonce else nonce
+    - days_from_now < 0: nonce = None
+    - days_from_now == 0: nonce = new
+    - days_from_now > 0: expires = now + days_from_now, nonce = new if not nonce else nonce
     """
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
     current_group = await _admin_delegated_groups_path_to_group(request, session_data, grouplist, path)

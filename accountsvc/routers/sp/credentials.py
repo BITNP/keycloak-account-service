@@ -1,7 +1,7 @@
 from typing import Union, Optional
 from pydantic import ValidationError
 
-from fastapi import Depends, APIRouter, Form, HTTPException
+from fastapi import Depends, APIRouter, Form, HTTPException, Body
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
@@ -49,7 +49,7 @@ async def sp_password(
     })
 async def sp_password_update(
         request: Request,
-        pwupdate: Optional[datatypes.PasswordUpdateRequest] = None,
+        # pwupdate: Optional[datatypes.PasswordUpdateRequest] = Body(None, embed=True),
         currentPassword: str = Form(...),
         newPassword: str = Form(...),
         confirmation: str = Form(...),
@@ -57,15 +57,15 @@ async def sp_password_update(
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
         csrf_field: tuple = Depends(deps_get_csrf_field),
     ) -> Response:
-    if not pwupdate:
-        try:
-            pwupdate = datatypes.PasswordUpdateRequest(
-                currentPassword=currentPassword,
-                newPassword=newPassword,
-                confirmation=confirmation,
-            )
-        except ValidationError as e:
-            raise RequestValidationError(errors=e.raw_errors)
+    #if not pwupdate:
+    try:
+        pwupdate = datatypes.PasswordUpdateRequest(
+            currentPassword=currentPassword,
+            newPassword=newPassword,
+            confirmation=confirmation,
+        )
+    except ValidationError as e:
+        raise RequestValidationError(errors=e.raw_errors)
 
 
     try:

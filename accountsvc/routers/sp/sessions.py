@@ -80,15 +80,18 @@ async def sp_sessions_json(
 
 @router.post("/logout", include_in_schema=True, status_code=200, responses={
         303: {"description": "Successful response (for end users)", "content": {"text/html": {}}},
-        200: {"content": {"application/json": {}}}
+        200: {"content": {"application/json": {"example": ""}}}
     })
 async def sp_sessions_logout(
         request: Request,
         session_data: SessionData = Depends(deps_requires_session),
-        session_id: str = Query(None, alias="id", regex="^[A-Za-z0-9-_]+$"),
-        current: bool = False,
+        session_id: str = Query(None, alias="id", regex="^[A-Za-z0-9-_]+$", description="Session ID"),
+        current: bool = Query(False, description="Kick out currect session or not if no id present"),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken)
     ) -> Response:
+    """
+    If no `id` is present, all sessions will be logged out.
+    """
     result = await sp_sessions_logout_json(
         request=request,
         session_data=session_data,
