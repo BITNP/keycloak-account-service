@@ -67,7 +67,7 @@ This will make multiple oauth source a little harder.
 app.state.oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl=config.oauth_token_endpoint,
     scheme_name="Compatabile BITNP OAuth Password (client_id: bitnp-accounts-public)",
-    scopes={"openid": "Get your basic information", "iam-admin": "Manage users and groups"},
+    scopes={"iam-admin": "Manage users and groups"},
     auto_error=False,
 )
 app.state.oidc_scheme = OpenIdConnect(
