@@ -28,7 +28,7 @@ if sys.version_info < MIN_PYTHON:
 
 app: FastAPI = FastAPI(
     title="网协通行证账户服务",
-    version="0.1"
+    version="1.0",
 )
 
 config: datatypes.LoadingSettings = datatypes.LoadingSettings() # from .env
