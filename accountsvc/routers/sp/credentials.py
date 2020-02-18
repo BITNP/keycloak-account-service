@@ -6,24 +6,25 @@ from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 
-from accountsvc import datatypes
+from accountsvc.datatypes import PasswordInfo, PasswordUpdateRequest
 from accountsvc.modauthlib import (SessionData, deps_requires_session,
                                    deps_get_csrf_field, deps_requires_csrf_posttoken)
+from accountsvc.utils import request_accountapi_json_expect_200
 
-router: APIRouter = APIRouter()
+router = APIRouter()
 
-@router.get("/password", include_in_schema=True, response_model=datatypes.PasswordInfo)
+@router.get("/password", include_in_schema=True, response_model=PasswordInfo)
 async def sp_password(
         request: Request,
         csrf_field: tuple = Depends(deps_get_csrf_field),
         session_data: SessionData = Depends(deps_requires_session),
-    ) -> Union[datatypes.PasswordInfo, Response]:
+    ) -> Union[PasswordInfo, Response]:
     resp = await request.app.state.app_session.oauth_client.get(
         request.app.state.config.keycloak_accountapi_url+'credentials/password',
         token=session_data.to_tokens(),
         headers={'Accept': 'application/json'}
     )
-    data = datatypes.PasswordInfo.parse_obj(resp.json())
+    data = PasswordInfo.parse_obj(resp.json())
     if request.state.response_type.is_json():
         return data
     else:
@@ -49,7 +50,7 @@ async def sp_password(
     })
 async def sp_password_update(
         request: Request,
-        # pwupdate: Optional[datatypes.PasswordUpdateRequest] = Body(None, embed=True),
+        # pwupdate: Optional[PasswordUpdateRequest] = Body(None, embed=True),
         currentPassword: str = Form(...),
         newPassword: str = Form(...),
         confirmation: str = Form(...),
@@ -59,7 +60,7 @@ async def sp_password_update(
     ) -> Response:
     #if not pwupdate:
     try:
-        pwupdate = datatypes.PasswordUpdateRequest(
+        pwupdate = PasswordUpdateRequest(
             currentPassword=currentPassword,
             newPassword=newPassword,
             confirmation=confirmation,
@@ -93,17 +94,9 @@ async def sp_password_update(
 
 async def sp_password_update_json(
         request: Request,
-        pwupdate: datatypes.PasswordUpdateRequest,
+        pwupdate: PasswordUpdateRequest,
         session_data: SessionData
     ) -> bool:
-    resp = await request.app.state.app_session.oauth_client.post(
-        request.app.state.config.keycloak_accountapi_url+'credentials/password',
-        token=session_data.to_tokens(),
-        data=pwupdate.json(),
-        headers={'Accept': 'application/json', 'Content-Type': 'application/json'}
-    )
-    if resp.status_code == 200:
-        # success
-        return True
-    else:
-        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+    await request_accountapi_json_expect_200(request=request, session_data=session_data,
+                                             data=pwupdate.json(), uri='credentials/password')
+    return True

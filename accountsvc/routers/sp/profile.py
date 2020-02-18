@@ -1,16 +1,19 @@
 from typing import Union, Optional
 from pydantic import ValidationError
-from fastapi import Depends, APIRouter, Form, HTTPException
+
+from fastapi import Depends, APIRouter, Form
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
-from accountsvc import datatypes
+
+from accountsvc.datatypes import ProfileInfo, ProfileUpdateInfo
 from accountsvc.modauthlib import (SessionData, deps_requires_session,
                                    deps_get_csrf_field, deps_requires_csrf_posttoken)
+from accountsvc.utils import request_accountapi_json_expect_200
 
-router: APIRouter = APIRouter()
+router = APIRouter()
 
-@router.get("/", include_in_schema=True, response_model=datatypes.ProfileInfo,
+@router.get("/", include_in_schema=True, response_model=ProfileInfo,
             responses={
                 200: {"content": {"text/html": {}}}
             })
@@ -18,7 +21,7 @@ async def sp_profile(
         request: Request,
         csrf_field: tuple = Depends(deps_get_csrf_field),
         session_data: SessionData = Depends(deps_requires_session),
-    ) -> Union[datatypes.ProfileInfo, Response]:
+    ) -> Union[ProfileInfo, Response]:
     # prefer_onename is used if user has firstName+lastName and they initiated oneName setup process
     prefer_onename = request.query_params.get('prefer_onename', False)
     updated = request.query_params.get('updated', False)
@@ -41,7 +44,7 @@ async def sp_profile_json(
         request: Request,
         session_data: SessionData = Depends(deps_requires_session),
         load_session_only: bool = False
-    ) -> datatypes.ProfileInfo:
+    ) -> ProfileInfo:
     if not load_session_only:
         resp = await request.app.state.app_session.oauth_client.get(
             request.app.state.config.keycloak_accountapi_url,
@@ -53,26 +56,26 @@ async def sp_profile_json(
         profile['id'] = session_data.id
     else:
         profile = session_data.dict()
-    return datatypes.ProfileInfo.parse_obj(profile)
+    return ProfileInfo.parse_obj(profile)
 
-@router.post("/", include_in_schema=True, status_code=200, response_model=datatypes.ProfileUpdateInfo, responses={
+@router.post("/", include_in_schema=True, status_code=200, response_model=ProfileUpdateInfo, responses={
         303: {"description": "Successful response (for end users)", "content": {"text/html": {}}},
         200: {"content": {"application/json": {}}},
         409: {"description": "Failed response (Conflict)"},
     })
 async def sp_profile_update(
         request: Request,
-        # profile: Optional[datatypes.ProfileUpdateInfo] = Body(None),
+        # profile: Optional[ProfileUpdateInfo] = Body(None),
         name: Optional[str] = Form(None),
         firstName: Optional[str] = Form(None),
         lastName: Optional[str] = Form(None),
         email: str = Form(...),
         session_data: SessionData = Depends(deps_requires_session),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
-    ) -> Union[datatypes.ProfileUpdateInfo, Response]:
+    ) -> Union[ProfileUpdateInfo, Response]:
     # if not profile:
     try:
-        profile = datatypes.ProfileUpdateInfo(name=name, firstName=firstName, lastName=lastName, email=email)
+        profile = ProfileUpdateInfo(name=name, firstName=firstName, lastName=lastName, email=email)
     except ValidationError as e:
         raise RequestValidationError(errors=e.raw_errors)
 
@@ -84,21 +87,12 @@ async def sp_profile_update(
 
 async def sp_profile_update_json(
         request: Request,
-        profile: datatypes.ProfileUpdateInfo,
+        profile: ProfileUpdateInfo,
         session_data: SessionData
     ) -> bool:
     data: str = profile.json(exclude={'name',})
-    resp = await request.app.state.app_session.oauth_client.post(
-        request.app.state.config.keycloak_accountapi_url,
-        token=session_data.to_tokens(),
-        data=data,
-        headers={'Accept': 'application/json', 'Content-Type': 'application/json'}
-    )
-    if resp.status_code == 200:
-        # success
-        return True
-    else:
-        raise HTTPException(status_code=resp.status_code, detail=str(resp.text))
+    await request_accountapi_json_expect_200(request=request, session_data=session_data, data=data)
+    return True
 
 @router.post("/emailverify", include_in_schema=False, status_code=204, responses={
         303: {"description": "Successful response (for end users)", "content": {"text/html": {}}},
