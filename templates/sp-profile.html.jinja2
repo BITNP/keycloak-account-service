@@ -12,7 +12,7 @@
             <div class="col-12 col-lg-6 offset-lg-3 mb-3">
                 <form action="{{ url_for('sp_profile') }}" method="POST" enctype="application/x-www-form-urlencoded">
                     <div class="form-group">
-                        <label for="username">用户名 <span class="required">*</span></label>
+                        <label for="username">用户名</label>
                         <input type="text" readonly class="form-control-plaintext" id="username" aria-describedby="username-change" value="{{ profile.username }}" >
                         <small id="username-change" class="form-text text-muted">
                             如需修改用户名，<a href="{{ assistance_url }}">请提交工单人工处理</a>

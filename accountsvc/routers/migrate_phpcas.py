@@ -1,4 +1,4 @@
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union
 from fastapi import Depends, APIRouter, Form, HTTPException
 from starlette.requests import Request
 from starlette.responses import Response
@@ -34,38 +34,12 @@ async def phpcas_migrate_process(
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
     ) -> Response:
     session_email = request.session.get(EMAIL_SESSION_NAME)
-    user: Optional[PHPCASUserInfo]
-    if session_email and password is None and (newPassword and confirmation):
+    user: Union[PHPCASUserInfo, Response]
+    if session_email and session_email == email and password is None and (newPassword and confirmation):
         # we assume that their previous password has been validated
         # and they are authorized to set up a new password
+        # so we allow password to be None which will bypass password check
         print("phpcas-migrate: Restoring session for "+session_email)
-        user, resp = await _phpcas_migrate_validate_cred(
-            request=request,
-            email=session_email,
-            password=None,
-            name=name,
-            csrf_field=csrf_field,
-        )
-
-        if not user:
-            assert resp is not None
-            return resp
-
-        user_uri, resp = await _phpcas_migrate_create_user(
-            user_id=user.id,
-            request=request,
-            email=user.email,
-            password=newPassword,
-            confirmation=confirmation,
-            name=name,
-            username=user.name,
-            csrf_field=csrf_field,
-        )
-
-        if resp:
-            return resp
-
-        del request.session[EMAIL_SESSION_NAME]
     else:
         if not password:
             return request.app.state.templates.TemplateResponse(
@@ -79,42 +53,50 @@ async def phpcas_migrate_process(
                 },
             )
 
-        user, resp = await _phpcas_migrate_validate_cred(
-            request=request,
-            email=email,
-            password=password,
-            name=name,
-            csrf_field=csrf_field,
-        )
+        # reuse the same password for the new account
+        newPassword = password
+        confirmation = password
 
-        if not user:
-            assert resp is not None
+    user = await _phpcas_migrate_validate_cred(
+        request=request,
+        email=email,
+        password=password,
+        name=name,
+        csrf_field=csrf_field,
+    )
+
+    if not isinstance(user, PHPCASUserInfo):
+        # we assume it's a Response and should stop execution now
+        return user
+
+    user_uri, resp = await _phpcas_migrate_create_user(
+        user_id=user.id,
+        request=request,
+        email=user.email,
+        password=newPassword,
+        confirmation=confirmation,
+        name=name,
+        username=user.name,
+        csrf_field=csrf_field,
+    )
+
+    if not user_uri:
+        if resp:
             return resp
+        else:
+            raise HTTPException(status_code=500, detail="Cannot create the new user due to unkonwn reason")
 
-        user_uri, resp = await _phpcas_migrate_create_user(
-            user_id=user.id,
-            request=request,
-            email=user.email,
-            password=password,
-            confirmation=password,
-            name=name,
-            username=user.name,
-            csrf_field=csrf_field,
-        )
-
-        if not user_uri:
-            assert resp is not None
-            return resp
+    if session_email == email:
+        del request.session[EMAIL_SESSION_NAME]
 
     # iam-master add
     if user_uri:
-        IAM_MASTER_GROUP_ID = request.app.state.config.iam_master_group_id
-        if user.admin is True and IAM_MASTER_GROUP_ID:
+        if user.admin is True and request.app.state.config.iam_master_group_id:
             try:
                 print("phpcas-migrate: Upgrading {} to iam-master".format(user.name))
                 async with request.app.state.app_session.get_service_account_oauth_client() as client:
                     resp_iam = await client.put(
-                        user_uri+'/groups/'+IAM_MASTER_GROUP_ID,
+                        user_uri+'/groups/'+request.app.state.config.iam_master_group_id,
                         headers={'Accept': 'application/json'}
                     )
                     if resp_iam.status_code != 204:
@@ -218,11 +200,15 @@ async def _phpcas_migrate_validate_cred(request: Request,
                                         password: Optional[str],
                                         name: str,
                                         csrf_field: tuple,
-                                       ) -> Tuple[Optional[PHPCASUserInfo], Optional[Response]]:
+                                       ) -> Union[PHPCASUserInfo, Response]:
+    """
+    Arguments:
+    password: put it None will disable password check
+    """
     phpcas_adaptor: PHPCASAdaptor = request.app.state.phpcas_adaptor
     user = await phpcas_adaptor.get_user_by_email(email)
     if not user or (password and not user.check_password(password)):
-        return None, request.app.state.templates.TemplateResponse("migrate-phpcas-landing.html.jinja2", {
+        return request.app.state.templates.TemplateResponse("migrate-phpcas-landing.html.jinja2", {
             "request": request,
             "csrf_field": csrf_field,
             "input_name": name,
@@ -232,7 +218,7 @@ async def _phpcas_migrate_validate_cred(request: Request,
 
     if not user.enabled:
         # helpdesk
-        return None, request.app.state.templates.TemplateResponse("migrate-phpcas-landing.html.jinja2", {
+        return request.app.state.templates.TemplateResponse("migrate-phpcas-landing.html.jinja2", {
             "request": request,
             "csrf_field": csrf_field,
             "input_name": name,
@@ -240,7 +226,7 @@ async def _phpcas_migrate_validate_cred(request: Request,
             "incorrect": "你的账户被禁用，无法迁移。请联系 webmaster@bitnp.net 以启用账户。",
         })
 
-    return user, None
+    return user
 
 
 @router.get("/migrate-phpcas/user-lookup", include_in_schema=False)
