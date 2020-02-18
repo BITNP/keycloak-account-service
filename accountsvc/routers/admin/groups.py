@@ -262,10 +262,10 @@ async def admin_delegated_groups_member_remove_json(
             raise HTTPException(resp.status_code, detail=resp.json())
 
 @router.post("/delegated-groups/update-invitation-link", include_in_schema=True,
-    responses={
-        200: {"content": {"application/json": {"example": {"invitationNonce": ["rAnD"], "invitationExpires": [123456789]}}}},
-        303: {"description": "Successful response (for end users)", "content": {"text/html": {}}},
-    })
+             responses={
+                 200: {"content": {"application/json": {"example": {"invitationNonce": ["rAnD"], "invitationExpires": [123456789]}}}},
+                 303: {"description": "Successful response (for end users)", "content": {"text/html": {}}},
+             })
 async def admin_delegated_groups_update_invitation_link(
         request: Request,
         path: str = Form(..., example="/bitnp/active"),

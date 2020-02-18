@@ -1,5 +1,4 @@
 from typing import Callable
-import json
 import traceback
 import sys
 
@@ -16,7 +15,7 @@ from authlib.integrations.httpx_client import OAuthError
 from aiocache import Cache
 
 from . import datatypes
-from .config import MIN_PYTHON, APP_TITLE, APP_VERSION, CONFIG, OAUTH2_SCHEME, OIDC_SCHEME
+from .config import MIN_PYTHON, APP_TITLE, APP_VERSION, CONFIG
 from .utils import local_timestring
 from .phpcas_adaptor import FakePHPCASAdaptor, MySQLPHPCASAdaptor # pylint: disable=unused-import
 from .auth import BITNPOAuthRemoteApp, BITNPSessions
@@ -58,7 +57,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.state.templates = Jinja2Templates(directory="templates")
 app.state.templates.env.globals["app_title"] = app.title
 app.state.templates.env.filters["local_timestring"] = (
-    lambda dt, format='%Y-%m-%d %H:%M': local_timestring(config.local_timezone, dt, format)
+    lambda dt, format='%Y-%m-%d %H:%M': local_timestring(CONFIG.local_timezone, dt, format)
 )
 
 @app.on_event("startup")

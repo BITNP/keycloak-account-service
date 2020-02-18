@@ -1,7 +1,7 @@
-from typing import Union, Optional
+from typing import Union
 from pydantic import ValidationError
 
-from fastapi import Depends, APIRouter, Form, HTTPException, Body
+from fastapi import Depends, APIRouter, Form, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse

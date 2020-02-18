@@ -9,11 +9,9 @@ from pydantic.utils import deep_update
 from starlette.responses import RedirectResponse, Response
 from starlette.requests import Request
 from starlette.datastructures import URL
-from fastapi import FastAPI, Depends, Form, HTTPException
-from fastapi.security import OAuth2
-from fastapi.security.utils import get_authorization_scheme_param
+from fastapi import FastAPI, HTTPException
 from authlib.integrations.starlette_client import StarletteRemoteApp
-from authlib.integrations.httpx_client import OAuthError, AsyncOAuth2Client
+from authlib.integrations.httpx_client import AsyncOAuth2Client
 from authlib.common.encoding import urlsafe_b64decode, to_bytes
 from authlib.common.security import generate_token
 from authlib.jose import JsonWebToken, JWTClaims
@@ -146,7 +144,7 @@ class BITNPOAuthRemoteApp(StarletteRemoteApp):
             params['redirect_uri'] = self.get_cleaned_redirect_url_str(request.url)
         return await self.fetch_access_token(**params)
 
-    async def parse_validate_token(self, token: str, claims_options: Optional[dict]=None) -> JWTClaims:
+    async def parse_validate_token(self, token: str, claims_options: Optional[dict] = None) -> JWTClaims:
         """Vaidate JWT and return dict"""
         claims_params: dict = dict()
         claims_cls = None
@@ -312,12 +310,8 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object): # pylint: disable=useless-ob
         return None
 
     async def generate_new_session(self, tokens: dict, request: Optional[Request] = None,
-                             old_session_data: Optional[SessionData] = None) -> SessionData:
+                                   old_session_data: Optional[SessionData] = None) -> SessionData:
         access_body = await self.oauth_client.parse_validate_token(tokens['access_token'])
-        access_jti = access_body['jti']
-        refresh_body = None
-        refresh_jti = None
-
         session_dict = {
             'access_token': tokens['access_token'],
             'token_type': tokens['token_type'],
@@ -335,7 +329,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object): # pylint: disable=useless-ob
         }
 
         if tokens.get('id_token'):
-            """Bearer token cannot have this information and thus they fetch it in modauthlib.py"""
+            # Bearer token cannot have this information and thus they fetch it in modauthlib.py
             id_body = tokens.get('id_token_body')
             if request:
                 id_body = await self.oauth_client.parse_id_token(request, tokens)
@@ -428,7 +422,7 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object): # pylint: disable=useless-ob
                 jti = None # Do not replace "old" token below because it has been replaced
 
         # update_token
-        new_jti, new_session_data = await self.new_session(token, old_session_data=session_data)
+        new_jti, _ = await self.new_session(token, old_session_data=session_data)
 
         # replace old token
         if jti and session_data and jti != new_jti:

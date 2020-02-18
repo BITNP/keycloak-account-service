@@ -28,7 +28,6 @@ class LoadingSettings(BaseSettings):
     server_metadata_url: str = 'https://login.bitnp.net/auth/realms/master/.well-known/openid-configuration'
     oauth_token_endpoint: str = 'https://login.bitnp.net/auth/realms/master/protocol/openid-connect/token'
     group_status_prefix: str = '/bitnp/active-'
-    group_config_path: str = '/bitnp' # TODO: Pending removal?
     role_active_name: str = 'bitnp-active'
     iam_master_group_id: Optional[str] = None
 
