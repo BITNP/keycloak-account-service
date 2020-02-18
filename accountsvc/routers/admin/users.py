@@ -161,26 +161,25 @@ async def admin_user_detail_json(
     # LDAP
     ldape: Optional[datatypes.UserLdapEntry] = None
     try:
-        conn = ldap3.Connection(ldap3.Server(config.ldap_host, get_info=ldap3.ALL),
-                                config.ldap_user_dn, config.ldap_password, auto_bind=True)
-        if conn.search('uid='+user.username+','+config.ldap_base_dn_users, '(objectclass=*)',
-                       attributes=(ldap3.ALL_ATTRIBUTES, ldap3.ALL_OPERATIONAL_ATTRIBUTES, )):
-            ldape = datatypes.UserLdapEntry.parse_obj(conn.response[0])
+        with config.get_ldap3_connection() as conn:
+            if conn.search('uid='+user.username+','+config.ldap_base_dn_users, '(objectclass=*)',
+                           attributes=(ldap3.ALL_ATTRIBUTES, ldap3.ALL_OPERATIONAL_ATTRIBUTES, )):
+                ldape = datatypes.UserLdapEntry.parse_obj(conn.response[0])
 
-            # mask userPassword if needed
-            if not ldape.attributes.get('userPassword', [b'{'])[0].decode().startswith('{'):
-                ldape.attributes['userPassword'] = ['{MASKED}']
-            if not ldape.raw_attributes.get('userPassword', ['{'])[0].startswith('{'):
-                ldape.raw_attributes['userPassword'] = ['{MASKED}']
+                # mask userPassword if needed
+                if not ldape.attributes.get('userPassword', [b'{'])[0].decode().startswith('{'):
+                    ldape.attributes['userPassword'] = ['{MASKED}']
+                if not ldape.raw_attributes.get('userPassword', ['{'])[0].startswith('{'):
+                    ldape.raw_attributes['userPassword'] = ['{MASKED}']
 
-            # LDAP groups
-            user.ldapMemberof = []
-            if conn.search(config.ldap_base_dn_groups, '(&(objectClass=groupOfNames)(member='+ldape.dn+'))',
-                           attributes=None):
-                user.ldapMemberof = [g['dn'] for g in conn.response]
-        else:
-            # not found in ldap
-            pass
+                # LDAP groups
+                user.ldapMemberof = []
+                if conn.search(config.ldap_base_dn_groups, '(&(objectClass=groupOfNames)(member='+ldape.dn+'))',
+                               attributes=None):
+                    user.ldapMemberof = [g['dn'] for g in conn.response]
+            else:
+                # not found in ldap
+                pass
     except Exception as e: # pylint: disable=broad-except
         traceback.print_exc()
         warning = e
@@ -293,27 +292,39 @@ async def admin_user_ldapsetup_post(
     ldap_data = admin_user_ldapsetup_generate(user=user, config=config)
 
     if setup_type == 'user':
-        conn = ldap3.Connection(ldap3.Server(config.ldap_host, get_info=ldap3.ALL),
-                                config.ldap_user_dn, config.ldap_password, auto_bind=True)
+        admin_user_ldapsetup_post_user(config=config, user=user, ldap_data=ldap_data)
+        updated = True
+
+    if setup_type == 'groups':
+        admin_user_ldapsetup_post_groups(config=config, user=user, ldap_data=ldap_data)
+        updated = True
+
+    if setup_type == 'kc':
+        await admin_user_ldapsetup_post_kc(client=request.app.state.app_session.oauth_client, session_data=session_data,
+                                           config=config, user=user, ldap_data=ldap_data)
+        updated = True
+
+    if updated:
+        return RedirectResponse(request.url_for('admin_user_ldapsetup_landing', user_id=user_id)+"?updated=1", status_code=303)
+    else:
+        raise HTTPException(422, detail="type incorrect")
+
+def admin_user_ldapsetup_post_user(config: datatypes.Settings, user: datatypes.UserInfoMaster, ldap_data: dict) -> None:
+    with config.get_ldap3_connection() as conn:
         dn = 'uid='+user.username+','+config.ldap_base_dn_users
         if not user.ldapEntry:
-            if conn.add(dn, object_class=ldap_data["ldap_new_object_class"], attributes=ldap_data["ldap_new_attributes"], controls=None):
-                updated = True
-            else:
+            if not conn.add(dn, object_class=ldap_data["ldap_new_object_class"], attributes=ldap_data["ldap_new_attributes"], controls=None):
                 raise HTTPException(500, detail=conn.result)
         else:
             changes = {}
             for key, value in ldap_data["ldap_new_attributes"].items():
                 changes[key] = [(ldap3.MODIFY_REPLACE, value)]
 
-            if conn.modify(dn, changes=changes):
-                updated = True
-            else:
+            if not conn.modify(dn, changes=changes):
                 raise HTTPException(500, detail=conn.result)
 
-    if setup_type == 'groups':
-        conn = ldap3.Connection(ldap3.Server(config.ldap_host, get_info=ldap3.ALL),
-                                config.ldap_user_dn, config.ldap_password, auto_bind=True)
+def admin_user_ldapsetup_post_groups(config: datatypes.Settings, user: datatypes.UserInfoMaster, ldap_data: dict) -> None:
+    with config.get_ldap3_connection() as conn:
         user_dn = 'uid='+user.username+','+config.ldap_base_dn_users
 
         for add in ldap_data["ldap_groups_add"]:
@@ -324,24 +335,17 @@ async def admin_user_ldapsetup_post(
             if not conn.modify(removal, changes={"member": [(ldap3.MODIFY_DELETE, [user_dn])]}):
                 raise HTTPException(500, detail=conn.result)
 
-        updated = True
-
-    if setup_type == 'kc':
-        client: AsyncOAuth2Client = request.app.state.app_session.oauth_client
-        resp = await client.put(
-            request.app.state.config.keycloak_adminapi_url+'users/'+quote(user.id),
-            headers={'Accept': 'application/json'},
-            token=session_data.to_tokens(),
-            json={
-                "attributes": ldap_data["ldap_kc_attributes"],
-                "federationLink": config.ldap_kc_fedlink_id,
-            }
-        )
-        if resp.status_code != 204:
-            raise HTTPException(resp.status_code, detail=resp.json())
-        updated = True
-
-    if updated:
-        return RedirectResponse(request.url_for('admin_user_ldapsetup_landing', user_id=user_id)+"?updated=1", status_code=303)
-    else:
-        raise HTTPException(422, detail="type incorrect")
+async def admin_user_ldapsetup_post_kc(client: AsyncOAuth2Client, session_data: SessionData,
+                                       user: datatypes.UserInfoMaster, config: datatypes.Settings,
+                                       ldap_data: dict) -> None:
+    resp = await client.put(
+        config.keycloak_adminapi_url+'users/'+quote(user.id),
+        headers={'Accept': 'application/json'},
+        token=session_data.to_tokens(),
+        json={
+            "attributes": ldap_data["ldap_kc_attributes"],
+            "federationLink": config.ldap_kc_fedlink_id,
+        }
+    )
+    if resp.status_code != 204:
+        raise HTTPException(resp.status_code, detail=resp.json())

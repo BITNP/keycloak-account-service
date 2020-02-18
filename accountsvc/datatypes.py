@@ -5,6 +5,7 @@ from enum import Enum
 
 from pydantic import BaseModel, BaseSettings, IPvAnyAddress, validator, root_validator, constr, Field, MissingError
 from starlette.requests import Request
+import ldap3
 
 
 class LoadingSettings(BaseSettings):
@@ -46,6 +47,10 @@ class LoadingSettings(BaseSettings):
     ldap_kc_fedlink_id: str = ''
 
     jira_user_search_url_f: str = 'https://jira.bitnp.net/secure/admin/user/UserBrowser.jspa?userSearchFilter={username}'
+
+    def get_ldap3_connection(self) -> ldap3.Connection:
+        return ldap3.Connection(ldap3.Server(self.ldap_host, get_info=ldap3.ALL),
+                                self.ldap_user_dn, self.ldap_password, auto_bind=True)
 
 class Settings(LoadingSettings):
     group_config: 'GroupConfig'
