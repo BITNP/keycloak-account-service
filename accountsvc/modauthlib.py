@@ -95,7 +95,6 @@ async def deps_get_session(request: Request,
 
     # expiry maintainance
     if session_data and datetime.utcnow() >= session_data.access_token_expires_at:
-        print(session_data.access_token_expires_at)
         # request a new access token with OIDC
         try:
             if not session_data.refresh_token:
