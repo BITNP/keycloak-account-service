@@ -1,8 +1,12 @@
 {
-    "@active/alumni": {"name": "养老", "internal_note": "曾经是网协管理层，但已不再属于正式成员的活跃用户，**权限同当届管理层**"},
-    "@active/management": {"name": "管理层", "internal_note": "现任管理层"},
+    "@active/management": {"name": "管理层", "internal_note": "现任管理层（不包括主席团）"},
     "@active/master": {"name": "主席团", "internal_note": "现任主席团"},
-    "@active/member": {"name": "部员", "internal_note": "现任网协部员（不属于管理层）"},
+    "@active/member": {"name": "（弃用）部员", "internal_note": "本组已弃用，请使用对应的部门组，现任网协部员（不属于管理层）"},
+    "@active/techsvc": {"name": "技术保障中心", "internal_note": "现任技术保障中心部员或管理层"},
+    "@active/techdept": {"name": "技术类", "internal_note": "现任技术类部员或管理层"},
+    "@active/orgdept": {"name": "组织部", "internal_note": "现任组织部部员或管理层"},
+    "@active/digimedia": {"name": "数字媒体部", "internal_note": "现任数字媒体部部员或管理层"},
+    "@active/clinic": {"name": "电脑诊所", "internal_note": "现任电脑诊所部员或管理层"},
     "/bitnp/iam-master": {"name": "IAM 超管", "internal_note": "技术保障中心网协通行证系统管理员"},
     "/bitnp/clinic-service": {"name": "诊所用户", "internal_note": "电脑诊所会内用户（值班部员、管理）"},
     "/bitnp-affiliate/affiliate-active": {"name": "网协之友", "internal_note": "非网协成员（比如非学生身份），但需要以网协部员身份使用网协服务"}
