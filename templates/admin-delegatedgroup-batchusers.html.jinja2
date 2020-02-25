@@ -68,9 +68,15 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
+                        <tr class="table-warning">
                             <th scope="row">username</th>
-                            <td><select class="form-control form-control-sm text-nowrap" style="min-width:5em"><option value="0">未知待处理</option><option value="-1">非成员</option><option value="1">当前成员</option></select></td>
+                            <td>
+                                <select class="form-control form-control-sm text-nowrap" style="min-width:5em"><option value="0">未知待处理</option><option value="-1">非成员</option><option value="1">当前成员</option></select>
+                                <details>
+                                    <summary>&#x26A0;&#xFE0F; 错误</summary>
+                                    <p>A computer science portal for geeks</p>
+                                </details>
+                            </td>
                             <td>enabled</td><td>name</td><td>email</td><td>createdTimestamp</td>
                             <td class="text-nowrap">
                                 <button type="button" class="btn btn-sm btn-outline-danger text-nowrap remove-btn">&#x274C; 移除</button>
