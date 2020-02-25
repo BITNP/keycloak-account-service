@@ -476,16 +476,20 @@ async def admin_group_config_get_managerof(request: Request, session_data: Sessi
 @router.get("/delegated-groups/batch-users", include_in_schema=False)
 async def admin_delagated_group_batchuser(
         request: Request,
-        path: str = Query(...),
+        path: Optional[str] = Query(None),
         session_data: SessionData = Depends(deps_requires_admin_session),
         templates: TemplateService = Depends(),
     ) -> Response:
     # Verify that they have permission with the path
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
-    current_group = await _admin_delegated_groups_path_to_group(request, session_data, grouplist, path)
+    if path:
+        current_group = await _admin_delegated_groups_path_to_group(request, session_data, grouplist, path)
+    else:
+        current_group = None
 
     # This is a single page app
     return templates.TemplateResponse('admin-delegatedgroup-batchusers.html.jinja2', {
         'path': path,
         'group': current_group,
+        'grouplist': grouplist,
     })

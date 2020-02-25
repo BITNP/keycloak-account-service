@@ -7,17 +7,16 @@
     <link rel="stylesheet" href="{{ url_for('static', path='css/bootstrap.min.css') }}" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
 
     <title>{% block title %}{{ app_title }}{% endblock %}</title>
+    <style>.d-none-if-empty:empty{display: none;}</style>
   </head>
   <body>
     <div class="container d-flex flex-column flex-md-row align-items-center p-3 px-md-4 mb-3 border-bottom">
       <h5 class="my-0 mr-md-auto font-weight-normal"><a href="{{ url_for("index") }}" class="text-body">网协通行证</a></h5>
-      <nav class="my-2 my-md-0 align-items-center row text-muted">
-        {% if signed_in is sameas true %}
+      <nav class="my-2 my-md-0 align-items-center row text-muted d-none-if-empty">{% if signed_in is sameas true %}
         <span class="mr-2">{{ name }}</span> <a href="{{ url_for("logout") }}">登出网协通行证</a>
         {% elif signed_in is sameas false %}
         <a href="{{ url_for("index") }}">尚未登录</a>
-        {% endif %}
-      </nav>
+        {% endif %}</nav>
     </div>
 
     <main class="container">
