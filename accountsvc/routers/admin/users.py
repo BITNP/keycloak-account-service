@@ -10,7 +10,7 @@ import ldap3
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 from accountsvc import datatypes
-from accountsvc.modauthlib import (SessionData, deps_requires_master_session,
+from accountsvc.modauthlib import (SessionData, deps_requires_admin_session, deps_requires_master_session,
                                    deps_get_csrf_field, deps_requires_csrf_posttoken)
 
 router: APIRouter = APIRouter()
@@ -21,7 +21,7 @@ router: APIRouter = APIRouter()
 })
 async def admin_users(
         request: Request,
-        session_data: SessionData = Depends(deps_requires_master_session),
+        session_data: SessionData = Depends(deps_requires_admin_session),
         search: str = '',
         first: int = 0,
     ) -> Union[List[datatypes.ProfileInfo], Response]:
@@ -47,24 +47,35 @@ async def admin_users(
 
 async def admin_users_json(
         request: Request,
-        session_data: SessionData,
+        session_data: Optional[SessionData] = None,
         search: str = '',
         first: int = 0,
         sort_by: str = 'createdTimestamp',
     ) -> List[datatypes.ProfileInfo]:
-    client: AsyncOAuth2Client = request.app.state.app_session.oauth_client
-    resp = await client.get(
-        request.app.state.config.keycloak_adminapi_url+'users?briefRepresentation=true&max=100&first='+str(first)+'&search='+quote(search),
-        headers={'Accept': 'application/json'},
-        token=session_data.to_tokens()
-    )
-    if resp.status_code == 200:
+    if session_data and session_data.is_master():
+        client: AsyncOAuth2Client = request.app.state.app_session.oauth_client
+        resp = await client.get(
+            request.app.state.config.keycloak_adminapi_url+'users?briefRepresentation=true&max=100&first='+str(first)+'&search='+quote(search),
+            headers={'Accept': 'application/json'},
+            token=session_data.to_tokens()
+        )
+        if resp.status_code != 200:
+            raise HTTPException(resp.status_code, detail=resp.json())
         users = list(datatypes.ProfileInfo.parse_obj(p) for p in resp.json())
         if sort_by == 'createdTimestamp':
             users.sort(key=lambda item: item.createdTimestamp, reverse=True)
         return users
     else:
-        raise HTTPException(resp.status_code, detail=resp.json())
+        # non-master fallback, used by _delegated_groups_member_add_json as well
+        parsed_user = await _admin_search_users_by_username(request, search)
+        if len(parsed_user) == 0:
+            # Try again with search=username
+            parsed_user = await _admin_search_users(request, search)
+        if len(parsed_user) == 0:
+            raise HTTPException(status_code=404, detail="Cannot find any user according to username")
+        if len(parsed_user) > 1:
+            raise HTTPException(status_code=422, detail="No exact match username is available, and search result contains more than one user; please check username input")
+        return parsed_user
 
 
 async def _admin_search_users(

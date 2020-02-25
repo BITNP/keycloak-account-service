@@ -11,7 +11,7 @@ from accountsvc import datatypes, invitation
 from accountsvc.modauthlib import (SessionData, deps_requires_admin_session, deps_requires_master_session,
                                    deps_get_csrf_field, deps_requires_csrf_posttoken)
 from accountsvc.utils import TemplateService
-from .users import _admin_search_users, _admin_search_users_by_username
+from .users import _admin_search_users, _admin_search_users_by_username, admin_users_json
 
 router: APIRouter = APIRouter()
 
@@ -208,14 +208,7 @@ async def _delegated_groups_member_add_json(
 
     parsed_user = None
     if not user_id and username:
-        parsed_user = await _admin_search_users_by_username(request, username)
-        if len(parsed_user) == 0:
-            # Try again with search=username
-            parsed_user = await _admin_search_users(request, username)
-        if len(parsed_user) == 0:
-            raise HTTPException(status_code=404, detail="Cannot find any user according to username")
-        if len(parsed_user) > 1:
-            raise HTTPException(status_code=422, detail="No exact match username is available, and search result contains more than one user; please check username input")
+        parsed_user = await admin_users_json(request=request, session_data=None, search=username)
         user_id = parsed_user[0].id
 
     async with request.app.state.app_session.get_service_account_oauth_client() as client:
@@ -479,3 +472,20 @@ async def admin_group_config_get_managerof(request: Request, session_data: Sessi
 
         managerof_roles.append(r)
     return managerof_roles
+
+@router.get("/delegated-groups/batch-users", include_in_schema=False)
+async def admin_delagated_group_batchuser(
+        request: Request,
+        path: str = Query(...),
+        session_data: SessionData = Depends(deps_requires_admin_session),
+        templates: TemplateService = Depends(),
+    ) -> Response:
+    # Verify that they have permission with the path
+    grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
+    current_group = await _admin_delegated_groups_path_to_group(request, session_data, grouplist, path)
+
+    # This is a single page app
+    return templates.TemplateResponse('admin-delegatedgroup-batchusers.html.jinja2', {
+        'path': path,
+        'group': current_group,
+    })
