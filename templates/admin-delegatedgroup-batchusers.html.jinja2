@@ -34,7 +34,7 @@
                                         {% for g in grouplist %}<option value="{{ g.path }}">{{ g.path }} {{ g.name }}</option>
                                         {% endfor %}
                                     </select>
-                                    <button type="submit" class="btn btn-outline-primary mb-2 mb-sm-0 mr-2">加载用户</button>
+                                    <button type="submit" class="btn btn-outline-primary mb-2 mb-sm-0 mr-2" v-bind:disabled="!!importByGroupProcessing"><span class="spinner-border spinner-border-sm" role="status" v-bind:aria-hidden="importByGroupProcessing ? 'false' : 'true'" v-bind:class="{'d-none': !importByGroupProcessing}"></span> 加载用户</button>
                                     <small class="text-muted">将只会导入直接下属群组的用户（不显示子群组用户）</small>
                                 </form>
                             </div>
@@ -113,7 +113,7 @@
                 </tr>
             </thead>
             <tbody>
-                <comp-list-item v-for="(item, index) in userList" v-bind.sync="item" v-bind:key="item.username+'|'+item.email" v-on:remove="removeItem(index)" v-on:requestUpdate="loadItemMeta(index)"></comp-list-item>
+                <comp-list-item v-for="(item, index) in userList" v-bind.sync="item" v-bind:key="item.username+'|'+item.email" v-on:remove="removeItem(index)" v-on:requestMeta="loadItemMeta(index)"></comp-list-item>
             </tbody>
         </table>
     </div>
@@ -126,15 +126,15 @@
     <th scope="row">{{ username }}</th>
     <td>
         <select class="form-control form-control-sm text-nowrap" style="min-width:5em" v-model="opState" v-on:change="$emit('update:opState', opState);"><option value="0">未知待处理</option><option value="-1">非成员</option><option value="1">当前成员</option></select>
-        <details v-if="errorMessage">
+        <details open v-if="errorMessage">
             <summary>&#x26A0;&#xFE0F; 错误</summary>
             <div>{{ errorMessage }}</div>
         </details>
     </td>
-    <td>{{ enabled }}</td><td>{{ name }}</td><td>{{ email }}</td><td>{{ createdTimestamp }}</td>
+    <td>{{ enabled }}</td><td>{{ name }}</td><td>{{ email }}</td><td>{{ (createdTimestamp||'').replace('000+00:00', '+0') }}</td>
     <td class="text-nowrap">
         <button type="button" class="btn btn-sm btn-outline-danger text-nowrap" v-on:click="$emit('remove')">&#x274C; 移除</button>
-        <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" v-on:click="$emit('requestUpdate')">&#x1F504; 信息</button>
+        <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" v-on:click="$emit('requestMeta')" v-bind:disabled="!!metaLoading"><span class="spinner-border spinner-border-sm" role="status" v-bind:aria-hidden="metaLoading ? 'false' : 'true'" v-bind:class="{'d-none': !metaLoading}"></span> <span v-bind:class="{'d-none': metaLoading}">&#x1F504;</span> 信息</button>
     </td>
 </tr>
 {% endraw %}
@@ -145,5 +145,6 @@
 <script src="{{ url_for('static', path='js/jquery-3.4.1.slim.min.js') }}" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
 <script src="{{ url_for('static', path='js/bootstrap.bundle.min.js') }}" integrity="sha256-OUFW7hFO0/r5aEGTQOz9F/aXQOt+TwqI1Z4fbVvww04=" crossorigin="anonymous"></script>
 <script src="https://cdn.staticfile.org/vue/2.6.11/vue.min.js" integrity="sha256-ngFW3UnAN0Tnm76mDuu7uUtYEcG3G5H1+zioJw3t+68=" crossorigin="anonymous"></script>
+<script src="https://cdn.staticfile.org/axios/0.19.2/axios.min.js" integrity="sha256-T/f7Sju1ZfNNfBh7skWn0idlCBcI3RwdLSS4/I7NQKQ=" crossorigin="anonymous"></script>
 <script src="{{ url_for('static', path='js/groupbatchuser.js') }}"></script>
 {% endblock %}
