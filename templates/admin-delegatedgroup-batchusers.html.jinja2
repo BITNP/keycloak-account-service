@@ -58,7 +58,7 @@
                         目标群组
                     </div>
                     <div class="card-body">
-                        <form class="mb-3" id="operation-form" v-on:submit="execute($event)">
+                        <form id="operation-form" v-on:submit="execute($event)">
                             {% if group %}
                             <p><strong>{{ group.name }}</strong>：{{ group.internal_note }}</p>
                             <input type="hidden" name="target-path" value="{{ group.path }}">
@@ -100,8 +100,8 @@
 <script type="text/x-template" id="comp-list-template">
 {% raw %}
 <div class="card mb-3">
+    <a href="#comp-target" class="sr-only sr-only-focusable">跳转到目标群组</a>
     <div class="card-header">待操作用户列表</div>
-    <a href="#comp-target" class="sr-only">跳转到目标群组</a>
     <div class="table-responsive">
         <table class="table mb-1">
             <caption class="pl-3">列表中共有 {{ userList.length }} 个用户</caption>
@@ -132,7 +132,7 @@
         <select class="form-control form-control-sm text-nowrap" style="min-width:5em" v-model="opState" v-on:change="$emit('update:opState', opState);"><option value="0">未知待处理</option><option value="-1">非成员</option><option value="1">当前成员</option></select>
         <details v-if="errorMessage">
             <summary>&#x26A0;&#xFE0F; 错误</summary>
-            <p>{{ errorMessage }}</p>
+            <div>{{ errorMessage }}</div>
         </details>
     </td>
     <td>{{ enabled }}</td><td>{{ name }}</td><td>{{ email }}</td><td>{{ createdTimestamp }}</td>
