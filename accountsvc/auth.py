@@ -445,6 +445,8 @@ class BITNPSessions(BITNPFastAPICSRFAddon, object): # pylint: disable=useless-ob
 
     async def exception_handler(self, request: Request, exc: Exception) -> Response:
         if isinstance(exc, RequiresTokenException):
+            if request.state.response_type.is_json():
+                return Response(status_code=401)
             return await self.oauth_client.authorize_redirect(request, str(request.url))
         if isinstance(exc, RemovesAuthParamsException):
             clean_url = self.oauth_client.get_cleaned_redirect_url_str(request.url)
