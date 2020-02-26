@@ -100,7 +100,7 @@
     <div class="card-header">待操作用户列表</div>
     <div class="table-responsive">
         <table class="table mb-1">
-            <caption class="pl-3">列表中共有 {{ userList.length }} 个用户</caption>
+            <caption class="pl-3">列表中共有 {{ userList.length }} 个用户；操作状态通常不需要手动改动</caption>
             <thead>
                 <tr>
                 <th scope="col" class="border-top-0">用户名</th>
@@ -134,7 +134,7 @@
     <td>{{ enabled }}</td><td>{{ name }}</td><td>{{ email }}</td><td>{{ (createdTimestamp||'').replace('000+00:00', '+0') }}</td>
     <td class="text-nowrap">
         <button type="button" class="btn btn-sm btn-outline-danger text-nowrap" v-on:click="$emit('remove')">&#x274C; 移除</button>
-        <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" v-on:click="$emit('requestMeta')" v-bind:disabled="!!metaLoading"><span class="spinner-border spinner-border-sm" role="status" v-bind:aria-hidden="metaLoading ? 'false' : 'true'" v-bind:class="{'d-none': !metaLoading}"></span> <span v-bind:class="{'d-none': metaLoading}">&#x1F504;</span> 信息</button>
+        <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" v-on:click="$emit('requestMeta')" v-bind:disabled="!!metaLoading" title="在你看不到用户姓名时，手动加载用户信息"><span class="spinner-border spinner-border-sm" role="status" v-bind:aria-hidden="metaLoading ? 'false' : 'true'" v-bind:class="{'d-none': !metaLoading}"></span> <span v-bind:class="{'d-none': metaLoading}">&#x1F504;</span> 信息</button>
     </td>
 </tr>
 {% endraw %}

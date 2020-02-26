@@ -70,12 +70,31 @@ if(window.Vue){
                 this.importByListText = '';
             },
             addItem: function (item) {
+                // check duplicate
+                var first_dup_index = -1;
+                this.userList.some(function(user, index){
+                    if(user.username == item.username || user.email == item.username){
+                        first_dup_index = index;
+                        return true; // equivalent to break in forEach
+                    }
+                });
+                if (first_dup_index != -1){
+                    if (this.userList[first_dup_index].email == item.username){
+                        // in this case userList item is loaded
+                        // so we shouldn't update it with a rough item
+                        return;
+                    }
+                    // update first occurance
+                    Vue.set(this.userList, first_dup_index,
+                        Object.assign({}, this.userList[first_dup_index], item));
+                    return;
+                }
+                // init default value
                 if (item.opState == undefined){
                     item.opState = 0;
                 }
                 item.errorMessage = '';
                 item.metaLoading = false;
-                // TODO: duplicate elimination
                 this.userList.push(item);
             }
         }
