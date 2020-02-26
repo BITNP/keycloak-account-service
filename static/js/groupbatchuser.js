@@ -1,6 +1,7 @@
 /* phy@bitnp.net */
 if(window.Vue){
     var importByGroupLimit = 100;
+    var executeSleepTime = 400;
     var axiosGlobalCatch = function(error){
         if (error.response && error.response.status == 401) {
             alert('请刷新页面重新登录。');
@@ -178,66 +179,132 @@ if(window.Vue){
         }
     });
     Vue.component('comp-target', {
-        props: {userList: Array, targetPath: String, targetInternalNote: String},
+        props: {userList: Array, initialTargetPath: String, initialTargetInternalNote: String},
         data: function(){return {
             operation: 'add',
             userListPending: [],
-            processing: 0,
-            // targetPath: this.initialTargetPath || '',
+            processing: false,
+            processingPromise: null,
+            targetMembers: [],
+            targetPath: this.initialTargetPath,
+            targetInternalNote: this.initialTargetInternalNote,
         };},
         computed: {
             pendingCount: function(){
                 return this.userListPending.length;
             },
-            doneCount: function(){
-                return this.userList.length - this.pendingCount;
-            },
         },
         watch: {
-            operation: {
-                handler: function(newv, oldv){
-                    this.watchUserList();
-                },
+            operation: function(newv){
+                this.watchUserList();
             },
             userList: {
                 deep: true,
-                handler: function(newv, oldv){
+                handler: function(newv){
                     this.watchUserList();
                 },
             },
-            targetPath: {
-                handler: function(newv, oldv){
-                    this.targetInternalNote = '';
+            targetPath: function(newv, oldv){
+                this.targetInternalNote = '';
+                this.targetMembers = [];
+            },
+            processing: function(newv){
+                if(newv){
+                    // this is requesting a start, but it already starts
+                    // we don't want multiprocessing here
+                    if(this.processingPromise){
+                        this.processing = false;
+                        alert("正在等待未完成的操作，如需继续，请重新点击开始。");
+                        return;
+                    }
+                    this.startNextExecution();
                 }
             }
         },
         methods: {
             watchUserList: function(){
-                this.userListPending = this.userList.filter(this.getUserListPendingFilter());
+                this.userListPending = this.userList.filter(this.getUserListPendingFilter(false));
             },
-            getUserListPendingFilter: function(){
+            getUserListPendingFilter: function(includesError){
                 if (this.operation == 'add') {
                     return function(item){
-                        return item.opState != 1;
+                        return item.opState != 1 && (includesError || item.errorMessage == '');
                     };
                 }
                 if (this.operation == 'remove') {
                     return function(item){
-                        return item.opState != -1;
+                        return item.opState != -1 && (includesError || item.errorMessage == '');
                     };
                 }
                 return function(item){
-                    return item.opState == 0;
+                    return item.opState == 0 && (includesError || item.errorMessage == '');
                 };
             },
-            execute: function (event) {
+            toggleExecution: function (event) {
                 if(event) event.preventDefault();
                 this.processing = !this.processing;
             },
             clearDone: function (event) {
                 if(event) event.preventDefault();
-                var filt = this.getUserListPendingFilter();
+                var filt = this.getUserListPendingFilter(true); // kept items
+                // Vue.set(this, 'userList', this.userList.filter(filt));
                 this.$emit('update:userList', this.userList.filter(filt));
+            },
+            clearError: function (event) {
+                if(event) event.preventDefault();
+                this.userList.forEach(function(item){
+                    if (item.errorMessage) Vue.set(item, 'errorMessage', '');
+                });
+            },
+            _executionPreCheck: function (){
+                if (!this.processing){
+                    return false; // stopped
+                }
+                if (!this.userListPending.length){
+                    this.processing = false;
+                    return false; // no more to execute
+                }
+                return true;
+            },
+            startNextExecution: function () {
+                var _this = this;
+                if (!this._executionPreCheck()){
+                    return; // stopped
+                }
+                /*
+                 * Find next item first:
+                 * after the item is done, it must
+                 * - change opState, or
+                 * - set errorMessage
+                 */
+                var user = this.userListPending[0];
+                if (this.operation == 'add') {
+                    this.processingPromise = true;
+                    Vue.set(user, 'errorMessage', 'NotImplemented');
+                    return _this.sleepAndStartNextExecution();
+                }
+                if (this.operation == 'remove') {
+                    this.processingPromise = true;
+                    Vue.set(user, 'errorMessage', 'NotImplemented');
+                    return _this.sleepAndStartNextExecution();
+                }
+                if (this.operation == 'compare') {
+                    this.processingPromise = true;
+                    Vue.set(user, 'opState', 1);
+                    return _this.sleepAndStartNextExecution();
+                }
+                user.errorMessage = 'NotImplemented';
+                return _this.sleepAndStartNextExecution();
+            },
+            sleepAndStartNextExecution: function(){
+                var _this = this;
+                _this.processingPromise = null;
+                return _this.$nextTick(function(){
+                    // prevent UI from showing -1
+                    if (_this._executionPreCheck()){
+                        setTimeout(function(){_this.startNextExecution();}, executeSleepTime);
+                    }
+                });
             }
         }
     });
@@ -245,7 +312,12 @@ if(window.Vue){
         el: '#app',
         data: {
             userList: [],
-            // targetPath: '',
+            initialTargetPath: '',
+            initialTargetInternalNote: '',
+        },
+        mounted: function(){
+            this.initialTargetPath = this.$el.dataset.targetPath;
+            this.initialTargetInternalNote = this.$el.dataset.targetInternalNote;
         }
     });
 }

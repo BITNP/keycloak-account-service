@@ -9,7 +9,7 @@
                 <li class="breadcrumb-item active" aria-current="page">批量管理用户</li>
             </ol>
         </nav>
-        <div id="app">
+        <div id="app" data-target-path="{{ group.path if group else '' }}" data-target-internal-note="{{ group.internal_note if group else '' }}">
             <div id="app-loading" class="alert alert-warning" role="alert" v-if="false">正在加载应用…如耗时过长，请确认你已经登录互联网。</div>
             <comp-importer inline-template v-bind:user-list="userList">
                 <div class="card mb-3">
@@ -54,38 +54,41 @@
                 </div>
             </comp-importer>
             <comp-list v-bind:user-list="userList"></comp-list>
-            <comp-target inline-template v-bind:user-list.sync="userList" target-path="{{ group.path if group else '' }}" target-internal-note="{{ group.internal_note if group else '' }}">
+            <comp-target inline-template v-bind:user-list.sync="userList" v-bind:initial-target-path="initialTargetPath" v-bind:initial-target-internal-note="initialTargetInternalNote">
                 <div id="comp-target" class="card">
                     <div class="card-header">
                         目标群组
                     </div>
                     <div class="card-body">
-                        <form id="operation-form" v-on:submit="execute($event)">
+                        <form id="operation-form" v-on:submit="toggleExecution($event)">
                             <div class="form-inline mb-2">
-                                <label class="col-form-label mr-2" for="target-path">选择群组</label>
-                                <select name="target-path" class="form-control mr-2" required v-model="targetPath">
-                                    <option disabled value="">请选择…</option>
-                                    {% for g in grouplist %}<option value="{{ g.path }}">{{ g.path }} {{ g.name }}</option>
-                                    {% endfor %}
-                                </select>
+                                <label class="col-form-label">
+                                    选择群组
+                                    <select name="target-path" class="form-control mx-2" required v-model="targetPath" v-bind:disabled="!!processing">
+                                        <option disabled value="">请选择…</option>
+                                        {% for g in grouplist %}<option value="{{ g.path }}">{{ g.path }} {{ g.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
                             </div>
                             <blockquote class="card-text" v-if="targetInternalNote">{{ '{{ targetInternalNote }}' }}</blockquote>
                             <div class="form-inline">
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="operation" id="operation-add" value="add" v-model="operation">
+                                    <input class="form-check-input" type="radio" name="operation" id="operation-add" value="add" v-model="operation" v-bind:disabled="!!processing">
                                     <label class="form-check-label" for="operation-add">加入本群组</label>
                                 </div>
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="operation" id="operation-remove" value="remove" v-model="operation">
+                                    <input class="form-check-input" type="radio" name="operation" id="operation-remove" value="remove" v-model="operation" v-bind:disabled="!!processing">
                                     <label class="form-check-label" for="operation-remove">移出本群组</label>
                                 </div>
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="operation" id="operation-compare" value="compare" v-model="operation">
+                                    <input class="form-check-input" type="radio" name="operation" id="operation-compare" value="compare" v-model="operation" v-bind:disabled="!!processing">
                                     <label class="form-check-label" for="operation-compare">查询是否在组</label>
                                 </div>
                                 <div class="mt-2 mt-lg-0">
-                                    <button type="submit" class="btn btn-primary mb-2 mb-sm-0 mr-1" v-bind:aria-pressed="processing ? 'true' : 'false'" v-bind:class="{'active': processing}" v-if="pendingCount"><span class="spinner-border spinner-border-sm" role="status" v-bind:aria-hidden="processing ? 'false' : 'true'" v-bind:class="{'d-none': !processing}"></span> {{ '{{(processing?"停止剩余 ":"对 ")+pendingCount}}' }} 个用户操作</button>
-                                    <button type="button" class="btn btn-outline-secondary mb-2 mb-sm-0 mr-2" v-on:click="clearDone" v-if="doneCount">移除无需操作的 {{ '{{doneCount}}' }} 个用户</button>
+                                    <button type="submit" class="btn btn-primary mb-2 mb-sm-0 mr-1" v-bind:aria-pressed="processing ? 'true' : 'false'" v-bind:class="{'active': processing}" v-bind:disabled="pendingCount == 0"><span class="spinner-border spinner-border-sm" role="status" v-bind:aria-hidden="processing ? 'false' : 'true'" v-bind:class="{'d-none': !processing}"></span> {{ '{{(processing?("停止剩余 "+(pendingCount-1)):"对 "+pendingCount)}}' }} 个用户操作</button>
+                                    <button type="button" class="btn btn-outline-secondary mb-2 mb-sm-0 mr-2" v-on:click="clearDone">移除无需操作的用户</button>
+                                    <button type="button" class="btn btn-outline-danger mb-2 mb-sm-0 mr-2" v-on:click="clearError">清除所有错误</button>
                                 </div>
                             </div>
                         </form>
@@ -146,7 +149,8 @@
 {% block footer_script %}
 <script src="{{ url_for('static', path='js/jquery-3.4.1.slim.min.js') }}" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
 <script src="{{ url_for('static', path='js/bootstrap.bundle.min.js') }}" integrity="sha256-OUFW7hFO0/r5aEGTQOz9F/aXQOt+TwqI1Z4fbVvww04=" crossorigin="anonymous"></script>
-<script src="https://cdn.staticfile.org/vue/2.6.11/vue.min.js" integrity="sha256-ngFW3UnAN0Tnm76mDuu7uUtYEcG3G5H1+zioJw3t+68=" crossorigin="anonymous"></script>
+<!--<script src="https://cdn.staticfile.org/vue/2.6.11/vue.min.js" integrity="sha256-ngFW3UnAN0Tnm76mDuu7uUtYEcG3G5H1+zioJw3t+68=" crossorigin="anonymous"></script>-->
+<script src="https://cdn.staticfile.org/vue/2.6.11/vue.js" crossorigin="anonymous"></script>
 <script src="https://cdn.staticfile.org/axios/0.19.2/axios.min.js" integrity="sha256-T/f7Sju1ZfNNfBh7skWn0idlCBcI3RwdLSS4/I7NQKQ=" crossorigin="anonymous"></script>
 <script src="{{ url_for('static', path='js/groupbatchuser.js') }}"></script>
 {% endblock %}
