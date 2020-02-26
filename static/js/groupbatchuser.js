@@ -68,7 +68,7 @@ if(window.Vue){
         }
     });
     Vue.component('comp-target', {
-        props: {userList: Array, targetPath: String},
+        props: {userList: Array, targetPath: String, targetInternalNote: String},
         data: function(){return {
             operation: 'add',
             userListPending: [],
@@ -95,6 +95,11 @@ if(window.Vue){
                     this.watchUserList();
                 },
             },
+            targetPath: {
+                handler: function(newv, oldv){
+                    this.targetInternalNote = '';
+                }
+            }
         },
         methods: {
             watchUserList: function(){

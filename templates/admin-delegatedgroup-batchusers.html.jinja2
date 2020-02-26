@@ -31,7 +31,7 @@
                                     <label class="col-form-label mr-2" for="import-by-group-path">选择群组</label>
                                     <select id="import-by-group-path" class="form-control mr-2 mb-2 mb-md-0" required v-model="importByGroupPath">
                                         <option disabled value="">请选择…</option>
-                                        {% for g in grouplist %}<option value="{{ g.path }}">{{ g.name }} ({{ g.path }})</option>
+                                        {% for g in grouplist %}<option value="{{ g.path }}">{{ g.path }} {{ g.name }}</option>
                                         {% endfor %}
                                     </select>
                                     <button type="submit" class="btn btn-outline-primary mb-2 mb-sm-0 mr-2">加载用户</button>
@@ -52,26 +52,22 @@
                 </div>
             </comp-importer>
             <comp-list v-bind:user-list="userList"></comp-list>
-            <comp-target inline-template v-bind:user-list.sync="userList" target-path="{{ group.path if group else '' }}">
+            <comp-target inline-template v-bind:user-list.sync="userList" target-path="{{ group.path if group else '' }}" target-internal-note="{{ group.internal_note if group else '' }}">
                 <div id="comp-target" class="card">
                     <div class="card-header">
                         目标群组
                     </div>
                     <div class="card-body">
                         <form id="operation-form" v-on:submit="execute($event)">
-                            {% if group %}
-                            <p><strong>{{ group.name }}</strong>：{{ group.internal_note }}</p>
-                            <input type="hidden" name="target-path" value="{{ group.path }}">
-                            {% else %}
                             <div class="form-inline mb-2">
                                 <label class="col-form-label mr-2" for="target-path">选择群组</label>
                                 <select name="target-path" class="form-control mr-2" required v-model="targetPath">
                                     <option disabled value="">请选择…</option>
-                                    {% for g in grouplist %}<option value="{{ g.path }}">{{ g.name }} ({{ g.path }})</option>
+                                    {% for g in grouplist %}<option value="{{ g.path }}">{{ g.path }} {{ g.name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
-                            {% endif %}
+                            <blockquote class="card-text" v-if="targetInternalNote">{{ '{{ targetInternalNote }}' }}</blockquote>
                             <div class="form-inline">
                                 <div class="form-check form-check-inline">
                                     <input class="form-check-input" type="radio" name="operation" id="operation-add" value="add" v-model="operation">
