@@ -116,6 +116,9 @@ if(window.Vue){
             removeItem: function(index){
                 this.userList.splice(index, 1);
             },
+            clearError: function(index){
+                this.userList[index].errorMessage = '';
+            },
             loadItemMeta: function(index){
                 var userList = this.userList, thisitem = userList[index];
                 thisitem.metaLoading = true;

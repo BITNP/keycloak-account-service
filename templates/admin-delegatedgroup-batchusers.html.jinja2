@@ -115,7 +115,7 @@
                 </tr>
             </thead>
             <tbody>
-                <comp-list-item v-for="(item, index) in userList" v-bind.sync="item" v-bind:key="item.username+'|'+item.email" v-on:remove="removeItem(index)" v-on:requestMeta="loadItemMeta(index)"></comp-list-item>
+                <comp-list-item v-for="(item, index) in userList" v-bind.sync="item" v-bind:key="item.username+'|'+item.email" v-on:remove="removeItem(index)" v-on:requestMeta="loadItemMeta(index)" v-on:clearError="clearError(index)"></comp-list-item>
             </tbody>
         </table>
     </div>
@@ -129,7 +129,7 @@
     <td>
         <select class="form-control form-control-sm text-nowrap" style="min-width:5em" v-model="opState" v-on:change="$emit('update:opState', opState);"><option value="0">未知待处理</option><option value="-1">非成员</option><option value="1">当前成员</option></select>
         <details open v-if="errorMessage">
-            <summary>&#x26A0;&#xFE0F; 错误</summary>
+            <summary>&#x26A0;&#xFE0F; 错误 <button class="btn btn-link p-0 align-baseline" v-on:click="$emit('clearError')">(清除以继续请求)</button></summary>
             <div>{{ errorMessage }}</div>
         </details>
     </td>
