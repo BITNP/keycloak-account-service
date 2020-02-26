@@ -86,7 +86,7 @@
                                     <label class="form-check-label" for="operation-compare">查询是否在组</label>
                                 </div>
                                 <div class="mt-2 mt-lg-0">
-                                    <button type="submit" class="btn btn-primary mb-2 mb-sm-0 mr-1" data-toggle="button" aria-pressed="false" v-if="pendingCount"><span class="spinner-border spinner-border-sm" role="status" v-bind:aria-hidden="processor ? 'false' : 'true'" v-bind:class="{'d-none': !processor}"></span> 对 {{ '{{pendingCount}}' }} 个用户操作</button>
+                                    <button type="submit" class="btn btn-primary mb-2 mb-sm-0 mr-1" v-bind:aria-pressed="processing ? 'true' : 'false'" v-bind:class="{'active': processing}" v-if="pendingCount"><span class="spinner-border spinner-border-sm" role="status" v-bind:aria-hidden="processing ? 'false' : 'true'" v-bind:class="{'d-none': !processing}"></span> {{ '{{(processing?"停止剩余 ":"对 ")+pendingCount}}' }} 个用户操作</button>
                                     <button type="button" class="btn btn-outline-secondary mb-2 mb-sm-0 mr-2" v-on:click="clearDone" v-if="doneCount">移除无需操作的 {{ '{{doneCount}}' }} 个用户</button>
                                 </div>
                             </div>

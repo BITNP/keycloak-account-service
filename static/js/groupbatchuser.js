@@ -72,7 +72,7 @@ if(window.Vue){
         data: function(){return {
             operation: 'add',
             userListPending: [],
-            processor: 0,
+            processing: 0,
             // targetPath: this.initialTargetPath || '',
         };},
         computed: {
@@ -117,7 +117,7 @@ if(window.Vue){
             },
             execute: function (event) {
                 if(event) event.preventDefault();
-                alert(this.targetPath);
+                this.processing = !this.processing;
             },
             clearDone: function (event) {
                 if(event) event.preventDefault();
