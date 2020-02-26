@@ -30,7 +30,7 @@
                                 <form class="form-inline mt-2" id="import-by-group-form" v-on:submit="importByGroup($event)">
                                     <label class="col-form-label mr-2" for="import-by-group-path">选择群组</label>
                                     <select id="import-by-group-path" class="form-control mr-2 mb-2 mb-md-0" required v-model="importByGroupPath">
-                                        <option value="">请选择…</option>
+                                        <option disabled value="">请选择…</option>
                                         {% for g in grouplist %}<option value="{{ g.path }}">{{ g.name }} ({{ g.path }})</option>
                                         {% endfor %}
                                     </select>
@@ -86,8 +86,8 @@
                                     <label class="form-check-label" for="operation-compare">查询是否在组</label>
                                 </div>
                                 <div class="mt-2 mt-lg-0">
-                                    <button type="submit" class="btn btn-primary mb-2 mb-sm-0 mr-1" data-toggle="button" aria-pressed="false"><span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span> 对 {{ '{{pendingCount}}' }} 个用户操作</button>
-                                    <button type="button" class="btn btn-outline-secondary mb-2 mb-sm-0 mr-2" v-on:click="clearDone">移除无需操作的 {{ '{{doneCount}}' }} 个用户</button>
+                                    <button type="submit" class="btn btn-primary mb-2 mb-sm-0 mr-1" data-toggle="button" aria-pressed="false" v-if="pendingCount"><span class="spinner-border spinner-border-sm" role="status" v-bind:aria-hidden="processor ? 'false' : 'true'" v-bind:class="{'d-none': !processor}"></span> 对 {{ '{{pendingCount}}' }} 个用户操作</button>
+                                    <button type="button" class="btn btn-outline-secondary mb-2 mb-sm-0 mr-2" v-on:click="clearDone" v-if="doneCount">移除无需操作的 {{ '{{doneCount}}' }} 个用户</button>
                                 </div>
                             </div>
                         </form>
@@ -149,140 +149,5 @@
 <script src="{{ url_for('static', path='js/jquery-3.4.1.slim.min.js') }}" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
 <script src="{{ url_for('static', path='js/bootstrap.bundle.min.js') }}" integrity="sha256-OUFW7hFO0/r5aEGTQOz9F/aXQOt+TwqI1Z4fbVvww04=" crossorigin="anonymous"></script>
 <script src="https://cdn.staticfile.org/vue/2.6.11/vue.min.js" integrity="sha256-ngFW3UnAN0Tnm76mDuu7uUtYEcG3G5H1+zioJw3t+68=" crossorigin="anonymous"></script>
-<script>
-if(window.Vue){
-    Vue.component('comp-importer', {
-        props: {userList: Array},
-        data: function(){return {
-            importByGroupPath: '',
-            importByListText: sessionStorage['groupbatch_importByListText'] || '',
-        }},
-        watch: {
-            importByListText: function(newValue){
-                sessionStorage['groupbatch_importByListText'] = newValue;
-            }
-        },
-        mounted: function(){
-            // switch tab
-            if (sessionStorage['groupbatch_importByListText']){
-                jQuery(this.$refs['import-tabs-by-list']).tab('show');
-            }
-        },
-        methods: {
-            importByGroup: function (event) {
-                if(event) event.preventDefault();
-                alert(this.importByGroupPath);
-            },
-            importByList: function (event) {
-                if(event) event.preventDefault();
-                var addItem = this.addItem;
-                this.importByListText.split("\n").forEach(function(v){
-                    var inp = v.trim();
-                    if (inp != '') {
-                        addItem({username: inp});
-                    }
-                    // if (inp.indexOf('@') >= 0){
-                    //     addItem({email: inp});
-                    // }else{
-                    // }
-                });
-                this.importByListText = '';
-            },
-            addItem: function (item) {
-                if (item.opState == undefined){
-                    item.opState = 0;
-                }
-                // TODO: duplicate elimination
-                this.userList.push(item);
-            }
-        }
-    });
-    Vue.component('comp-list', {
-        props: {userList: Array},
-        template: '#comp-list-template',
-        methods: {
-            removeItem: function(index){
-                this.userList.splice(index, 1);
-            },
-            loadItemMeta: function(index){
-                Vue.set(this.userList[index], 'errorMessage', 'DEV');
-            }
-        }
-    });
-    Vue.component('comp-list-item', {
-        props: {username: String, email: String, opState: Number, enabled: String, errorMessage: String, name: String, createdTimestamp: String, index: Number},
-        template: '#comp-list-item-template',
-        methods: {
-            loadMeta: function(){
-                this.errorMessage = 'Dev';
-            }
-        }
-    });
-    Vue.component('comp-target', {
-        props: {userList: Array, targetPath: String},
-        data: function(){return {
-            operation: 'add',
-            userListPending: [],
-            // targetPath: this.initialTargetPath || '',
-        };},
-        computed: {
-            pendingCount: function(){
-                return this.userListPending.length;
-            },
-            doneCount: function(){
-                return this.userList.length - this.pendingCount;
-            },
-        },
-        watch: {
-            operation: {
-                handler: function(newv, oldv){
-                    this.watchUserList();
-                },
-            },
-            userList: {
-                deep: true,
-                handler: function(newv, oldv){
-                    this.watchUserList();
-                },
-            },
-        },
-        methods: {
-            watchUserList: function(){
-                this.userListPending = this.userList.filter(this.getUserListPendingFilter());
-            },
-            getUserListPendingFilter: function(){
-                if (this.operation == 'add') {
-                    return function(item){
-                        return item.opState != 1;
-                    };
-                }
-                if (this.operation == 'remove') {
-                    return function(item){
-                        return item.opState != -1;
-                    };
-                }
-                return function(item){
-                    return item.opState == 0;
-                };
-            },
-            execute: function (event) {
-                if(event) event.preventDefault();
-                alert(this.targetPath);
-            },
-            clearDone: function (event) {
-                if(event) event.preventDefault();
-                var filt = this.getUserListPendingFilter();
-                this.$emit('update:userList', this.userList.filter(filt));
-            }
-        }
-    });
-    var view = new Vue({
-        el: '#app',
-        data: {
-            userList: [],
-            // targetPath: '',
-        }
-    });
-}
-</script>
+<script src="{{ url_for('static', path='js/groupbatchuser.js') }}"></script>
 {% endblock %}
