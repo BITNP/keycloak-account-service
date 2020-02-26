@@ -34,9 +34,11 @@
                                         {% for g in grouplist %}<option value="{{ g.path }}">{{ g.path }} {{ g.name }}</option>
                                         {% endfor %}
                                     </select>
-                                    <button type="submit" class="btn btn-outline-primary mb-2 mb-sm-0 mr-2" v-bind:disabled="!!importByGroupProcessing"><span class="spinner-border spinner-border-sm" role="status" v-bind:aria-hidden="importByGroupProcessing ? 'false' : 'true'" v-bind:class="{'d-none': !importByGroupProcessing}"></span> 加载用户</button>
-                                    <small class="text-muted">将只会导入直接下属群组的用户（不显示子群组用户）</small>
+                                    从第
+                                    <input type="number" class="form-control col-1 d-inline-block" min="0" name="first" v-model="importByGroupFirst" required> 项开始
+                                    <button type="submit" class="btn btn-outline-primary mb-2 mb-sm-0 mr-2 ml-0 ml-sm-2" v-bind:disabled="!!importByGroupProcessing"><span class="spinner-border spinner-border-sm" role="status" v-bind:aria-hidden="importByGroupProcessing ? 'false' : 'true'" v-bind:class="{'d-none': !importByGroupProcessing}"></span> 加载用户</button>
                                 </form>
+                                <p class="card-text"><small class="text-muted">将只会导入直接下属群组的用户（不显示子群组用户）；通常不需要修改数字</small></p>
                             </div>
                             <div class="tab-pane" id="import-by-list" role="tabpanel" aria-labelledby="import-tabs-by-list">
                                 <form id="import-by-list-form" class="mt-2" v-on:submit="importByList($event)">

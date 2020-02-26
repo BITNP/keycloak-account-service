@@ -1,5 +1,6 @@
 /* phy@bitnp.net */
 if(window.Vue){
+    var importByGroupLimit = 100;
     var axiosGlobalCatch = function(error){
         if (error.response && error.response.status == 401) {
             alert('请刷新页面重新登录。');
@@ -18,7 +19,8 @@ if(window.Vue){
         props: {userList: Array},
         data: function(){return {
             importByGroupPath: '',
-            importByGroupProcessing: 0,
+            importByGroupFirst: 0,
+            importByGroupProcessing: false,
             importByListText: sessionStorage['groupbatch_importByListText'] || '',
         }},
         watch: {
@@ -36,22 +38,30 @@ if(window.Vue){
             importByGroup: function (event) {
                 if(event) event.preventDefault();
                 var addItem = this.addItem, _this = this;
-                _this.importByGroupProcessing = 1;
+                _this.importByGroupProcessing = true;
                 axios({
                     method: 'GET',
                     url: './',
                     params: {
-                        path: this.importByGroupPath
+                        path: this.importByGroupPath,
+                        first: this.importByGroupFirst,
                     }
                 })
                     .then(function(response){
                         response.data[0].members.forEach(function(user){
                             addItem(user);
                         });
+                        if(response.data[0].members.length >= importByGroupLimit){
+                            alert("本组成员较多，目前只请求了 "+importByGroupLimit+" 项结果，将为你修改表单中的数字，但你需要手动点击加载成员，继续加载成员。");
+                            _this.importByGroupFirst = _this.importByGroupFirst + response.data[0].members.length;
+                        }
+                        if(response.data[0].members.length == 0){
+                            alert('你的请求条件下没有返回结果。这通常表示你不需要继续加载成员，或数字设置得过大。');
+                        }
                     })
                     .catch(axiosGlobalCatch)
                     .finally(function(){
-                        _this.importByGroupProcessing = 0;
+                        _this.importByGroupProcessing = false;
                     });
             },
             importByList: function (event) {
