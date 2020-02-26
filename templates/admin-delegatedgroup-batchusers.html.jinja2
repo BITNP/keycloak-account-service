@@ -9,126 +9,140 @@
                 <li class="breadcrumb-item active" aria-current="page">批量管理用户</li>
             </ol>
         </nav>
-        <div id="app-loading" class="alert alert-warning" role="alert">正在加载应用…如耗时过长，请确认你已经登录互联网。</div>
-        <div class="card mb-3" id="comp-importer">
-            <div class="card-header">
-                <ul class="nav nav-tabs card-header-tabs" id="import-tabs" role="tablist">
-                    <!--<li class="nav-item nav-link disabled">导入需操作的来源用户</li>-->
-                    <li class="nav-item">
-                        <a class="nav-link active" id="import-tabs-by-group" data-toggle="tab" href="#import-by-group" role="tab" aria-controls="import-by-group" aria-selected="true">按现有群组导入</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="import-tabs-by-list" data-toggle="tab" href="#import-by-list" role="tab" aria-controls="import-by-list" aria-selected="false">按列表导入</a>
-                    </li>
-                </ul>
-            </div>
-            <div class="card-body">
-                <div class="tab-content" id="import-content">
-                    <div class="tab-pane show active" id="import-by-group" role="tabpanel" aria-labelledby="import-tabs-by-group">
-                        <form class="form-inline mt-2" id="import-by-group-form">
-                            <label class="col-form-label mr-2" for="import-by-group-path">选择群组</label>
-                            <select id="import-by-group-path" class="form-control mr-2 mb-2 mb-md-0" required>
-                                <option value="">请选择…</option>
-                                {% for g in grouplist %}<option value="{{ g.path }}">{{ g.name }} ({{ g.path }})</option>
-                                {% endfor %}
-                            </select>
-                            <button type="submit" class="btn btn-outline-primary mb-2 mb-sm-0 mr-2">加载用户</button>
-                            <small class="text-muted">将只会导入直接下属群组的用户（不显示子群组用户）</small>
-                        </form>
+        <div id="app">
+            <div id="app-loading" class="alert alert-warning" role="alert" v-if="false">正在加载应用…如耗时过长，请确认你已经登录互联网。</div>
+            <comp-importer inline-template v-bind:user-list="userList">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs" id="import-tabs" role="tablist">
+                            <!--<li class="nav-item nav-link disabled">导入需操作的来源用户</li>-->
+                            <li class="nav-item">
+                                <a class="nav-link active" id="import-tabs-by-group" data-toggle="tab" href="#import-by-group" role="tab" aria-controls="import-by-group" aria-selected="true" ref="import-tabs-by-group">按现有群组导入</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="import-tabs-by-list" data-toggle="tab" href="#import-by-list" role="tab" aria-controls="import-by-list" aria-selected="false" ref="import-tabs-by-list">按列表导入</a>
+                            </li>
+                        </ul>
                     </div>
-                    <div class="tab-pane" id="import-by-list" role="tabpanel" aria-labelledby="import-tabs-by-list">
-                        <form id="import-by-list-form" class="mt-2">
-                            <div class="form-group">
-                                <label for="import-by-list-textarea" class="sr-only">用户名 / 邮箱列表</label>
-                                <textarea class="form-control" id="import-by-list-textarea" rows="5" placeholder="用户名或邮箱，每行一个" required></textarea>
+                    <div class="card-body">
+                        <div class="tab-content" id="import-content">
+                            <div class="tab-pane show active" id="import-by-group" role="tabpanel" aria-labelledby="import-tabs-by-group">
+                                <form class="form-inline mt-2" id="import-by-group-form" v-on:submit="importByGroup($event)">
+                                    <label class="col-form-label mr-2" for="import-by-group-path">选择群组</label>
+                                    <select id="import-by-group-path" class="form-control mr-2 mb-2 mb-md-0" required v-model="importByGroupPath">
+                                        <option value="">请选择…</option>
+                                        {% for g in grouplist %}<option value="{{ g.path }}">{{ g.name }} ({{ g.path }})</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn btn-outline-primary mb-2 mb-sm-0 mr-2">加载用户</button>
+                                    <small class="text-muted">将只会导入直接下属群组的用户（不显示子群组用户）</small>
+                                </form>
                             </div>
-                            <button type="submit" class="btn btn-outline-primary mb-2 mb-sm-0 mr-2">加载用户</button>
-                        </form>
+                            <div class="tab-pane" id="import-by-list" role="tabpanel" aria-labelledby="import-tabs-by-list">
+                                <form id="import-by-list-form" class="mt-2" v-on:submit="importByList($event)">
+                                    <div class="form-group">
+                                        <label for="import-by-list-textarea" class="sr-only">用户名 / 邮箱列表</label>
+                                        <textarea class="form-control" id="import-by-list-textarea" rows="5" placeholder="用户名或邮箱，每行一个" required v-model="importByListText"></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-outline-primary mb-2 mb-sm-0 mr-2">加载用户</button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
-        <div class="card mb-3" id="comp-list">
-            <div class="card-header">
-                待操作用户列表
-            </div>
-            <a href="#comp-target" class="sr-only">跳转到目标群组</a>
-            <div class="table-responsive">
-                <table class="table mb-1">
-                    <caption class="pl-3">列表中共有 0 个用户</caption>
-                    <thead>
-                        <tr>
-                        <th scope="col" class="border-top-0">用户名</th>
-                        <th scope="col" class="border-top-0">操作状态</th>
-                        <th scope="col" class="border-top-0">启用</th>
-                        <th scope="col" class="border-top-0">姓名</th>
-                        <th scope="col" class="border-top-0">邮箱</th>
-                        <th scope="col" class="border-top-0">用户创建</th>
-                        <th scope="col" class="border-top-0">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="table-warning">
-                            <th scope="row">username</th>
-                            <td>
-                                <select class="form-control form-control-sm text-nowrap" style="min-width:5em"><option value="0">未知待处理</option><option value="-1">非成员</option><option value="1">当前成员</option></select>
-                                <details>
-                                    <summary>&#x26A0;&#xFE0F; 错误</summary>
-                                    <p>A computer science portal for geeks</p>
-                                </details>
-                            </td>
-                            <td>enabled</td><td>name</td><td>email</td><td>createdTimestamp</td>
-                            <td class="text-nowrap">
-                                <button type="button" class="btn btn-sm btn-outline-danger text-nowrap remove-btn">&#x274C; 移除</button>
-                                <button type="button" class="btn btn-sm btn-outline-primary text-nowrap info-btn">&#x1F504; 信息</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="card" id="comp-target">
-            <div class="card-header">
-                目标群组
-            </div>
-            <div class="card-body">
-                <form class="mb-3" id="operation-form">
-                    {% if group %}
-                    <p><strong>{{ group.name }}</strong>：{{ group.internal_note }}</p>
-                    <input type="hidden" id="target-path" name="target-path" value="{{ group.path }}">
-                    {% else %}
-                    <div class="form-inline mb-2">
-                        <label class="col-form-label mr-2" for="target-path">选择群组</label>
-                        <select id="target-path" name="target-path" class="form-control mr-2" required>
-                            <option value="">请选择…</option>
-                            {% for g in grouplist %}<option value="{{ g.path }}">{{ g.name }} ({{ g.path }})</option>
-                            {% endfor %}
-                        </select>
+            </comp-importer>
+            <comp-list v-bind:user-list="userList"></comp-list>
+            <comp-target inline-template v-bind:user-list.sync="userList" target-path="{{ group.path if group else '' }}">
+                <div id="comp-target" class="card">
+                    <div class="card-header">
+                        目标群组
                     </div>
-                    {% endif %}
-                    <div class="form-inline">
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="operation" id="operation-add" value="add" checked>
-                            <label class="form-check-label" for="operation-add">加入本群组</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="operation" id="operation-remove" value="remove">
-                            <label class="form-check-label" for="operation-remove">移出本群组</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="operation" id="operation-compare" value="compare">
-                            <label class="form-check-label" for="operation-compare">查询是否在组</label>
-                        </div>
-                        <div class="mt-2 mt-lg-0">
-                            <button type="submit" class="btn btn-primary mb-2 mb-sm-0 mr-1" data-toggle="button" aria-pressed="false"><span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span> 对 0 个用户操作</button>
-                            <button type="button" class="btn btn-outline-secondary mb-2 mb-sm-0 mr-2">移除无需操作的 0 个用户</button>
-                        </div>
+                    <div class="card-body">
+                        <form class="mb-3" id="operation-form" v-on:submit="execute($event)">
+                            {% if group %}
+                            <p><strong>{{ group.name }}</strong>：{{ group.internal_note }}</p>
+                            <input type="hidden" name="target-path" value="{{ group.path }}">
+                            {% else %}
+                            <div class="form-inline mb-2">
+                                <label class="col-form-label mr-2" for="target-path">选择群组</label>
+                                <select name="target-path" class="form-control mr-2" required v-model="targetPath">
+                                    <option disabled value="">请选择…</option>
+                                    {% for g in grouplist %}<option value="{{ g.path }}">{{ g.name }} ({{ g.path }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% endif %}
+                            <div class="form-inline">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="operation" id="operation-add" value="add" v-model="operation">
+                                    <label class="form-check-label" for="operation-add">加入本群组</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="operation" id="operation-remove" value="remove" v-model="operation">
+                                    <label class="form-check-label" for="operation-remove">移出本群组</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="operation" id="operation-compare" value="compare" v-model="operation">
+                                    <label class="form-check-label" for="operation-compare">查询是否在组</label>
+                                </div>
+                                <div class="mt-2 mt-lg-0">
+                                    <button type="submit" class="btn btn-primary mb-2 mb-sm-0 mr-1" data-toggle="button" aria-pressed="false"><span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span> 对 {{ '{{pendingCount}}' }} 个用户操作</button>
+                                    <button type="button" class="btn btn-outline-secondary mb-2 mb-sm-0 mr-2" v-on:click="clearDone">移除无需操作的 {{ '{{doneCount}}' }} 个用户</button>
+                                </div>
+                            </div>
+                        </form>
+                        <p class="text-muted card-text"><small>群组变更在用户侧需要重新登录应用才会生效</small></p>
                     </div>
-                </form>
-                <p class="text-muted card-text"><small>群组变更在用户侧需要重新登录应用才会生效</small></p>
-            </div>
+                </div>
+            </comp-target>
         </div>
     </div>
+<script type="text/x-template" id="comp-list-template">
+{% raw %}
+<div class="card mb-3">
+    <div class="card-header">待操作用户列表</div>
+    <a href="#comp-target" class="sr-only">跳转到目标群组</a>
+    <div class="table-responsive">
+        <table class="table mb-1">
+            <caption class="pl-3">列表中共有 {{ userList.length }} 个用户</caption>
+            <thead>
+                <tr>
+                <th scope="col" class="border-top-0">用户名</th>
+                <th scope="col" class="border-top-0">操作状态</th>
+                <th scope="col" class="border-top-0">启用</th>
+                <th scope="col" class="border-top-0">姓名</th>
+                <th scope="col" class="border-top-0">邮箱</th>
+                <th scope="col" class="border-top-0">用户创建</th>
+                <th scope="col" class="border-top-0">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <comp-list-item v-for="(item, index) in userList" v-bind.sync="item" v-bind:key="item.username+'|'+item.email" v-on:remove="removeItem(index)" v-on:requestUpdate="loadItemMeta(index)"></comp-list-item>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endraw %}
+</script>
+<script type="text/x-template" id="comp-list-item-template">
+{% raw %}
+<tr v-bind:class="{ 'table-warning': !!errorMessage }">
+    <th scope="row">{{ username }}</th>
+    <td>
+        <select class="form-control form-control-sm text-nowrap" style="min-width:5em" v-model="opState" v-on:change="$emit('update:opState', opState);"><option value="0">未知待处理</option><option value="-1">非成员</option><option value="1">当前成员</option></select>
+        <details v-if="errorMessage">
+            <summary>&#x26A0;&#xFE0F; 错误</summary>
+            <p>{{ errorMessage }}</p>
+        </details>
+    </td>
+    <td>{{ enabled }}</td><td>{{ name }}</td><td>{{ email }}</td><td>{{ createdTimestamp }}</td>
+    <td class="text-nowrap">
+        <button type="button" class="btn btn-sm btn-outline-danger text-nowrap" v-on:click="$emit('remove')">&#x274C; 移除</button>
+        <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" v-on:click="$emit('requestUpdate')">&#x1F504; 信息</button>
+    </td>
+</tr>
+{% endraw %}
+</script>
 {% endblock %}
 
 {% block footer_script %}
@@ -137,7 +151,138 @@
 <script src="https://cdn.staticfile.org/vue/2.6.11/vue.min.js" integrity="sha256-ngFW3UnAN0Tnm76mDuu7uUtYEcG3G5H1+zioJw3t+68=" crossorigin="anonymous"></script>
 <script>
 if(window.Vue){
-    document.getElementById('app-loading').style.display = 'none';
+    Vue.component('comp-importer', {
+        props: {userList: Array},
+        data: function(){return {
+            importByGroupPath: '',
+            importByListText: sessionStorage['groupbatch_importByListText'] || '',
+        }},
+        watch: {
+            importByListText: function(newValue){
+                sessionStorage['groupbatch_importByListText'] = newValue;
+            }
+        },
+        mounted: function(){
+            // switch tab
+            if (sessionStorage['groupbatch_importByListText']){
+                jQuery(this.$refs['import-tabs-by-list']).tab('show');
+            }
+        },
+        methods: {
+            importByGroup: function (event) {
+                if(event) event.preventDefault();
+                alert(this.importByGroupPath);
+            },
+            importByList: function (event) {
+                if(event) event.preventDefault();
+                var addItem = this.addItem;
+                this.importByListText.split("\n").forEach(function(v){
+                    var inp = v.trim();
+                    if (inp != '') {
+                        addItem({username: inp});
+                    }
+                    // if (inp.indexOf('@') >= 0){
+                    //     addItem({email: inp});
+                    // }else{
+                    // }
+                });
+                this.importByListText = '';
+            },
+            addItem: function (item) {
+                if (item.opState == undefined){
+                    item.opState = 0;
+                }
+                // TODO: duplicate elimination
+                this.userList.push(item);
+            }
+        }
+    });
+    Vue.component('comp-list', {
+        props: {userList: Array},
+        template: '#comp-list-template',
+        methods: {
+            removeItem: function(index){
+                this.userList.splice(index, 1);
+            },
+            loadItemMeta: function(index){
+                Vue.set(this.userList[index], 'errorMessage', 'DEV');
+            }
+        }
+    });
+    Vue.component('comp-list-item', {
+        props: {username: String, email: String, opState: Number, enabled: String, errorMessage: String, name: String, createdTimestamp: String, index: Number},
+        template: '#comp-list-item-template',
+        methods: {
+            loadMeta: function(){
+                this.errorMessage = 'Dev';
+            }
+        }
+    });
+    Vue.component('comp-target', {
+        props: {userList: Array, targetPath: String},
+        data: function(){return {
+            operation: 'add',
+            userListPending: [],
+            // targetPath: this.initialTargetPath || '',
+        };},
+        computed: {
+            pendingCount: function(){
+                return this.userListPending.length;
+            },
+            doneCount: function(){
+                return this.userList.length - this.pendingCount;
+            },
+        },
+        watch: {
+            operation: {
+                handler: function(newv, oldv){
+                    this.watchUserList();
+                },
+            },
+            userList: {
+                deep: true,
+                handler: function(newv, oldv){
+                    this.watchUserList();
+                },
+            },
+        },
+        methods: {
+            watchUserList: function(){
+                this.userListPending = this.userList.filter(this.getUserListPendingFilter());
+            },
+            getUserListPendingFilter: function(){
+                if (this.operation == 'add') {
+                    return function(item){
+                        return item.opState != 1;
+                    };
+                }
+                if (this.operation == 'remove') {
+                    return function(item){
+                        return item.opState != -1;
+                    };
+                }
+                return function(item){
+                    return item.opState == 0;
+                };
+            },
+            execute: function (event) {
+                if(event) event.preventDefault();
+                alert(this.targetPath);
+            },
+            clearDone: function (event) {
+                if(event) event.preventDefault();
+                var filt = this.getUserListPendingFilter();
+                this.$emit('update:userList', this.userList.filter(filt));
+            }
+        }
+    });
+    var view = new Vue({
+        el: '#app',
+        data: {
+            userList: [],
+            // targetPath: '',
+        }
+    });
 }
 </script>
 {% endblock %}

@@ -482,6 +482,7 @@ async def admin_delagated_group_batchuser(
     ) -> Response:
     # Verify that they have permission with the path
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
+    current_group: Optional[datatypes.KCGroupItem]
     if path:
         current_group = await _admin_delegated_groups_path_to_group(request, session_data, grouplist, path)
     else:
