@@ -208,6 +208,7 @@ if(window.Vue){
             targetPath: function(newv, oldv){
                 this.targetInternalNote = '';
                 this.targetMembers = null;
+                this.resetOpState();
             },
             processing: function(newv){
                 if(newv){
@@ -250,6 +251,12 @@ if(window.Vue){
                 var filt = this.getUserListPendingFilter(true); // kept items
                 // Vue.set(this, 'userList', this.userList.filter(filt));
                 this.$emit('update:userList', this.userList.filter(filt));
+            },
+            resetOpState: function (event){
+                if(event) event.preventDefault();
+                for(var key in this.userList){
+                    Vue.set(this.userList[key], 'opState', 0);
+                }
             },
             clearError: function (event) {
                 if(event) event.preventDefault();
@@ -391,7 +398,6 @@ if(window.Vue){
                         _this.targetMembers = [];
                     }
                     _this.targetMembers.push.apply(_this.targetMembers, response.data[0].members);
-                    console.log(response.data[0].members);
                     if(response.data[0].members.length >= importByGroupLimit){
                         return _this._executeCompareFetchPromise(first+response.data[0].members.length);
                     }
