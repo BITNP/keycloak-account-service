@@ -10,6 +10,7 @@
         </nav>
         <div id="app" data-target-path="{{ group.path if group else '' }}" data-target-internal-note="{{ group.internal_note if group else '' }}">
             <div id="app-loading" class="alert alert-warning" role="alert" v-if="false">正在加载应用…如耗时过长，请确认你已经登录互联网。</div>
+            <noscript><div class="alert alert-danger" role="alert">抱歉，请启用 JavaScript 以使用批量管理功能。</div></noscript>
             <comp-importer inline-template v-bind:user-list="userList">
                 <div class="card mb-3">
                     <div class="card-header">
