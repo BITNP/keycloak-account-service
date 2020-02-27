@@ -194,8 +194,8 @@ else if(window.Vue){
             processing: false,
             processingPromise: null,
             targetMembers: null,
-            targetPath: this.initialTargetPath,
-            targetInternalNote: this.initialTargetInternalNote,
+            targetPath: '',
+            targetInternalNote: '',
         };},
         computed: {
             pendingCount: function(){
@@ -203,6 +203,13 @@ else if(window.Vue){
             },
         },
         watch: {
+            // properly apply initial value from parent's dataset
+            initialTargetPath: function(newv){
+                if(!this.targetPath) this.targetPath = newv;
+            },
+            initialTargetInternalNote: function(newv){
+                if(!this.targetInternalNote) this.targetInternalNote = newv;
+            },
             operation: function(newv){
                 this.watchUserList();
             },
@@ -213,9 +220,11 @@ else if(window.Vue){
                 },
             },
             targetPath: function(newv, oldv){
-                this.targetInternalNote = '';
-                this.targetMembers = null;
-                this.resetOpState();
+                if (oldv){
+                    this.targetInternalNote = '';
+                    this.targetMembers = null;
+                    this.resetOpState();
+                }
             },
             processing: function(newv){
                 if(newv){

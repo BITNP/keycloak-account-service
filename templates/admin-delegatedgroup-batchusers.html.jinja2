@@ -5,8 +5,7 @@
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ url_for('sp_landing') }}">管理首页</a></li>
                 <li class="breadcrumb-item"><a href="{{ url_for('admin_delegated_groups_get') }}">群组管理</a></li>
-                {% if group %}<li class="breadcrumb-item"><a href="{{ url_for('admin_delegated_groups_get') }}?path={{ group.path | urlencode }}">{{ group.name }}</a></li>{% endif %}
-                <li class="breadcrumb-item active" aria-current="page">批量管理用户</li>
+                <li class="breadcrumb-item active" aria-current="page"><a href="{{ url_for('admin_delagated_group_batchuser') }}">批量管理用户</a></li>
             </ol>
         </nav>
         <div id="app" data-target-path="{{ group.path if group else '' }}" data-target-internal-note="{{ group.internal_note if group else '' }}">
