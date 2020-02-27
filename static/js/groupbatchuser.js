@@ -339,7 +339,7 @@ if(window.Vue){
                         for (var key in response.data){
                             Vue.set(user, key, response.data[key]); // update with meta
                         }
-                        Vue.set(user, 'opState', 1);
+                        Vue.set(user, 'opState', -1);
                     })
                     .catch(function(error){return _this._executeError(error, user);})
                     .finally(function(){
