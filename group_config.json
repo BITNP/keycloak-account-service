@@ -1,7 +1,6 @@
 {
     "@active/management": {"name": "管理层", "internal_note": "现任管理层（不包括主席团）"},
     "@active/master": {"name": "主席团", "internal_note": "现任主席团"},
-    "@active/member": {"name": "（弃用）部员", "internal_note": "本组已弃用，请使用对应的部门组，现任网协部员（不属于管理层）"},
     "@active/techsvc": {"name": "技术保障中心", "internal_note": "现任技术保障中心部员或管理层"},
     "@active/techdept": {"name": "技术类", "internal_note": "现任技术类部员或管理层"},
     "@active/orgdept": {"name": "组织部", "internal_note": "现任组织部部员或管理层"},
