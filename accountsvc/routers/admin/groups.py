@@ -63,8 +63,10 @@ async def admin_delegated_groups_get(
 @router.get("/delegated-groups/all", include_in_schema=True, response_model=List[GroupItem])
 async def admin_delegated_groups_master_list(
         request: Request,
-        session_data: SessionData = Depends(deps_requires_master_session),
+        session_data: SessionData = Depends(deps_requires_admin_session),
     ) -> Union[List[GroupItem], Response]:
+    if not session_data.is_master():
+        return await admin_delegated_groups_get(request=request, path=None, session_data=session_data)
     grouplist = await admin_delegated_groups_master_list_json(request=request, session_data=session_data)
 
     if request.state.response_type.is_json():
@@ -495,8 +497,11 @@ async def admin_delagated_group_batchuser(
         session_data: SessionData = Depends(deps_requires_admin_session),
         templates: TemplateService = Depends(),
     ) -> Response:
-    # Verify that they have permission with the path
-    grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
+    # Verify that they have permission with the path, and preload grouplist
+    if session_data.is_master():
+        grouplist = await admin_delegated_groups_master_list_json(request=request, session_data=session_data)
+    else:
+        grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
     current_group: Optional[KCGroupItem]
     if path:
         current_group = await _admin_delegated_groups_path_to_group(request, session_data, grouplist, path)
