@@ -161,7 +161,7 @@ class UserLdapEntry(BaseModel):
         return new_dict
 
 class ProfileInfo(BaseModel):
-    id: Optional[str] = None
+    id: str
     username: str = ''
     firstName: Optional[str] = None
     lastName: Optional[str] = None

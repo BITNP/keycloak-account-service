@@ -6,8 +6,10 @@ from datetime import datetime, timedelta, timezone
 from fastapi import Depends, APIRouter, HTTPException, Form, Query
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
+from pydantic import constr
 
-from accountsvc import datatypes, invitation
+from accountsvc import invitation
+from accountsvc.datatypes import GroupItem, KCGroupItem, ProfileInfo, GroupConfig, Settings
 from accountsvc.modauthlib import (SessionData, deps_requires_admin_session, deps_requires_master_session,
                                    deps_get_csrf_field, deps_requires_csrf_posttoken)
 from accountsvc.utils import TemplateService
@@ -16,14 +18,14 @@ from .users import _admin_search_users, _admin_search_users_by_username, admin_u
 router: APIRouter = APIRouter()
 
 
-@router.get("/delegated-groups/", include_in_schema=True, response_model=List[datatypes.GroupItem])
+@router.get("/delegated-groups/", include_in_schema=True, response_model=List[GroupItem])
 async def admin_delegated_groups_get(
         request: Request,
         path: Optional[str] = Query(None, example="/bitnp/active"),
         session_data: SessionData = Depends(deps_requires_admin_session),
         first: int = Query(0, example="0"),
         csrf_field: tuple = Depends(deps_get_csrf_field),
-    ) -> Union[List[datatypes.GroupItem], Response]:
+    ) -> Union[List[GroupItem], Response]:
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
     if path is None:
         if request.state.response_type.is_json():
@@ -58,11 +60,11 @@ async def admin_delegated_groups_get(
                 "csrf_field": csrf_field,
             })
 
-@router.get("/delegated-groups/all", include_in_schema=True, response_model=List[datatypes.GroupItem])
+@router.get("/delegated-groups/all", include_in_schema=True, response_model=List[GroupItem])
 async def admin_delegated_groups_master_list(
         request: Request,
         session_data: SessionData = Depends(deps_requires_master_session),
-    ) -> Union[List[datatypes.GroupItem], Response]:
+    ) -> Union[List[GroupItem], Response]:
     grouplist = await admin_delegated_groups_master_list_json(request=request, session_data=session_data)
 
     if request.state.response_type.is_json():
@@ -80,16 +82,16 @@ async def admin_delegated_groups_master_list(
 async def _admin_delegated_groups_path_to_group(
         request: Request,
         session_data: SessionData,
-        grouplist: List[datatypes.GroupItem],
+        grouplist: List[GroupItem],
         path: str,
-    ) -> datatypes.KCGroupItem:
+    ) -> KCGroupItem:
     # check if path is inside allowed grouplist - some ACL control
     current_groups = list(filter(lambda g: g.path == path, grouplist))
     if len(current_groups) != 1:
         if not session_data.is_master():
             raise HTTPException(status_code=403, detail="The path is not in the group list that you are allowed to access")
         # master exception
-        current_group = datatypes.GroupItem(path=path)
+        current_group = GroupItem(path=path)
     else:
         current_group = current_groups[0]
 
@@ -130,15 +132,15 @@ async def _admin_delegated_groups_path_to_group(
             print(e)
             raise HTTPException(status_code=404, detail="Cannot get group information by path")
 
-    return datatypes.KCGroupItem.parse_obj(current_group)
+    return KCGroupItem.parse_obj(current_group)
 
 async def admin_delegated_groups_detail_json(
         request: Request,
-        grouplist: List[datatypes.GroupItem],
+        grouplist: List[GroupItem],
         path: str,
         session_data: SessionData = Depends(deps_requires_admin_session),
         first: int = 0,
-    ) -> datatypes.GroupItem:
+    ) -> GroupItem:
     current_group = await _admin_delegated_groups_path_to_group(request, session_data, grouplist, path)
 
     # get group invitation link
@@ -157,7 +159,7 @@ async def _admin_groups_members_json(
         group_id: str,
         first: int = 0,
         briefRepresentation: bool = True
-    ) -> List[datatypes.ProfileInfo]:
+    ) -> List[ProfileInfo]:
     # This method DOES NOT authenticate at all; use with caution
     async with request.app.state.app_session.get_service_account_oauth_client() as client:
         resp = await client.get(
@@ -169,17 +171,17 @@ async def _admin_groups_members_json(
             },
         )
         ret = resp.json()
-        return list(datatypes.ProfileInfo.parse_obj(u) for u in ret)
+        return list(ProfileInfo.parse_obj(u) for u in ret)
 
-@router.post("/delegated-groups/member-add", include_in_schema=True, response_model=datatypes.ProfileInfo)
+@router.post("/delegated-groups/member-add", include_in_schema=True, response_model=ProfileInfo)
 async def admin_delegated_groups_member_add(
         request: Request,
         path: str = Form(...),
-        username: str = Form(None),
-        user_id: str = Form(None),
+        username: Optional[str] = Form(None),
+        user_id: Optional[constr(regex="^[A-Za-z0-9-_]+$")] = Form(None), # type: ignore # constr
         session_data: SessionData = Depends(deps_requires_admin_session),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
-    ) -> Union[datatypes.ProfileInfo, Response]:
+    ) -> Union[ProfileInfo, Response]:
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
     current_group = await _admin_delegated_groups_path_to_group(request, session_data, grouplist, path)
 
@@ -194,10 +196,10 @@ async def admin_delegated_groups_member_add(
 
 async def _delegated_groups_member_add_json(
         request: Request,
-        current_group: datatypes.KCGroupItem,
+        current_group: KCGroupItem,
         username: Optional[str] = None,
         user_id: Optional[str] = None,
-    ) -> datatypes.ProfileInfo:
+    ) -> ProfileInfo:
     """
     This function is also used on client-faced invitation join i.e. no permission check against session_data.
 
@@ -211,13 +213,15 @@ async def _delegated_groups_member_add_json(
         parsed_user = await admin_users_json(request=request, session_data=None, search=username)
         user_id = parsed_user[0].id
 
+    assert user_id is not None, "Cannot find a valid user_id"
+
     async with request.app.state.app_session.get_service_account_oauth_client() as client:
         resp = await client.put(
-            request.app.state.config.keycloak_adminapi_url+'users/'+user_id+'/groups/'+quote(current_group.id),
+            request.app.state.config.keycloak_adminapi_url+'users/'+quote(user_id)+'/groups/'+quote(current_group.id),
             # user id is always returned from Keycloak so it should be fine to use it without encoding
             headers={'Accept': 'application/json'})
         if resp.status_code == 204:
-            return parsed_user[0] if parsed_user else datatypes.ProfileInfo(id=user_id)
+            return parsed_user[0] if parsed_user else ProfileInfo(id=user_id)
         else:
             raise HTTPException(resp.status_code, detail=resp.json())
 
@@ -225,11 +229,15 @@ async def _delegated_groups_member_add_json(
 async def admin_delegated_groups_member_remove(
         request: Request,
         path: str = Form(...),
-        user_id: str = Form(...),
+        username: str = Form(None),
+        user_id: Optional[constr(regex="^[A-Za-z0-9-_]+$")] = Form(None), # type: ignore # constr
         session_data: SessionData = Depends(deps_requires_admin_session),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
     ) -> Response:
-    await admin_delegated_groups_member_remove_json(request, path, user_id, session_data)
+    grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
+    current_group = await _admin_delegated_groups_path_to_group(request, session_data, grouplist, path)
+
+    await admin_delegated_groups_member_remove_json(request, current_group, username, user_id)
     # success
     if request.state.response_type.is_json():
         return Response(status_code=204)
@@ -238,12 +246,19 @@ async def admin_delegated_groups_member_remove(
 
 async def admin_delegated_groups_member_remove_json(
         request: Request,
-        path: str,
-        user_id: str,
-        session_data: SessionData,
+        current_group: KCGroupItem,
+        username: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> None:
-    grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
-    current_group = await _admin_delegated_groups_path_to_group(request, session_data, grouplist, path)
+    if not user_id and not username:
+        raise HTTPException(status_code=422, detail="username or user_id required")
+
+    parsed_user = None
+    if not user_id and username:
+        parsed_user = await admin_users_json(request=request, session_data=None, search=username)
+        user_id = parsed_user[0].id
+
+    assert user_id is not None, "Cannot find a valid user_id"
 
     async with request.app.state.app_session.get_service_account_oauth_client() as client:
         resp = await client.delete(
@@ -305,7 +320,7 @@ async def admin_delegated_groups_update_invitation_link(
             raise HTTPException(resp.status_code, detail=resp.json())
 
 
-def guess_active_ns(session_data: SessionData, group_config: datatypes.GroupConfig) -> Tuple[Optional[str], Optional[str]]:
+def guess_active_ns(session_data: SessionData, group_config: GroupConfig) -> Tuple[Optional[str], Optional[str]]:
     """
     Guess active_ns by checking the last available year in status groups.
     Since session_data is usually admin, we assume that they have latest affiliation.
@@ -324,7 +339,7 @@ def guess_active_ns(session_data: SessionData, group_config: datatypes.GroupConf
     year = path[len(group_config.settings.group_status_prefix):].split('/', 1)[0]
     return (group_config.settings.group_status_prefix + year + '/', year)
 
-def guess_group_item(name: str, group_config: datatypes.GroupConfig) -> Optional[datatypes.GroupItem]:
+def guess_group_item(name: str, group_config: GroupConfig) -> Optional[GroupItem]:
     """
     Guess group item from name, by comparing the suffix.
 
@@ -333,7 +348,7 @@ def guess_group_item(name: str, group_config: datatypes.GroupConfig) -> Optional
     If there are multiple results, see if we could match one but only one @active/, or return None.
     """
     ret = list()
-    item: datatypes.GroupItem
+    item: GroupItem
     for item in group_config.values():
         if item.path.endswith(name):
             ret.append(item)
@@ -349,17 +364,17 @@ def guess_group_item(name: str, group_config: datatypes.GroupConfig) -> Optional
 def admin_delegated_groups_list_json(
         request: Request,
         session_data: SessionData,
-    ) -> List[datatypes.GroupItem]:
+    ) -> List[GroupItem]:
     if session_data.is_master():
         ret = list()
         active_ns, year = guess_active_ns(session_data, request.app.state.config.group_config)
-        item: datatypes.GroupItem
+        item: GroupItem
         for item in request.app.state.config.group_config.values():
             copied = item.copy(deep=True)
-            if copied.path.startswith(datatypes.GroupConfig.active_ns_placeholder):
+            if copied.path.startswith(GroupConfig.active_ns_placeholder):
                 if active_ns and year:
                     copied.path = copied.path.replace(
-                        datatypes.GroupConfig.active_ns_placeholder, active_ns+year+'-')
+                        GroupConfig.active_ns_placeholder, active_ns+year+'-')
                     copied.name = copied.name + ' ' + year
                 else:
                     # we cannot guess any active_ns; ignore this to prevent error
@@ -376,18 +391,18 @@ def admin_delegated_groups_list_json(
                 copied.path = "@managerof-"+n
                 ret.append(copied)
             else:
-                ret.append(datatypes.GroupItem(path="@managerof-"+n, name=n))
+                ret.append(GroupItem(path="@managerof-"+n, name=n))
         return ret
 
-def loop_grouptree(grouptree: Optional[list], config: datatypes.GroupConfig) -> Generator[datatypes.GroupItem, None, None]:
+def loop_grouptree(grouptree: Optional[list], config: GroupConfig) -> Generator[GroupItem, None, None]:
     if isinstance(grouptree, list):
         for g in grouptree:
-            item: datatypes.GroupItem = config.get(g['path'], None)
+            item: GroupItem = config.get(g['path'], None)
             if item:
                 item = item.copy(deep=True)
                 item.id = g['id']
             else:
-                item = datatypes.GroupItem.parse_obj(g)
+                item = GroupItem.parse_obj(g)
             yield item
 
             yield from loop_grouptree(g['subGroups'], config)
@@ -396,7 +411,7 @@ def loop_grouptree(grouptree: Optional[list], config: datatypes.GroupConfig) -> 
 async def admin_delegated_groups_master_list_json(
         request: Request,
         session_data: SessionData,
-    ) -> List[datatypes.GroupItem]:
+    ) -> List[GroupItem]:
     if session_data.is_master():
         resp = await request.app.state.app_session.oauth_client.get(
             request.app.state.config.keycloak_adminapi_url+'groups',
@@ -412,13 +427,13 @@ async def admin_delegated_groups_master_list_json(
     else:
         return []
 
-@router.get("/group-config/", include_in_schema=True, response_model=List[datatypes.GroupItem])
+@router.get("/group-config/", include_in_schema=True, response_model=List[GroupItem])
 async def admin_group_config(
         request: Request,
         session_data: SessionData = Depends(deps_requires_master_session),
         templates: TemplateService = Depends(),
-    ) -> Union[List[datatypes.GroupItem], Response]:
-    config: datatypes.Settings = request.app.state.config
+    ) -> Union[List[GroupItem], Response]:
+    config: Settings = request.app.state.config
     guessed_ns = guess_active_ns(session_data, config.group_config)
     incorrect: Optional[str] = None
     active_role_groups: list = []
@@ -445,7 +460,7 @@ async def admin_group_config(
         'incorrect': incorrect,
     })
 
-async def admin_group_config_get_managerof(request: Request, session_data: SessionData, config: datatypes.Settings) -> list:
+async def admin_group_config_get_managerof(request: Request, session_data: SessionData, config: Settings) -> list:
     managerof_roles_resp = await request.app.state.app_session.oauth_client.get(
         request.app.state.config.keycloak_adminapi_url+'clients/'+config.keycloak_client_uuid+'/roles',
         token=session_data.to_tokens(),
@@ -482,7 +497,7 @@ async def admin_delagated_group_batchuser(
     ) -> Response:
     # Verify that they have permission with the path
     grouplist = admin_delegated_groups_list_json(request=request, session_data=session_data)
-    current_group: Optional[datatypes.KCGroupItem]
+    current_group: Optional[KCGroupItem]
     if path:
         current_group = await _admin_delegated_groups_path_to_group(request, session_data, grouplist, path)
     else:
