@@ -1,5 +1,5 @@
 {
-    "@active/management": {"name": "管理层", "internal_note": "现任管理层（不包括主席团）"},
+    "@active/management": {"name": "管理层", "internal_note": "现任管理层（包括技障活跃的退休管理层，不包括主席团）"},
     "@active/master": {"name": "主席团", "internal_note": "现任主席团"},
     "@active/techsvc": {"name": "技术保障中心", "internal_note": "现任技术保障中心部员或管理层"},
     "@active/techdept": {"name": "技术类", "internal_note": "现任技术类部员或管理层"},
