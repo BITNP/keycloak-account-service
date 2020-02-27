@@ -61,16 +61,14 @@
                     </div>
                     <div class="card-body">
                         <form id="operation-form" v-on:submit="toggleExecution($event)">
-                            <div class="form-inline mb-2">
-                                <label class="col-form-label">
-                                    选择群组
-                                    <select name="target-path" class="form-control mx-2" required v-model="targetPath" v-bind:disabled="!!processing">
-                                        <option disabled value="">请选择…</option>
-                                        {% for g in grouplist %}<option value="{{ g.path }}">{{ g.path }} {{ g.name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </label>
-                            </div>
+                            <label class="form-inline mb-2">
+                                <div class="col-form-label">选择群组</div>
+                                <select name="target-path" class="form-control mx-2" required v-model="targetPath" v-bind:disabled="!!processing">
+                                    <option disabled value="">请选择…</option>
+                                    {% for g in grouplist %}<option value="{{ g.path }}">{{ g.path }} {{ g.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
                             <blockquote class="card-text" v-if="targetInternalNote">{{ '{{ targetInternalNote }}' }}</blockquote>
                             <div class="form-inline">
                                 <div class="form-check form-check-inline">
@@ -118,7 +116,7 @@
                 </tr>
             </thead>
             <tbody>
-                <comp-list-item v-for="(item, index) in userList" v-bind.sync="item" v-bind:key="item.username+'|'+item.email" v-on:remove="removeItem(index)" v-on:requestMeta="loadItemMeta(index)" v-on:clearError="clearError(index)"></comp-list-item>
+                <comp-list-item v-for="(item, index) in userList" v-bind:username.sync="item.username" v-bind:email.sync="item.email" v-bind:op-state.sync="item.opState" v-bind:enabled.sync="item.enabled" v-bind:name.sync="item.name" v-bind:created-timestamp.sync="item.createdTimestamp" v-bind:error-message.sync="item.errorMessage" v-bind:meta-loading.sync="item.metaLoading" v-bind:key="item.username+'|'+item.email" v-on:remove="removeItem(index)" v-on:requestMeta="loadItemMeta(index)" v-on:clearError="clearError(index)"></comp-list-item>
             </tbody>
         </table>
     </div>
@@ -130,7 +128,7 @@
 <tr v-bind:class="{ 'table-warning': !!errorMessage }">
     <th scope="row">{{ username }}</th>
     <td>
-        <select class="form-control form-control-sm text-nowrap" style="min-width:5em" v-model="opState" v-on:change="$emit('update:opState', opState);"><option value="0">未知待处理</option><option value="-1">非成员</option><option value="1">当前成员</option></select>
+        <select class="form-control form-control-sm text-nowrap" style="min-width:5em" v-model.number="opState" v-on:change="$emit('update:opState', opState);"><option value="0">未知待处理</option><option value="-1">非成员</option><option value="1">当前成员</option></select>
         <details open v-if="errorMessage">
             <summary>&#x26A0;&#xFE0F; 错误 <button class="btn btn-link p-0 align-baseline" v-on:click="$emit('clearError')">(清除以继续请求)</button></summary>
             <div>{{ errorMessage }}</div>

@@ -46,7 +46,8 @@ if(window.Vue){
                     params: {
                         path: this.importByGroupPath,
                         first: this.importByGroupFirst,
-                    }
+                    },
+                    headers: {'Accept': 'application/json'}
                 })
                     .then(function(response){
                         response.data[0].members.forEach(function(user){
@@ -128,7 +129,8 @@ if(window.Vue){
                     url: '../users/',
                     params: {
                         search: thisitem.username
-                    }
+                    },
+                    headers: {'Accept': 'application/json'}
                 })
                     .then(function(response){
                         var cur_user = response.data[0];
@@ -154,7 +156,6 @@ if(window.Vue){
                     })
                     .finally(function(){
                         userList[index].metaLoading = false;
-                        // Vue.set(userList, index, Object.assign({}, , {metaLoading: false}));
                     });
             }
         }
@@ -164,7 +165,7 @@ if(window.Vue){
             username: String,
             email: String,
             opState: Number,
-            enabled: String,
+            enabled: Boolean,
             name: String,
             createdTimestamp: String,
             index: Number,
@@ -181,11 +182,11 @@ if(window.Vue){
     Vue.component('comp-target', {
         props: {userList: Array, initialTargetPath: String, initialTargetInternalNote: String},
         data: function(){return {
-            operation: 'add',
+            operation: 'compare',
             userListPending: [],
             processing: false,
             processingPromise: null,
-            targetMembers: [],
+            targetMembers: null,
             targetPath: this.initialTargetPath,
             targetInternalNote: this.initialTargetInternalNote,
         };},
@@ -206,7 +207,7 @@ if(window.Vue){
             },
             targetPath: function(newv, oldv){
                 this.targetInternalNote = '';
-                this.targetMembers = [];
+                this.targetMembers = null;
             },
             processing: function(newv){
                 if(newv){
@@ -267,7 +268,6 @@ if(window.Vue){
                 return true;
             },
             startNextExecution: function () {
-                var _this = this;
                 if (!this._executionPreCheck()){
                     return; // stopped
                 }
@@ -279,22 +279,136 @@ if(window.Vue){
                  */
                 var user = this.userListPending[0];
                 if (this.operation == 'add') {
-                    this.processingPromise = true;
-                    Vue.set(user, 'errorMessage', 'NotImplemented');
-                    return _this.sleepAndStartNextExecution();
+                    return this._executeAdd(user);
                 }
                 if (this.operation == 'remove') {
-                    this.processingPromise = true;
-                    Vue.set(user, 'errorMessage', 'NotImplemented');
-                    return _this.sleepAndStartNextExecution();
+                    return this._executeRemove(user);
                 }
                 if (this.operation == 'compare') {
-                    this.processingPromise = true;
-                    Vue.set(user, 'opState', 1);
-                    return _this.sleepAndStartNextExecution();
+                    return this._executeCompare(user);
                 }
                 user.errorMessage = 'NotImplemented';
-                return _this.sleepAndStartNextExecution();
+                return this.sleepAndStartNextExecution();
+            },
+            _executeError: function(error, user){
+                // parent variable: user
+                if (error.response && error.response.status == 401) {
+                    Vue.set(user, 'errorMessage', '请刷新页面重新登录');
+                    // alert('请刷新页面重新登录。');
+                    return;
+                }
+                if (error.response) {
+                    // The request was made and the server responded with a status code
+                    // that falls out of the range of 2xx
+                    Vue.set(user, 'errorMessage', error.response.status+': '+JSON.stringify(error.response.data));
+                } else {
+                    // Something happened in setting up the request that triggered an Error
+                    Vue.set(user, 'errorMessage', error.message);
+                }
+            },
+            _executeAdd: function(user){
+                var _this = this;
+                var reqData = 'path='+encodeURIComponent(this.targetPath)+'&username='+encodeURIComponent(user.username);
+                this.processingPromise = axios({
+                    method: 'POST',
+                    url: './member-add',
+                    headers: { 'content-type': 'application/x-www-form-urlencoded', 'Accept': 'application/json'},
+                    data: reqData,
+                })
+                    .then(function(response){
+                        for (var key in response.data){
+                            Vue.set(user, key, response.data[key]); // update with meta
+                        }
+                        Vue.set(user, 'opState', 1);
+                    })
+                    .catch(function(error){return _this._executeError(error, user);})
+                    .finally(function(){
+                        _this.sleepAndStartNextExecution();
+                    });
+            },
+            _executeRemove: function(user){
+                var _this = this;
+                var reqData = 'path='+encodeURIComponent(this.targetPath)+'&username='+encodeURIComponent(user.username);
+                this.processingPromise = axios({
+                    method: 'POST',
+                    url: './member-remove',
+                    headers: { 'content-type': 'application/x-www-form-urlencoded', 'Accept': 'application/json'},
+                    data: reqData,
+                })
+                    .then(function(response){
+                        for (var key in response.data){
+                            Vue.set(user, key, response.data[key]); // update with meta
+                        }
+                        Vue.set(user, 'opState', 1);
+                    })
+                    .catch(function(error){return _this._executeError(error, user);})
+                    .finally(function(){
+                        _this.sleepAndStartNextExecution();
+                    });
+            },
+            _executeCompare: function(user){
+                var _this = this;
+                // check against MemberList
+                var compare = function(){
+                    if(!_this.processing){
+                        _this.processingPromise = null;
+                        return; // may be set by compareFetch
+                    }
+                    if(
+                        _this.targetMembers.some(function(item){
+                            if(item.username == user.username || item.email == user.username){
+                                if(user.enabled == undefined){
+                                    // update user with meta
+                                    for (var key in item){
+                                        Vue.set(user, key, item[key]);
+                                    }
+                                }
+                                return true;
+                            }
+                            return false;
+                        })
+                    ){
+                        Vue.set(user, 'opState', 1);
+                    }else{
+                        Vue.set(user, 'opState', -1);
+                    }
+
+                    _this.sleepAndStartNextExecution();
+                };
+                // fetch MemberList if not present, with auto paging
+                if (this.targetMembers == null){
+                    this.processingPromise = this._executeCompareFetchPromise(0)
+                        .then(compare);
+                }else{
+                    this.processingPromise = true;
+                    compare();
+                }
+            },
+            _executeCompareFetchPromise: function(first){
+                var _this = this;
+                var fetch_then = function(response){
+                    if (_this.targetMembers == null){
+                        _this.targetMembers = [];
+                    }
+                    _this.targetMembers.push.apply(_this.targetMembers, response.data[0].members);
+                    console.log(response.data[0].members);
+                    if(response.data[0].members.length >= importByGroupLimit){
+                        return _this._executeCompareFetchPromise(first+response.data[0].members.length);
+                    }
+                };
+                return axios({
+                    method: 'GET',
+                    url: './',
+                    params: {path: this.targetPath, first: first},
+                    headers: {'Accept': 'application/json'},
+                })
+                    .then(fetch_then)
+                    .catch(function(error){
+                        // exit
+                        _this.processingPromise = null;
+                        _this.processing = false;
+                        axiosGlobalCatch(error);
+                    });
             },
             sleepAndStartNextExecution: function(){
                 var _this = this;
