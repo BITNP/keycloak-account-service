@@ -1,10 +1,17 @@
 /* phy@bitnp.net */
-if(window.Vue){
+if(location.search.indexOf('checkSession=1') >= 0 && window.opener){
+    window.close();
+}
+else if(window.Vue){
     var importByGroupLimit = 100;
     var executeSleepTime = 400;
+    var openLoginWindow = function(){
+        window.open('?checkSession=1', 'checkSessionWindow');
+    };
     var axiosGlobalCatch = function(error){
         if (error.response && error.response.status == 401) {
             alert('请刷新页面重新登录。');
+            openLoginWindow();
             return;
         }
         if (error.response) {
@@ -301,6 +308,7 @@ if(window.Vue){
                 // parent variable: user
                 if (error.response && error.response.status == 401) {
                     Vue.set(user, 'errorMessage', '请刷新页面重新登录');
+                    openLoginWindow();
                     // alert('请刷新页面重新登录。');
                     return;
                 }
