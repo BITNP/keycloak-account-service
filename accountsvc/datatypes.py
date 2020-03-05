@@ -204,8 +204,8 @@ class UserCreationInfo(ProfileUpdateInfo):
     emailVerified: bool = False
     username: constr(min_length=2, max_length=20, regex="^[a-zA-Z0-9_-]+$") # type: ignore # for constr
     credentials: Optional[list] = None
-    newPassword: Optional[constr(min_length=6)] # type: ignore # for constr
-    confirmation: Optional[str]
+    newPassword: Optional[constr(min_length=6)] = None # type: ignore # for constr
+    confirmation: Optional[str] = None
     attributes: Optional[dict] = None
 
     def request_json(self) -> str:
@@ -217,11 +217,11 @@ class UserCreationInfo(ProfileUpdateInfo):
             raise ValueError('Password cannot match username')
         return v
 
-    @root_validator
+    @root_validator(skip_on_failure=True) # type: ignore # https://github.com/samuelcolvin/pydantic/issues/1192
     def check_passwords_match_and_init_creds(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         if values.get('credentials') is None:
             pw1, pw2 = values.get('newPassword'), values.get('confirmation')
-            if pw1 is None or pw2 is None or pw1 != pw2:
+            if not pw1 or not pw2 or pw1 != pw2:
                 raise ValueError('Passwords do not match')
 
             # init credentials
