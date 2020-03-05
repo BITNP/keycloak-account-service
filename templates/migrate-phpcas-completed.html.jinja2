@@ -3,7 +3,7 @@
     <div class="content">
         <div class="alert alert-success" role="alert">
             <h4 class="alert-heading">&#x1F389; 账户迁移完成</h4>
-            <p>欢迎使用新版网协通行证！你可以使用旧版的邮箱和密码登录 Keycloak。通过新系统登录时，你还可以使用用户名登录（<code>{{ username }}</code>）。</p>
+            <p>欢迎使用新版网协通行证！你可以使用旧版的邮箱和密码登录 Keycloak。通过新系统登录时，你还可以使用用户名登录（<code>{{ username | lower }}</code>）。</p>
             <a href="{{ url_for('sp_landing') }}" class="btn btn-primary">访问网协通行证自服务</a>
         </div>
     </div>
