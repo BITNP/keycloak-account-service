@@ -6,7 +6,8 @@ from pydantic import ValidationError
 
 from accountsvc import datatypes
 from accountsvc.phpcas_adaptor import PHPCASAdaptor, PHPCASUserInfo
-from accountsvc.modauthlib import deps_get_csrf_field, deps_requires_csrf_posttoken
+from accountsvc.modauthlib import (deps_get_csrf_field, deps_requires_csrf_posttoken,
+                                   SessionData, deps_get_session, deps_requires_master_session)
 
 router: APIRouter = APIRouter()
 EMAIL_SESSION_NAME = 'mpc_email'
@@ -15,10 +16,15 @@ EMAIL_SESSION_NAME = 'mpc_email'
 async def phpcas_migrate_landing(
         request: Request,
         csrf_field: tuple = Depends(deps_get_csrf_field),
+        session_data: SessionData = Depends(deps_get_session),
     ) -> Response:
     return request.app.state.templates.TemplateResponse("migrate-phpcas-landing.html.jinja2", {
         "request": request,
         "csrf_field": csrf_field,
+        "name": session_data.username if session_data else None,
+        "is_admin": session_data.is_admin() if session_data else None,
+        "is_master": session_data.is_master() if session_data else None,
+        "signed_in": bool(session_data),
     })
 
 
@@ -32,6 +38,7 @@ async def phpcas_migrate_process(
         name: str = Form(...),
         csrf_field: tuple = Depends(deps_get_csrf_field),
         csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
+        session_data: SessionData = Depends(deps_get_session),
     ) -> Response:
     session_email = request.session.get(EMAIL_SESSION_NAME)
     user: Union[PHPCASUserInfo, Response]
@@ -107,6 +114,11 @@ async def phpcas_migrate_process(
     return request.app.state.templates.TemplateResponse("migrate-phpcas-completed.html.jinja2", {
         "request": request,
         "username": user.name,
+        "user_uri": user_uri,
+        "name": session_data.username if session_data else None,
+        "is_admin": session_data.is_admin() if session_data else None,
+        "is_master": session_data.is_master() if session_data else None,
+        "signed_in": bool(session_data),
     })
 
 
@@ -262,3 +274,103 @@ async def phpcas_migrate_user_lookup(request: Request, username: str, email: Opt
         return Response(content="yes", status_code=200)
     else:
         return Response(status_code=204)
+
+@router.get("/admin/migrate-phpcas/", include_in_schema=False)
+async def admin_phpcas_migrate_landing(
+        request: Request,
+        csrf_field: tuple = Depends(deps_get_csrf_field),
+        session_data: SessionData = Depends(deps_requires_master_session),
+    ) -> Response:
+    return request.app.state.templates.TemplateResponse("admin-migrate-phpcas-landing.html.jinja2", {
+        "request": request,
+        "csrf_field": csrf_field,
+        "name": session_data.username if session_data else None,
+        "is_admin": session_data.is_admin() if session_data else None,
+        "is_master": session_data.is_master() if session_data else None,
+        "signed_in": bool(session_data),
+    })
+
+@router.post("/admin/migrate-phpcas/", include_in_schema=False)
+async def admin_phpcas_migrate_process(
+        request: Request,
+        email: str = Form(...),
+        csrf_field: tuple = Depends(deps_get_csrf_field),
+        csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
+        session_data: SessionData = Depends(deps_requires_master_session),
+    ) -> Response:
+    phpcas_adaptor: PHPCASAdaptor = request.app.state.phpcas_adaptor
+    user = await phpcas_adaptor.get_user_by_email(email)
+
+    if not user or not isinstance(user, PHPCASUserInfo):
+        return request.app.state.templates.TemplateResponse("admin-migrate-phpcas-landing.html.jinja2", {
+            "request": request,
+            "csrf_field": csrf_field,
+            "input_email": email,
+            "incorrect": "找不到用户。",
+        })
+
+    try:
+        new_user = datatypes.UserCreationInfo(
+            enabled=user.enabled,
+            email=email,
+            emailVerified=False,
+            name=user.real_name,
+            username=user.name,
+            credentials=[],
+            attributes={'phpCAS_id': [user.id]},
+        )
+    except ValidationError as e:
+        incorrect = "迁移失败，错误信息："+(
+            ', '.join(['.'.join(field_error['loc'])+':'+field_error['msg'] for field_error in e.errors()])
+        )
+
+        return request.app.state.templates.TemplateResponse(
+            "admin-migrate-phpcas-landing.html.jinja2",
+            {
+                "request": request,
+                "csrf_field": csrf_field,
+                "input_email": email,
+                "incorrect": incorrect,
+            })
+
+    user_uri: str
+
+    # when creating user, make sure we don't create duplicates
+    async with request.app.state.app_session.get_service_account_oauth_client() as client:
+        resp = await client.post(
+            request.app.state.config.keycloak_adminapi_url+'users',
+            data=new_user.request_json(),
+            headers={'Accept': 'application/json', 'Content-Type': 'application/json'}
+        )
+        if resp.status_code != 201:
+            incorrect = "迁移失败，错误信息："+resp.text
+            print("phpcas-migrate: Error creating {}: {}".format(new_user.username, resp.text))
+
+            return request.app.state.templates.TemplateResponse("admin-migrate-phpcas-landing.html.jinja2", {
+                "request": request,
+                "csrf_field": csrf_field,
+                "input_email": email,
+                "incorrect": incorrect,
+            })
+
+        user_uri = resp.headers.get('location', '')
+
+        # send email
+        resp = await client.put(
+            user_uri+'/execute-actions-email',
+            params={'client_id': request.app.state.config.client_id, 'redirect_uri': request.url_for("sp_landing"), 'lifespan': 60*60*24},
+            json=['UPDATE_PASSWORD'],
+            headers={'Accept': 'application/json'},
+        )
+
+        if resp.status_code != 200:
+            incorrect = "迁移成功但无法触发邮件，如有需要请到 Keycloak 配置相应的群组："+resp.text
+        else:
+            incorrect = "迁移完成，如有需要请到 Keycloak 配置相应的群组。"
+
+        return request.app.state.templates.TemplateResponse("admin-migrate-phpcas-landing.html.jinja2", {
+                "request": request,
+                "csrf_field": csrf_field,
+                "input_email": email,
+                "incorrect": incorrect,
+            })

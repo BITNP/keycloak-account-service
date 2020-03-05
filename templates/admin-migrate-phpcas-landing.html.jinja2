@@ -1,0 +1,22 @@
+{% extends "base.html.jinja2" %}
+{% block content %}
+    <div class="content">
+        <h2 class="display-5">旧版网协通行证账户迁移 - 超管</h2>
+        {% if incorrect %}<div class="alert alert-warning" role="alert">{{ incorrect }}</div>{% endif %}
+        <div class="row">
+            <div class="col-12 col-lg-6 offset-lg-3 mb-3">
+                <form id="form-email" method="POST" enctype="application/x-www-form-urlencoded">
+                    <div class="form-group">
+                        <label for="email">CAS 登录邮箱 <span class="required">*</span></label>
+                        <input type="email" class="form-control" id="email" name="email" required autocomplete="email" autofocus value="{{ input_email }}">
+                    </div>
+                    <button type="submit" class="btn btn-primary">迁移</button>
+                    <button type="reset" class="btn btn-light">重填</button>
+                    <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users" class="btn btn-outline-primary" target="_blank">Keycloak 用户管理</a>
+                    <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">
+                </form>
+                <p class="text-muted mt-3">迁移后用户会收到密码重置邮件；被禁用的用户会依然保持禁用状态。</p>
+            </div>
+        </div>
+    </div>
+{% endblock %}

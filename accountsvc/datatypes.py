@@ -204,8 +204,8 @@ class UserCreationInfo(ProfileUpdateInfo):
     emailVerified: bool = False
     username: constr(min_length=2, max_length=20, regex="^[a-zA-Z0-9_-]+$") # type: ignore # for constr
     credentials: Optional[list] = None
-    newPassword: constr(min_length=6) # type: ignore # for constr
-    confirmation: str
+    newPassword: Optional[constr(min_length=6)] # type: ignore # for constr
+    confirmation: Optional[str]
     attributes: Optional[dict] = None
 
     def request_json(self) -> str:
@@ -219,13 +219,14 @@ class UserCreationInfo(ProfileUpdateInfo):
 
     @root_validator
     def check_passwords_match_and_init_creds(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        pw1, pw2 = values.get('newPassword'), values.get('confirmation')
-        if pw1 is not None and pw2 is not None and pw1 != pw2:
-            raise ValueError('Passwords do not match')
+        if values.get('credentials') is None:
+            pw1, pw2 = values.get('newPassword'), values.get('confirmation')
+            if pw1 is None or pw2 is None or pw1 != pw2:
+                raise ValueError('Passwords do not match')
 
-        # init credentials
-        if not values.get('credentials'):
+            # init credentials
             values['credentials'] = [{'type': 'password', 'temporary': False, 'value': pw1}]
+
         return values
 
 class PasswordInfo(BaseModel):

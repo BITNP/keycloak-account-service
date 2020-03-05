@@ -26,6 +26,9 @@
                     <button type="reset" class="btn btn-light">重填</button>
                     <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">
                 </form>
+                {% if is_master %}
+                <div class="alert alert-info mt-3" role="alert">超管：<a href="{{ url_for("admin_phpcas_migrate_tool") }}">协助忘记 CAS 密码的用户迁移</a></div>
+                {% endif %}
             </div>
         </div>
     </div>
