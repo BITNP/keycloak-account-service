@@ -2,7 +2,7 @@ from typing import Union, Optional
 from urllib.parse import urlencode
 from fastapi import Depends, APIRouter
 from starlette.requests import Request
-from starlette.responses import RedirectResponse, Response
+from starlette.responses import RedirectResponse, Response, FileResponse
 
 from accountsvc import datatypes
 from accountsvc.modauthlib import (SessionData, deps_get_session)
@@ -25,6 +25,10 @@ async def index(request: Request,
         tdata['is_admin'] = session_data.is_admin()
         tdata['signed_in'] = True
     return request.app.state.templates.TemplateResponse("index.html.jinja2", tdata)
+
+@router.get("/favicon.ico", include_in_schema=False)
+async def favicon(request: Request) -> Response:
+    return FileResponse('static/favicon.ico')
 
 @router.get("/tos", response_model=datatypes.TOSData, responses={
         200: {"content": {"text/html": {}}}
