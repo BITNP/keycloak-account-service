@@ -38,7 +38,7 @@
                     <h5 class="card-title">&#x1F3E2; 对内应用</h5>
                 </div>
                 <div class="list-group list-group-flush">
-                    <a href="https://jira.bitnp.net/" class="list-group-item list-group-item-action">JIRA</a>
+                    {% if permission.has_active_role %}<a href="https://jira.bitnp.net/" class="list-group-item list-group-item-action">JIRA</a>{% endif %}
                     <a href="https://git.bitnp.net/" class="list-group-item list-group-item-action">GitLab</a>
                 </div>
             </div></div>
@@ -47,7 +47,7 @@
                     <h5 class="card-title">&#x1F310; 对外业务</h5>
                 </div>
                 <div class="list-group list-group-flush">
-                    <a href="https://clinic.bitnp.net/manage/" class="list-group-item list-group-item-action">电脑诊所（部员）</a>
+                    {% if permission.has_active_role %}<a href="https://clinic.bitnp.net/manage/" class="list-group-item list-group-item-action">电脑诊所（部员）</a>{% endif %}
                 </div>
             </div></div>
             <div class="col mb-4"><div class="card h-100">
@@ -56,7 +56,7 @@
                 </div>
                 <div class="list-group list-group-flush">
                     <a href="{{ url_for('sp_password') }}" class="list-group-item list-group-item-action">修改密码</a>
-                    <button class="list-group-item list-group-item-action" disabled>两步认证（敬请期待）</button>
+                    <a href="{{ url_for('sp_mfa_list') }}" class="list-group-item list-group-item-action">多因素认证</a>
                 </div>
             </div></div>
             <div class="col mb-4"><div class="card h-100">

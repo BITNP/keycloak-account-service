@@ -1,9 +1,10 @@
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Union
 from datetime import datetime, tzinfo, timezone, timedelta
 from collections import UserDict
 from enum import Enum
 
-from pydantic import BaseModel, BaseSettings, IPvAnyAddress, validator, root_validator, constr, Field, MissingError
+from pydantic import (BaseModel, BaseSettings, IPvAnyAddress, constr, Field,
+                      Json, validator, root_validator, MissingError)
 from starlette.requests import Request
 import ldap3
 
@@ -244,6 +245,39 @@ class PasswordUpdateRequest(BaseModel):
         if pw1 is not None and pw2 is not None and pw1 != pw2:
             raise ValueError('Passwords do not match')
         return values
+
+class CredentialItem(BaseModel):
+    id: str
+    type: str
+    userLabel: Optional[str] = None
+    createdDate: Optional[datetime] = None
+    credentialData: Union[Json, Any] = None
+
+class CredentialType(BaseModel):
+    type: str
+    category: str
+    displayName: str
+    helptext: Optional[str] = None
+    iconCssClass: Optional[str] = None
+    createAction: Optional[str] = None
+    removeable: bool
+    userCredentials: List[CredentialItem] = list()
+
+    class Config:
+        trans_dict: dict = {
+            "password-display-name": "密码",
+            "otp-display-name": "动态口令两步认证",
+            "webauthn-display-name": "安全密钥两步认证",
+            "webauthn-passwordless-display-name": "安全密钥快速登录",
+            "password-help-text": "",
+            "otp-help-text": "",
+            "webauthn-help-text": "",
+            "webauthn-passwordless-help-text": "使用你的安全密钥进行免用户名登录，仅支持可存取 Resident Key 的媒介与浏览器",
+        }
+
+    @validator('displayName', 'helptext')
+    def trans_displayName(cls, v: str, values: Dict[str, Any]) -> str:
+        return cls.Config.trans_dict.get(v, v)
 
 class KeycloakSessionClient(BaseModel):
     clientId: str

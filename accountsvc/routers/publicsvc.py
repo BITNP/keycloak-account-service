@@ -71,3 +71,20 @@ async def logout(request: Request) -> Response:
             base_url = request.url.replace(path="", query="")
             redirect_uri = str(base_url) + input_redirect_uri
         return RedirectResponse(url+"?"+urlencode({"post_logout_redirect_uri": redirect_uri}))
+
+
+@router.get("/login-action/{action}/", include_in_schema=False)
+async def kc_login_action(
+        request: Request,
+        action: str,
+        redirect_uri: Optional[str] = None,
+    ) -> Response:
+    if redirect_uri:
+        if not redirect_uri.startswith('/'):
+            redirect_uri = None
+        else:
+            base_url = request.url.replace(path="", query="")
+            redirect_uri = str(base_url) + redirect_uri
+    if not redirect_uri:
+        redirect_uri = request.url_for('sp_landing')
+    return await request.app.state.app_session.oauth_client.authorize_redirect(request, redirect_uri, kc_action=action)

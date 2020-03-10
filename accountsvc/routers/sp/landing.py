@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import Depends, APIRouter
 from starlette.requests import Request
 from starlette.responses import Response

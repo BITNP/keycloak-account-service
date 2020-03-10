@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Dict, List
 from pydantic import ValidationError
 
 from fastapi import Depends, APIRouter, Form, HTTPException
@@ -6,10 +6,14 @@ from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 
-from accountsvc.datatypes import PasswordInfo, PasswordUpdateRequest
+from accountsvc.datatypes import PasswordInfo, PasswordUpdateRequest, CredentialType
 from accountsvc.modauthlib import (SessionData, deps_requires_session,
                                    deps_get_csrf_field, deps_requires_csrf_posttoken)
 from accountsvc.utils import request_accountapi_json_expect_200
+
+MFA_ADD_REQ_ACTIONS: Dict[str, str] = {
+    '': '',
+}
 
 router = APIRouter()
 
@@ -100,3 +104,34 @@ async def sp_password_update_json(
     await request_accountapi_json_expect_200(request=request, session_data=session_data,
                                              data=pwupdate.json(), uri='credentials/password')
     return True
+
+@router.get("/mfa/", include_in_schema=True, response_model=List[CredentialType])
+async def sp_mfa_list(
+        request: Request,
+        csrf_field: tuple = Depends(deps_get_csrf_field),
+        session_data: SessionData = Depends(deps_requires_session),
+    ) -> Union[List[CredentialType], Response]:
+    creds: List[CredentialType] = await sp_mfa_list_json(request=request, session_data=session_data)
+    if request.state.response_type.is_json():
+        return creds
+    else:
+        updated = request.query_params.get('updated')
+        return request.app.state.templates.TemplateResponse("sp-mfa.html.jinja2", {
+            "request": request,
+            "name": session_data.username,
+            "signed_in": True,
+            "csrf_field": csrf_field,
+            "updated": updated,
+            "creds": creds,
+        })
+
+async def sp_mfa_list_json(
+        request: Request,
+        session_data: SessionData,
+    ) -> List[CredentialType]:
+    resp = await request.app.state.app_session.oauth_client.get(
+        request.app.state.config.keycloak_accountapi_url+'credentials',
+        token=session_data.to_tokens(),
+        headers={'Accept': 'application/json'},
+    )
+    return list(CredentialType.parse_obj(c) for c in resp.json())
