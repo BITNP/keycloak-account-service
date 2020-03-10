@@ -116,6 +116,8 @@ async def sp_mfa_list(
         return creds
     else:
         updated = request.query_params.get('updated')
+        if request.query_params.get('kc_action_status') == 'success':
+            updated = True
         return request.app.state.templates.TemplateResponse("sp-mfa.html.jinja2", {
             "request": request,
             "name": session_data.username,
@@ -135,3 +137,34 @@ async def sp_mfa_list_json(
         headers={'Accept': 'application/json'},
     )
     return list(CredentialType.parse_obj(c) for c in resp.json())
+
+@router.post("/mfa/remove", include_in_schema=True, status_code=204, responses={
+        303: {"description": "Successful response (for end users)", "content": {"text/html": {}}},
+        204: {"content": {"application/json": {}}},
+        400: {"description": "Failed response"},
+    })
+async def sp_mfa_remove(
+        request: Request,
+        credentialId: str = Form(...),
+        session_data: SessionData = Depends(deps_requires_session),
+        csrf_valid: bool = Depends(deps_requires_csrf_posttoken),
+    ) -> Response:
+    await sp_mfa_remove_json(request=request, credentialId=credentialId, session_data=session_data)
+
+    if request.state.response_type.is_json():
+        return Response(status_code=204)
+    else:
+        return RedirectResponse(request.url_for('sp_mfa_list')+"?updated=1", status_code=303)
+
+async def sp_mfa_remove_json(
+        request: Request,
+        credentialId: str,
+        session_data: SessionData,
+    ) -> None:
+    resp = await request.app.state.app_session.oauth_client.delete(
+        request.app.state.config.keycloak_accountapi_url+'credentials/'+credentialId,
+        token=session_data.to_tokens(),
+        headers={'Accept': 'application/json'},
+    )
+    if resp.status_code != 204:
+        raise HTTPException(resp.status_code, detail=resp.json())

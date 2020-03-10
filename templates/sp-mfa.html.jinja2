@@ -17,14 +17,14 @@
                         {% for item in c.userCredentials %}
                         <div class="list-group-item">
                             <div class="d-flex w-100 justify-content-between">
-                                <h5>{{ item.userLabel | default("未命名密钥", true) }}</h5>
-                                {% if c.removeable %}<button class="btn btn-sm btn-danger">删除</button>{% endif %}
+                                <h5>{{ item.userLabel | default("默认", true) }}</h5>
+                                {% if c.removeable %}<form action="{{ url_for('sp_mfa_remove') }}" method="POST" enctype="application/x-www-form-urlencoded"><button type="submit" class="btn btn-outline-danger btn-sm">删除</button><input type="hidden" name="credentialId" value="{{ item.id }}"><input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}"></form>{% endif %}
                             </div>
                             <p class="mb-0">创建于 {{ item.createdDate | local_timestring }}{% if item.credentialData.counter %}，已使用 {{ item.credentialData.counter }} 次{% endif %}</p>
                         </div>
                         {% endfor %}
                         {% if c.createAction %}
-                        <a href="{{ url_for('kc_login_action', action=c.createAction) }}" class="list-group-item list-group-item-action">
+                        <a href="{{ url_for('kc_login_action', action=c.createAction) }}?redirect_uri=/sp/credentials/mfa/" class="list-group-item list-group-item-action">
                             <p class="mb-0">增加密钥</p>
                             {% if c.helptext %}<small class="text-muted">{{ c.helptext }}</small>{% endif %}
                         </a>

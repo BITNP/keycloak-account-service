@@ -270,9 +270,9 @@ class CredentialType(BaseModel):
             "webauthn-display-name": "安全密钥两步认证",
             "webauthn-passwordless-display-name": "安全密钥快速登录",
             "password-help-text": "",
-            "otp-help-text": "",
-            "webauthn-help-text": "",
-            "webauthn-passwordless-help-text": "使用你的安全密钥进行免用户名登录，仅支持可存取 Resident Key 的媒介与浏览器",
+            "otp-help-text": "使用 TOTP 动态口令，在输入密码后进一步验证身份，账户更安全",
+            "webauthn-help-text": "使用物理安全密钥，在输入密码后进一步验证身份，账户更安全",
+            "webauthn-passwordless-help-text": "使用你的物理安全密钥进行免用户名登录，仅支持可存取 Resident Key 的媒介与浏览器",
         }
 
     @validator('displayName', 'helptext')
