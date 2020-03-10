@@ -25,7 +25,7 @@
                         {% endfor %}
                         {% if c.createAction %}
                         <a href="{{ url_for('kc_login_action', action=c.createAction) }}?redirect_uri=/sp/credentials/mfa/" class="list-group-item list-group-item-action">
-                            <p class="mb-0">增加密钥</p>
+                            <p class="mb-0">增加认证方式</p>
                             {% if c.helptext %}<small class="text-muted">{{ c.helptext }}</small>{% endif %}
                         </a>
                         {% endif %}
