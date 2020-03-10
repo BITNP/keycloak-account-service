@@ -253,6 +253,12 @@ class CredentialItem(BaseModel):
     createdDate: Optional[datetime] = None
     credentialData: Union[Json, Any] = None
 
+    @validator('createdDate')
+    def neg_createdDate(cls, v: Optional[datetime], values: Dict[str, Any]) -> Optional[datetime]:
+        if v and v.timestamp() < 0:
+            return None
+        return v
+
 class CredentialType(BaseModel):
     type: str
     category: str

@@ -20,7 +20,7 @@
                                 <h5>{{ item.userLabel | default("默认", true) }}</h5>
                                 {% if c.removeable %}<form action="{{ url_for('sp_mfa_remove') }}" method="POST" enctype="application/x-www-form-urlencoded" onsubmit="return confirm('你确定要删除这个认证方式吗？')"><button type="submit" class="btn btn-outline-danger btn-sm">删除</button><input type="hidden" name="credentialId" value="{{ item.id }}"><input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}"></form>{% endif %}
                             </div>
-                            <p class="mb-0">创建于 {{ item.createdDate | local_timestring }}{% if item.credentialData.counter %}，已使用 {{ item.credentialData.counter }} 次{% endif %}</p>
+                            <p class="mb-0">{% if item.createdDate %}创建于 {{ item.createdDate | local_timestring }}{% endif %}{% if item.credentialData.counter %}，已使用 {{ item.credentialData.counter }} 次{% endif %}</p>
                         </div>
                         {% endfor %}
                         {% if c.createAction %}
