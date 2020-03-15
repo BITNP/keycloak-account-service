@@ -66,7 +66,9 @@ async def init_phpcas_adaptor() -> None:
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_accept_handler(request: Request, exc: StarletteHTTPException) -> Response:
-    traceback.print_exc()
+    if exc.status_code > 499:
+        # Only log server error
+        traceback.print_exc()
     if request.state.response_type.is_json():
         return await http_exception_handler(request, exc)
     else:
