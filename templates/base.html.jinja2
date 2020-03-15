@@ -16,7 +16,7 @@
       <nav class="mt-2 mt-md-0 align-items-center row text-muted d-none-if-empty">{% if signed_in is sameas true %}
         <span class="mr-2">{{ name }}</span> <a href="{{ url_for("logout") }}">登出网协通行证</a>
         {% elif signed_in is sameas false %}
-        <a href="{{ url_for("index") }}">尚未登录</a>
+        <a href="{{ url_for("sp_landing") }}">尚未登录</a>
         {% endif %}</nav>
     </div>
 
