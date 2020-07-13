@@ -15,7 +15,7 @@
                     <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users" class="btn btn-outline-primary" target="_blank">Keycloak 用户管理</a>
                     <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">
                 </form>
-                <p class="text-muted mt-3">迁移后用户会收到密码重置邮件；被禁用的用户会依然保持禁用状态。</p>
+                <p class="text-muted mt-3">迁移后用户会收到 Keyclock 密码重置邮件，以便自行设置密码。被禁用的用户会依然保持禁用状态，请务必确认没有异常，再通过 Keyclock 手动启用账户。</p>
             </div>
         </div>
     </div>
