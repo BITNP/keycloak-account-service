@@ -38,6 +38,7 @@
                     <h5 class="card-title">&#x1F3E2; 对内应用</h5>
                 </div>
                 <div class="list-group list-group-flush">
+                    {% if permission.has_active_role %}<a href="https://proxy.proxy.bitnp.net/" class="list-group-item list-group-item-action">NProxy</a>{% endif %}
                     {% if permission.has_active_role %}<a href="https://jira.bitnp.net/" class="list-group-item list-group-item-action">JIRA</a>{% endif %}
                     <a href="https://git.bitnp.net/" class="list-group-item list-group-item-action">GitLab</a>
                 </div>
