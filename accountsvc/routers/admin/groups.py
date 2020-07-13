@@ -87,13 +87,18 @@ async def _admin_delegated_groups_path_to_group(
         grouplist: List[GroupItem],
         path: str,
     ) -> KCGroupItem:
+    group_config = request.app.state.config.group_config
     # check if path is inside allowed grouplist - some ACL control
     current_groups = list(filter(lambda g: g.path == path, grouplist))
     if len(current_groups) != 1:
         if not session_data.is_master():
             raise HTTPException(status_code=403, detail="The path is not in the group list that you are allowed to access")
         # master exception
-        current_group = GroupItem(path=path)
+        current_group: GroupItem = group_config.get(path, None)
+        if current_group:
+            current_group = current_group.copy(deep=True)
+        else:
+            current_group = GroupItem(path=path)
     else:
         current_group = current_groups[0]
 
@@ -110,7 +115,7 @@ async def _admin_delegated_groups_path_to_group(
             # Merge from group_config
             # it's possible that this groupNS is not in group_config
             # this case we should proceed and reuse the previous group_config
-            group_info = request.app.state.config.group_config.get(groupNS)
+            group_info = group_config.get(groupNS)
             if group_info:
                 current_group = group_info
             else:
