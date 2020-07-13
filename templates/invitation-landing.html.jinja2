@@ -20,13 +20,13 @@
                 <form class="card-body" action="{{ url_for('invitation_join', token=token) }}" method="POST" enctype="application/x-www-form-urlencoded">
                     <h3 class="card-title">&#x1F4B3; 已经有网协通行证</h3>
                     {% if in_group %}
-                    <p class="card-text">{{ session_data.name }}，你已经在这一用户组，无法使用此邀请链接。</p>
+                    <p class="card-text">你已加入 <span class="badge badge-primary">{{ group.name }}</span>，无需使用此邀请链接。</p>
                     {% else %}
-                    <p class="card-text">{{ session_data.name }}，请点击按钮加入用户组。</p>
+                    <p class="card-text">你即将加入用户组 <span class="badge badge-primary">{{ group.name }}</span>。</p>
                     {% endif %}
-                    <p class="card-text">如果你不是{{ session_data.name }}，<a href="{{ url_for('logout') }}?redirect_uri=/i/{{ token }}">请点击这里退出</a>，然后重新登录。</p>
+                    <p class="card-text">如果你不是{{ session_data.name }}，<a href="{{ url_for('logout') }}?redirect_uri=/i/{{ token }}">请点击这里退出</a>并重新登录。</p>
                     {% if not in_group %}
-                    <button type="submit" class="btn btn-primary">以 {{ session_data.username }} 加入用户组</button>
+                    <button type="submit" class="btn btn-primary">加入用户组</button>
                     <input type="hidden" name="{{csrf_field[0]}}" value="{{csrf_field[1]}}">
                     {% endif %}
                 </form>
@@ -36,9 +36,23 @@
                 <div class="card-body">
                 <h3 class="card-title">&#x1F195; 需要注册网协通行证</h3>
                 <p class="card-text">请实名注册新账户，注册完成后继续操作。
-                <br><small class="text-muted">如果你注册后没有看到邀请加入用户组的界面，请重新访问本邀请链接。</small></p>
+                <br><small class="text-muted">如果你注册完成后没有看到邀请加入用户组的界面，请重新访问本邀请链接。</small></p>
                 <a href="{{ register_url }}" class="btn btn-outline-primary stretched-link">注册</a>
                 </div>
             </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+            <h3 class="card-title">😕 不知道有没有账户</h3>
+                <p class="card-text">
+                    <strong>在 2020 年以前注册过账户、之后从来没用过？</strong>
+                    请<a href="{{ url_for('phpcas_migrate_landing') }}">点这里使用旧密码迁移账户</a>。请尝试自己的所有邮箱，包括网协邮箱。如果提示密码错误，请联系管理员重置（不建议重新注册账户）。如果提示已迁移，则你已经有一个账户了。完成后，请回到本页接受用户组邀请。
+                </p>
+                <p class="card-text">
+                    <strong>实在不记得了？</strong>
+                    请<a href="{{ url_for('assistance_landing') }}">点这里用邮件重置密码</a>。请尝试自己的所有邮箱，包括网协邮箱。如果你有旧帐户，系统会提示你进行迁移。如果 10 分钟内未收到系统邮件，你可以注册一个新账户。完成后，请回到本页接受用户组邀请。
+                </p>
+            </div>
+        </div>
     </div>
 {% endblock %}
