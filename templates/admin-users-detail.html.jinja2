@@ -12,6 +12,15 @@
         {% if warning %}<div class="alert alert-warning" role="alert">{{ warning }}</div>{% endif %}
         <div class="row"><div class="col-12 col-lg-8 offset-lg-2 mb-3">
             <div class="card mb-3">
+                <div class="card-body">
+                    <form class="form-inline" method="GET" enctype="application/x-www-form-urlencoded" action="{{ url_for('admin_users') }}">
+                        <label class="sr-only col-form-label" for="user-search">用户名、邮箱等</label>
+                        <input type="search" class="form-control mb-2 mb-sm-0 mr-sm-2 col-sm" id="user-search" name="search" placeholder="用户名 / 邮箱等" value="{{ search }}">
+                        <button type="submit" class="btn btn-primary mb-2 mb-sm-0 col-auto">搜索</button>
+                    </form>
+                </div>
+            </div>
+            <div class="card mb-3">
                 <div class="card-header">基本信息</div>
                 <div class="card-body">
                     <div class="card-text">

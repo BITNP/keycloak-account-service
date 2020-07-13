@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple, Union
 import traceback
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from fastapi import Depends, APIRouter, HTTPException, Form
 from starlette.requests import Request
@@ -32,6 +32,10 @@ async def admin_users(
     if request.state.response_type.is_json():
         return users
     else:
+        if len(users) == 1:
+            return RedirectResponse(request.url_for('admin_user_detail', user_id=users.id)+"?"+urlencode({'search': search}),
+                                    status_code=303)
+
         return request.app.state.templates.TemplateResponse(
             "admin-users-list.html.jinja2", {
                 "request": request,
@@ -118,6 +122,7 @@ async def _admin_search_users_by_username(
 async def admin_user_detail(
         request: Request,
         user_id: constr(regex="^[A-Za-z0-9-_]+$"), # type: ignore # constr
+        search: str = '',
         session_data: SessionData = Depends(deps_requires_master_session),
     ) -> Union[datatypes.UserInfoMaster, Response]:
     config: datatypes.Settings = request.app.state.config
@@ -130,6 +135,7 @@ async def admin_user_detail(
                 "request": request,
                 "user": user,
                 "name": session_data.username,
+                "search": search,
                 "is_admin": session_data.is_admin(),
                 "is_master": session_data.is_master(),
                 "signed_in": True,
