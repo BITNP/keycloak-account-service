@@ -33,7 +33,7 @@ async def admin_users(
         return users
     else:
         if len(users) == 1:
-            return RedirectResponse(request.url_for('admin_user_detail', user_id=users.id)+"?"+urlencode({'search': search}),
+            return RedirectResponse(request.url_for('admin_user_detail', user_id=users[0].id)+"?"+urlencode({'search': search}),
                                     status_code=303)
 
         return request.app.state.templates.TemplateResponse(

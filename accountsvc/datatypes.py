@@ -219,7 +219,7 @@ class UserCreationInfo(ProfileUpdateInfo):
             raise ValueError('Password cannot match username')
         return v
 
-    @root_validator(skip_on_failure=True) # type: ignore # https://github.com/samuelcolvin/pydantic/issues/1192
+    @root_validator(skip_on_failure=True)
     def check_passwords_match_and_init_creds(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         if values.get('credentials') is None:
             pw1, pw2 = values.get('newPassword'), values.get('confirmation')
