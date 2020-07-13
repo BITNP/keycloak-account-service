@@ -51,12 +51,15 @@
                                 {% endfor %} <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}/groups" target="_blank">Keycloak 修改群组</a></dd>
                         </dl>
                         <dl class="row mb-0">
-                            <dt class="col-4">Keycloak 管理</dt>
+                            <dt class="col-4">Keycloak</dt>
                             <dd class="col"><a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}" target="_blank">用户信息</a> <a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}/sessions" target="_blank">在线管理</a></dd>
                         </dl>
                         <dl class="row mb-0">
                             <dt class="col-4">应用管理</dt>
-                            <dd class="col"><a href="{{ jira_user_search_url_f.format(username=user.username) }}" target="_blank">JIRA</a></dd>
+                            <dd class="col">
+                                <a href="{{ jira_user_search_url_f.format(username=user.username) }}" target="_blank">JIRA</a>
+                                <a href="{{ gitlab_user_search_url_f.format(username=user.username) }}" target="_blank">GitLab</a>
+                            </dd>
                         </dl>
                     </div>
                 </div>

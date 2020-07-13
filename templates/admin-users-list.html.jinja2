@@ -17,25 +17,27 @@
                 </form>
             </div>
         </div>
-        <table class="table">
-            <thead>
-                <tr>
-                <th scope="col" class="border-top-0">用户名</th>
-                <th scope="col" class="border-top-0">启用</th>
-                <th scope="col" class="border-top-0">姓名</th>
-                <th scope="col" class="border-top-0">邮箱</th>
-                <th scope="col" class="border-top-0">用户创建</th>
-                <th scope="col" class="border-top-0">操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user in users %}
-                <tr id="user-{{ user.id }}">
-                    <th scope="row"><a href="{{ url_for('admin_user_detail', user_id=user.id) }}">{{ user.username }}</a></th><td>{{ user.enabled }}</td><td title="{{ user.lastName }}, {{ user.firstName }}">{{ user.name }}</td><td><a href="mailto:{{ user.email }}">{{ user.email }}</a></td><td><time title="{{ user.createdTimestamp }}">{{ user.createdTimestamp | local_timestring }}</time></td><td><a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}" target="_blank">KC</a> <a href="{{ jira_user_search_url_f.format(username=user.username) }}" target="_blank">JIRA</a></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                    <th scope="col" class="border-top-0">用户名</th>
+                    <th scope="col" class="border-top-0">启用</th>
+                    <th scope="col" class="border-top-0">姓名</th>
+                    <th scope="col" class="border-top-0">邮箱</th>
+                    <th scope="col" class="border-top-0">用户创建</th>
+                    <th scope="col" class="border-top-0">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr id="user-{{ user.id }}">
+                        <th scope="row"><a href="{{ url_for('admin_user_detail', user_id=user.id) }}">{{ user.username }}</a></th><td>{{ user.enabled }}</td><td title="{{ user.lastName }}, {{ user.firstName }}">{{ user.name }}</td><td><a href="mailto:{{ user.email }}">{{ user.email }}</a></td><td><time title="{{ user.createdTimestamp }}">{{ user.createdTimestamp | local_timestring }}</time></td><td><a href="{{ url_for('admin_keycloak_redirect') }}#/realms/master/users/{{ user.id }}" target="_blank">KC</a> <a href="{{ jira_user_search_url_f.format(username=user.username) }}" target="_blank">JIRA</a> <a href="{{ gitlab_user_search_url_f.format(username=user.username) }}" target="_blank">Git</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         <form method="GET">
         本表记录数 {{ users | length }}，从第 <input type="number" class="form-control form-control-sm col-1 d-inline-block" min="0" id="members-first" name="first" value="{{ (first+100) if (users|length) == 100 else ([first-100, 0]|max) }}" required> 条记录开始 <button type="submit" class="btn btn-outline-primary btn-sm">查看</button>
         <input type="hidden" name="search" value="{{ search }}">

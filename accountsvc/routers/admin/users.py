@@ -47,6 +47,7 @@ async def admin_users(
                 "search": search,
                 "first": first,
                 "jira_user_search_url_f": request.app.state.config.jira_user_search_url_f,
+                "gitlab_user_search_url_f": request.app.state.config.gitlab_user_search_url_f,
             })
 
 async def admin_users_json(
@@ -142,6 +143,7 @@ async def admin_user_detail(
                 "ldap_kc_fedlink_id": config.ldap_kc_fedlink_id,
                 "ldap_base_dn_groups": config.ldap_base_dn_groups,
                 "jira_user_search_url_f": request.app.state.config.jira_user_search_url_f,
+                "gitlab_user_search_url_f": request.app.state.config.gitlab_user_search_url_f,
                 "warning": "{}: {}".format(warning.__class__.__name__, str(warning)) if warning else None,
             })
 

@@ -48,6 +48,7 @@ class LoadingSettings(BaseSettings):
     ldap_kc_fedlink_id: str = ''
 
     jira_user_search_url_f: str = 'https://jira.bitnp.net/secure/admin/user/UserBrowser.jspa?userSearchFilter={username}'
+    gitlab_user_search_url_f: str = 'https://git.bitnp.net/admin/users?utf8=%E2%9C%93&search_query={username}'
 
     def get_ldap3_connection(self) -> ldap3.Connection:
         return ldap3.Connection(ldap3.Server(self.ldap_host, get_info=ldap3.ALL),
